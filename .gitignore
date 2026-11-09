@@ -1,0 +1,13 @@
+# Original game data: copyrighted, never commit or publish
+Dominion_Storm_Over_Gift_3_Win_ISO_EN/
+*.iso
+*.bin
+*.cue
+*.SMK
+*.smk
+
+# Local work area: original binaries, Ghidra projects, decompiled code
+work/
+
+__pycache__/
+*.pyc
