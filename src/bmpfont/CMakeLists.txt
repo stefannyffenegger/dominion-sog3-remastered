@@ -1,0 +1,5 @@
+add_library(bmpfont SHARED bmpfont.c bmpfont.def)
+set_target_properties(bmpfont PROPERTIES PREFIX "" OUTPUT_NAME "BmpFont" SUFFIX ".r32")
+target_compile_options(bmpfont PRIVATE ${DOM_MODULE_FLAGS})
+target_link_options(bmpfont PRIVATE ${DOM_MODULE_LINK})
+target_link_libraries(bmpfont PRIVATE rtlib32 kernel32 winmm gcc)

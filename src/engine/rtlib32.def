@@ -1,0 +1,13 @@
+; Functions our modules import from the original engine runtime (Rtlib32.dll).
+; Names are exported undecorated. The @N suffix tells the linker that the function
+; is stdcall (it removes N bytes of arguments itself); dlltool -k strips it again.
+LIBRARY Rtlib32.dll
+EXPORTS
+    DebugStr
+    RtGetHSL
+    RtGetResource
+    RtGetString
+    SpriteDibColorMapMerge@40
+    SpriteDibMerge@32
+    SpriteDibSet@24
+    SpritePaintRect@12

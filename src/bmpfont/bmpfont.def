@@ -1,0 +1,15 @@
+; Same export names and ordinals as the original BmpFont.r32
+LIBRARY BmpFont.r32
+EXPORTS
+    BFBrightWrite       @1
+    BFClearRect         @2
+    BFDrawText          @3
+    BFDrawTextShadow    @4
+    BFRepaintRect       @5
+    BFStringPixelWidth  @6
+    BF_BlastText        @7
+    BF_DrawText         @8
+    BF_DrawTextShadow   @9
+    RtLibFree           @10
+    RtLibInit           @11
+    WEP                 @12

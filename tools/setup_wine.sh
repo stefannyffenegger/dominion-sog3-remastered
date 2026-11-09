@@ -64,5 +64,10 @@ echo "$MODE" > "$DH/video_mode"
 echo "${MODE}x${H}" > "$DH/desktop_size"
 # No crash dialog; write a backtrace to the terminal instead.
 wine reg add 'HKCU\Software\Wine\WineDbg' /v ShowCrashDialog /t REG_DWORD /d 0 /f >/dev/null 2>&1
+# Multiplayer: use the DirectPlay DLLs shipped with the game for every part. Wine's own
+# TCP/IP provider can't host a session yet, and mixing it with the old files fails too.
+for dll in dplay dplayx dpwsock dpwsockx; do
+    wine reg add 'HKCU\Software\Wine\DllOverrides' /v "$dll" /t REG_SZ /d native /f >/dev/null 2>&1
+done
 
 echo "== Done. Start the game with: $HERE/run_wine.sh"
