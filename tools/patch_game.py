@@ -21,6 +21,13 @@ PATCHES = [
     # mov byte [eax+0x95ed], 0  ->  mov byte [eax+0x95ed], 1  (two call sites)
     ("palette", "Rtlib32.dll", 0x1D04A, "c680ed95000000", "c680ed95000001"),
     ("palette", "Rtlib32.dll", 0x1DC02, "c680ed95000000", "c680ed95000001"),
+    # sprite engine's own copy of the flag (sprite+0x9fc): without it no GDI or
+    # DirectDraw palette is ever created and the 8-bit screen stays black.
+    # and eax,0x100  ->  mov eax,0x100
+    ("palette", "Rtlib32.dll", 0x4C752, "2500010000", "b800010000"),
+    ("palette", "Rtlib32.dll", 0x55685, "2500010000", "b800010000"),
+    # mov dword [eax+0x9fc], 0  ->  1
+    ("palette", "Rtlib32.dll", 0x55EB3, "c780fc09000000000000", "c780fc09000001000000"),
 ]
 
 
