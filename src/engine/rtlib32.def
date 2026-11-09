@@ -4,10 +4,23 @@
 LIBRARY Rtlib32.dll
 EXPORTS
     DebugStr
+    RtGetDC
+    RtGetDisplayMode
+    RtGetGameInfo
     RtGetHSL
     RtGetResource
     RtGetString
+    RtGetWindow
+    RtPostMsg
+    RtSetDisplayMode
+    RtSetGameInfo
+    SpriteCreateDirectDrawPalette@4
+    SpriteCreateDirectDrawSurfaces@4
     SpriteDibColorMapMerge@40
     SpriteDibMerge@32
     SpriteDibSet@24
+    SpriteGetDDraw@4
     SpritePaintRect@12
+    SpriteRealizePalette2@8
+    SpriteReleaseDirectDrawPalette@4
+    SpriteReleaseDirectDrawSurfaces@4

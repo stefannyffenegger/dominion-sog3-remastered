@@ -8,15 +8,16 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 DH=${DOMINION_HOME:-$HOME/.local/share/dominion-remastered}
+MODULES="BmpFont.r32 Smacker.r32"
 
 if [ "${1:-}" = --restore ]; then
     GAME=${2:-$DH/game}
-    for orig in "$GAME"/*.r32.orig "$GAME"/*.R32.orig "$GAME"/*.dll.orig; do
+    # only our modules: the byte-patched files (patch_game.py) stay patched
+    for name in $MODULES; do
+        orig=$GAME/$name.orig
         [ -e "$orig" ] || continue
-        # keep the byte-patched files (patch_game.py) patched: only restore our modules
-        case "$(basename "$orig")" in BmpFont.r32.orig) ;; *) continue ;; esac
-        cp -p "$orig" "${orig%.orig}"
-        echo "restored $(basename "${orig%.orig}")"
+        cp -p "$orig" "$GAME/$name"
+        echo "restored $name"
     done
     exit 0
 fi
@@ -33,3 +34,4 @@ install_one() { # built file, name in game folder
     echo "installed $2"
 }
 install_one "$BUILD/src/bmpfont/BmpFont.r32" BmpFont.r32
+install_one "$BUILD/src/smacker/Smacker.r32" Smacker.r32

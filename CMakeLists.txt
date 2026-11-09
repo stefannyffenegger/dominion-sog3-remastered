@@ -17,3 +17,4 @@ set(DOM_MODULE_LINK -nostdlib -static-libgcc -Wl,--enable-stdcall-fixup -Wl,-e,_
 
 add_subdirectory(src/engine)
 add_subdirectory(src/bmpfont)
+add_subdirectory(src/smacker)

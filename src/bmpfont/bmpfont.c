@@ -33,14 +33,7 @@ enum {
 
 enum { SHADOW_PIXEL = 1 }; /* palette index used to mark shadow pixels */
 
-/* No C runtime (see CMakeLists.txt): the few helpers we need. */
-void *memset(void *dst, int c, size_t n)
-{
-    uint8_t *p = dst;
-    while (n--)
-        *p++ = (uint8_t)c;
-    return dst;
-}
+void *memset(void *dst, int c, size_t n); /* src/common/minicrt.c */
 
 static int str_len(const char *s)
 {

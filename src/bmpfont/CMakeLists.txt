@@ -1,4 +1,4 @@
-add_library(bmpfont SHARED bmpfont.c bmpfont.def)
+add_library(bmpfont SHARED bmpfont.c bmpfont.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
 set_target_properties(bmpfont PROPERTIES PREFIX "" OUTPUT_NAME "BmpFont" SUFFIX ".r32")
 target_compile_options(bmpfont PRIVATE ${DOM_MODULE_FLAGS})
 target_link_options(bmpfont PRIVATE ${DOM_MODULE_LINK})

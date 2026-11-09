@@ -1,0 +1,6 @@
+# Decoder: plain C, also built natively for tests (tests/smk_compare.sh)
+add_library(smacker SHARED smacker.c smk.c smacker.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+set_target_properties(smacker PROPERTIES PREFIX "" OUTPUT_NAME "Smacker" SUFFIX ".r32")
+target_compile_options(smacker PRIVATE ${DOM_MODULE_FLAGS})
+target_link_options(smacker PRIVATE ${DOM_MODULE_LINK})
+target_link_libraries(smacker PRIVATE rtlib32 kernel32 user32 gdi32 winmm ddraw gcc)

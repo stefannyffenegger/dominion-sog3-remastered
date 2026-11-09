@@ -1,0 +1,21 @@
+; Same export names and ordinals as the original Smacker.r32. Three exports have
+; C++ (Visual C++) names in the original; they map to our C functions.
+LIBRARY Smacker.r32
+EXPORTS
+    RtLibInit                          @1
+    RtLibFree                          @2
+    SmackerSetupView                   @3
+    SmackerPlayAnimation               @4
+    SmackerSetScreenRes                @5
+    SmackerUnload                      @6
+    SmackerMessageBox                  @7
+    SmackerRefresh                     @8
+    SmackerCreateDirectDrawObjects     @9
+    SmackerDestroyDirectDrawObjects    @10
+    SmackerChangeBlitType              @11
+    SmackerOpenAnimation               @12
+    SmackerPlayOpenedAnimation         @13
+    SmackerCloseAnimation              @14
+    "?ClearVideoMem@@YAXPAUIDirectDraw2@@HH@Z"=ClearVideoMem   @15
+    "?SmackerActivate@@YGXPAXH@Z"=SmackerActivate@8          @16
+    "?SmackerUpdateHook@@YGXPAX@Z"=SmackerUpdateHook@4       @17

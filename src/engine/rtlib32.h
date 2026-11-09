@@ -30,4 +30,28 @@ void __stdcall SpriteDibColorMapMerge(RtDib *dst, RtDib *src, int w, int h, int 
 void __stdcall SpriteDibSet(RtDib *dst, int x, int y, int w, int h, int color);
 void __stdcall SpritePaintRect(void *hsl, RECT *rects, int count);
 
+/* Application, window and display */
+HWND __cdecl RtGetWindow(void *app);
+HDC __cdecl RtGetDC(void *app);
+void __cdecl RtGetDisplayMode(void *app, uint32_t *w, uint32_t *h, uint32_t *bpp, uint32_t *refresh);
+int __cdecl RtSetDisplayMode(void *app, uint32_t w, uint32_t h, uint32_t bpp, uint32_t refresh,
+                             int unknown1, int unknown2, int unknown3);
+void __cdecl RtPostMsg(void *app, const void *msg); /* msg: 0x22-byte record, see RtMsg */
+
+/* "Game info": the engine calls info->hook(info->ctx) once per main-loop pass. */
+typedef struct RtGameInfo {
+    void *ctx;
+    void(__stdcall *hook)(void *ctx);
+} RtGameInfo;
+RtGameInfo *__cdecl RtGetGameInfo(void *app);
+void __cdecl RtSetGameInfo(void *app, const RtGameInfo *info);
+
+/* The engine's DirectDraw objects (IDirectDraw2 *) */
+void *__stdcall SpriteGetDDraw(void *hsl);
+void __stdcall SpriteCreateDirectDrawSurfaces(void *hsl);
+void __stdcall SpriteReleaseDirectDrawSurfaces(void *hsl);
+void __stdcall SpriteCreateDirectDrawPalette(void *hsl);
+void __stdcall SpriteReleaseDirectDrawPalette(void *hsl);
+int __stdcall SpriteRealizePalette2(void *hsl, int force);
+
 #endif

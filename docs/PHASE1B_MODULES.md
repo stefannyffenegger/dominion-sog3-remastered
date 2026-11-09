@@ -10,8 +10,8 @@ Order (smallest and most self-contained first):
 | # | Module | What it does | Status |
 |---|---|---|---|
 | 1 | `BmpFont.r32` | Draws text with the game's bitmap fonts | **Done**: pixel-identical |
-| 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | next |
-| 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | |
+| 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
+| 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | next |
 | 4 | `NETPLAY.R32` | Multiplayer (DirectPlay) | |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | |
 
@@ -29,12 +29,13 @@ How the modules are built:
 * They call back into the original `Rtlib32.dll` through an import library made from `src/engine/rtlib32.def`. `src/engine/rtlib32.h` declares those engine functions.
   * Most engine functions are `cdecl`.
   * The `Sprite*` drawing functions are `stdcall`: the called function removes its own arguments. Getting this wrong corrupts the stack.
-* They don't use the C runtime. The game folder ships a 1998 `msvcrt.dll`, which Windows would load instead of the system one.
+* They don't use the C runtime. The game folder ships a 1998 `msvcrt.dll`, which Windows would load instead of the system one. `src/common/minicrt.c` has the few functions we need (`memset`, `memcpy`, …).
 
 ## How each module is checked
 1. Screenshots of a fixed tour of menu screens with the original and with our module. They must be pixel-identical; only the animated mouse cursor may differ.
 2. The same tour with a test build that draws nothing proves which screens actually use the module's code.
 3. In-game use is checked during a match (`tools/mp_test.sh`).
+4. `tools/make_proxy.py` builds a logging stand-in for an original module. It records every call with its arguments in the Wine log, then passes the call on to the original. This is how we learn which functions the game really calls, and with what.
 
 ## 1. BmpFont.r32 (done)
 * Source: `src/bmpfont/bmpfont.c`, about 450 lines replacing the original 1998 code.
@@ -49,3 +50,30 @@ How the modules are built:
 * Changes compared to the original:
   * A missing string or resource now returns an error instead of crashing.
   * The animation delay in `BFBrightWrite` gives up its CPU time while waiting instead of spinning.
+
+## 2. Smacker.r32 (done)
+* The original wrapped RAD's `SMACKW32.DLL` (a closed library). The replacement doesn't need it.
+* `src/smacker/smk.c` is our own decoder (about 500 lines, portable C, no Windows code).
+  * Video: Huffman-coded 4×4 blocks with a palette that changes per frame.
+  * Sound: Huffman-coded delta (DPCM) audio.
+  * Tested natively on Linux: `tests/smk_compare.sh CINE/*.SMK` decodes every video and compares picture and sound byte for byte with ffmpeg. All 77 videos on the two discs are identical.
+* `src/smacker/smacker.c` is the module the game loads:
+  * It switches to a 640×480 16-bit screen, as the original did.
+  * It draws each frame centered on the DirectDraw surface.
+  * It streams the sound through the game's own DirectSound object.
+  * Playback is driven by the engine's main loop through `SmackerUpdateHook`.
+  * At the end, or on Escape, it posts the message the menu script waits for.
+* Playback method: `Dominion.ini` → `[Dominion]` → `CinePlaybackMethod`.
+  * 0 = original size
+  * 1 = doubled
+  * 2 = doubled and smoothed (default)
+  * 3 = doubled and interlaced
+  * Our smoothing is a simple average of neighboring pixels; RAD's exact filter isn't known.
+* Checked in the game:
+  * the logo videos at startup, and skipping each one with Escape;
+  * the intro from the Cinematics menu;
+  * the Merc campaign opening and briefing (videos from disc 2), followed by mission 1.
+  * Recorded sound output matches the original module's loudness second by second.
+* Not carried over:
+  * The debug keys (+/− to change method, F for a frame counter) of an optional "VideoOutput" window that the game never creates.
+  * The windowed (non-DirectDraw) mode, which the game never uses.
