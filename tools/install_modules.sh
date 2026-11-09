@@ -8,7 +8,7 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 DH=${DOMINION_HOME:-$HOME/.local/share/dominion-remastered}
-MODULES="BmpFont.r32 Smacker.r32"
+MODULES="BmpFont.r32 Smacker.r32 WAVEPLAY.R32"
 
 if [ "${1:-}" = --restore ]; then
     GAME=${2:-$DH/game}
@@ -19,6 +19,9 @@ if [ "${1:-}" = --restore ]; then
         cp -p "$orig" "$GAME/$name"
         echo "restored $name"
     done
+    rm -f "$GAME/WAVEPLAY_orig.R32"
+    # the original WAVEPLAY needs the no-CD patch again
+    python3 -I "$HERE/patch_game.py" "$GAME" >/dev/null
     exit 0
 fi
 
@@ -35,3 +38,15 @@ install_one() { # built file, name in game folder
 }
 install_one "$BUILD/src/bmpfont/BmpFont.r32" BmpFont.r32
 install_one "$BUILD/src/smacker/Smacker.r32" Smacker.r32
+install_one "$BUILD/src/waveplay/WAVEPLAY.R32" WAVEPLAY.R32
+
+# Our WAVEPLAY still passes sound effects on to the original (unpatched) module.
+if [ -f "$BUILD/src/waveplay/WAVEPLAY.R32" ]; then
+    cp -p "$GAME/WAVEPLAY.R32.orig" "$GAME/WAVEPLAY_orig.R32"
+    # music ripped with tools/rip_music.sh
+    if [ -d "$DH/music" ] && [ ! -e "$GAME/music" ]; then
+        ln -s ../music "$GAME/music"
+        echo "linked music from $DH/music"
+    fi
+    [ -e "$GAME/music" ] || echo "no music found: rip it with tools/rip_music.sh"
+fi

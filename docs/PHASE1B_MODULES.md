@@ -11,7 +11,7 @@ Order (smallest and most self-contained first):
 |---|---|---|---|
 | 1 | `BmpFont.r32` | Draws text with the game's bitmap fonts | **Done**: pixel-identical |
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
-| 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | next |
+| 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Step 1 done**: music from files. Sound effects still go to the original |
 | 4 | `NETPLAY.R32` | Multiplayer (DirectPlay) | |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | |
 
@@ -77,3 +77,21 @@ How the modules are built:
 * Not carried over:
   * The debug keys (+/− to change method, F for a frame counter) of an optional "VideoOutput" window that the game never creates.
   * The windowed (non-DirectDraw) mode, which the game never uses.
+
+## 3. WAVEPLAY.R32 (step 1 of 2: music)
+* The original plays sound effects through DirectSound and the music from the CD's audio tracks (MCI).
+* **Step 1 (done):** our module implements the 8 CD functions and plays the music from the files ripped with `tools/rip_music.sh`. The other 45 exports are passed on unchanged to the original, which is installed next to it as `WAVEPLAY_orig.R32`.
+  * Folder layout: `music/DOMINION1/track02.wav` … `track06.wav`, and the same under `DOMINION2`. `trackNN.cdda.wav` is also accepted.
+  * "The disc in the drive" is whichever disc the game last asked for with `DSCheckCDIdentity`. Human and Darken missions ask for disc 1, Merc and Scorpion missions for disc 2. No disc is needed, and the no-CD byte patch isn't either.
+  * Music streams from a background thread into a DirectSound buffer, so it keeps playing during loading.
+  * When a track ends, the "track finished" message goes to the script from the engine's audio service call. The game then picks the next track itself.
+  * Volume: the game sends 0–10,000. This is mapped to DirectSound decibels.
+  * Checked in the game:
+    * A Human mission played disc 1 track 4. A recording of the output matched the ripped track.
+    * At the end of the track, the game moved on to track 5.
+    * A Merc mission played disc 2 track 4.
+  * Behavior changes:
+    * The original timed the end of a track from when it started, so a pause made the track "end" early. Ours ends when the music really ends.
+    * At the highest setting (10,000) the original's volume wrapped around to silence. Ours plays at full volume.
+* **Step 2 (next):** sound effects. These are WAV files in `audio.rdf`, looked up by a CRC32 of the file name, played on 8–20 channels with volume, pan and frequency control. The `DSAudioService` call streams the longer sounds.
+* Music files are WAV for now: our modules don't use a C runtime, and an Opus/Vorbis decoder needs one. Compressed music comes with the SDL3 audio layer.

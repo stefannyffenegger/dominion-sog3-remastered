@@ -28,7 +28,7 @@ Not problems:
 * DirectPlay shows its own "Locate Session" box when searching. Leave it blank (searches the LAN) or enter the host's address.
 
 ## Still open for Phase 1a
-* **Music:** the `.iso` files contain no audio tracks (each file ends exactly at the end of its data track). We need a rip of the original discs, then a `winmm`/MCI replacement that plays the tracks from OGG files.
+* ~~**Music:**~~ done. Rip the discs with `tools/rip_music.sh`; our `WAVEPLAY.R32` plays the tracks from files (see PHASE1B_MODULES.md).
 * **Play-testing:** campaign missions for all 4 factions, skirmish, save/load, every video mode.
 * **Other `GetDeviceCaps` checks:** bit depth (`BITSPIXEL`), `SIZEPALETTE` and `NUMCOLORS` still report the true-color desktop. Nothing has broken yet. If something does, the cleaner fix is one wrapper for all `GetDeviceCaps` calls that answers like Windows 98 in 8-bit mode.
 * **Windows 10/11:** test the same patches with a DirectDraw wrapper (cnc-ddraw). The palette patch should fix the same crash there.

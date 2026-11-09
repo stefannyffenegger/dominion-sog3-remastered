@@ -1,0 +1,5 @@
+add_library(waveplay SHARED waveplay.c waveplay.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+set_target_properties(waveplay PROPERTIES PREFIX "" OUTPUT_NAME "WAVEPLAY" SUFFIX ".R32")
+target_compile_options(waveplay PRIVATE ${DOM_MODULE_FLAGS})
+target_link_options(waveplay PRIVATE ${DOM_MODULE_LINK})
+target_link_libraries(waveplay PRIVATE rtlib32 kernel32 user32 winmm gcc)
