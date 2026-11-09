@@ -1,39 +1,38 @@
-; Same export names and ordinals as the original WAVEPLAY.R32.
-; fwdN = passed on to the original (WAVEPLAY_orig.R32), see waveplay.c.
+; Same export names and ordinals as the original WAVEPLAY.R32
 LIBRARY WAVEPLAY.R32
 EXPORTS
     RtLibInit @1
     RtLibFree @2
-    DSLoadWave=fwd0 @3
-    DSUnloadWave=fwd1 @4
-    DSPlayWave=fwd2 @5
-    DSStopWave=fwd3 @6
-    DSStopWaveIdx=fwd4 @7
-    DSGetVolume=fwd5 @8
-    DSGetVolumeIdx=fwd6 @9
-    DSSetVolume=fwd7 @10
-    DSSetVolumeIdx=fwd8 @11
-    DSGetPan=fwd9 @12
-    DSGetPanIdx=fwd10 @13
-    DSSetPan=fwd11 @14
-    DSSetPanIdx=fwd12 @15
-    DSGetFormatPrimary=fwd13 @16
-    DSSetFormatPrimary=fwd14 @17
-    DSGetFormat=fwd15 @18
-    DSGetFrequency=fwd16 @19
-    DSGetFrequencyIdx=fwd17 @20
-    DSSetFrequency=fwd18 @21
-    DSSetFrequencyIdx=fwd19 @22
-    DSGetMaxBuffers=fwd20 @23
-    DSSetMaxBuffers=fwd21 @24
-    DSAudioService=fwd22 @25
-    DSGetObject=fwd23 @26
-    DSPauseAudio=fwd24 @27
-    DSInitWavePlay=fwd25 @28
-    DSDeInitWavePlay=fwd26 @29
-    DSLoadWaveFile=fwd27 @30
-    DSUnloadWaveFile=fwd28 @31
-    DSPlayWaveFile=fwd29 @32
+    DSLoadWave @3
+    DSUnloadWave @4
+    DSPlayWave @5
+    DSStopWave @6
+    DSStopWaveIdx @7
+    DSGetVolume @8
+    DSGetVolumeIdx @9
+    DSSetVolume @10
+    DSSetVolumeIdx @11
+    DSGetPan @12
+    DSGetPanIdx @13
+    DSSetPan @14
+    DSSetPanIdx @15
+    DSGetFormatPrimary @16
+    DSSetFormatPrimary @17
+    DSGetFormat @18
+    DSGetFrequency @19
+    DSGetFrequencyIdx @20
+    DSSetFrequency @21
+    DSSetFrequencyIdx @22
+    DSGetMaxBuffers @23
+    DSSetMaxBuffers @24
+    DSAudioService=DSAudioService@4 @25
+    DSGetObject @26
+    DSPauseAudio @27
+    DSInitWavePlay @28
+    DSDeInitWavePlay @29
+    DSLoadWaveFile @30
+    DSUnloadWaveFile @31
+    DSPlayWaveFile @32
     DSCheckCDIdentity @33
     DSPlayCDTrack @34
     DSStopCDTrack @35
@@ -41,19 +40,19 @@ EXPORTS
     DSCDTrackLen @37
     DSSetCDVolume @38
     DSGetCDVolume @39
-    _LoadWaveFile=fwd30 @40
+    _LoadWaveFile @40
     DSPauseCDTrack @41
-    rdfInitWavePlay=fwd31 @42
-    rdfDeInitWavePlay=fwd32 @43
-    rdfLoadWaveFile=fwd33 @44
-    rdfPlayWaveFile=fwd34 @45
-    rdfUnloadWaveFile=fwd35 @46
-    rdfPlayWave=fwd36 @47
-    calc_crc32=fwd37 @48
-    "?rdfLoadWave@@YAHPAXPADH@Z"=fwd38 @49
-    "?rdfStopWave@@YAIPAXPAD@Z"=fwd39 @50
-    "?rdfUnloadAll@@YAIPAX@Z"=fwd40 @51
-    "?rdfUnloadWave@@YAIPAXPAD@Z"=fwd41 @52
-    rdfStopAll=fwd42 @53
-    rdfStopWaveFile=fwd43 @54
-    rdfStopWaveIdx=fwd44 @55
+    rdfInitWavePlay @42
+    rdfDeInitWavePlay @43
+    rdfLoadWaveFile @44
+    rdfPlayWaveFile @45
+    rdfUnloadWaveFile @46
+    rdfPlayWave @47
+    calc_crc32 @48
+    "?rdfLoadWave@@YAHPAXPADH@Z"=rdfLoadWave @49
+    "?rdfStopWave@@YAIPAXPAD@Z"=rdfStopWave @50
+    "?rdfUnloadAll@@YAIPAX@Z"=rdfUnloadAll @51
+    "?rdfUnloadWave@@YAIPAXPAD@Z"=rdfUnloadWave @52
+    rdfStopAll @53
+    rdfStopWaveFile @54
+    rdfStopWaveIdx @55

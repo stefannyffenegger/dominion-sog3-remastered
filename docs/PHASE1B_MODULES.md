@@ -11,8 +11,8 @@ Order (smallest and most self-contained first):
 |---|---|---|---|
 | 1 | `BmpFont.r32` | Draws text with the game's bitmap fonts | **Done**: pixel-identical |
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
-| 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Step 1 done**: music from files. Sound effects still go to the original |
-| 4 | `NETPLAY.R32` | Multiplayer (DirectPlay) | |
+| 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
+| 4 | `NETPLAY.R32` | Multiplayer (DirectPlay) | next |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | |
 
 ## Building
@@ -78,20 +78,41 @@ How the modules are built:
   * The debug keys (+/− to change method, F for a frame counter) of an optional "VideoOutput" window that the game never creates.
   * The windowed (non-DirectDraw) mode, which the game never uses.
 
-## 3. WAVEPLAY.R32 (step 1 of 2: music)
-* The original plays sound effects through DirectSound and the music from the CD's audio tracks (MCI).
-* **Step 1 (done):** our module implements the 8 CD functions and plays the music from the files ripped with `tools/rip_music.sh`. The other 45 exports are passed on unchanged to the original, which is installed next to it as `WAVEPLAY_orig.R32`.
-  * Folder layout: `music/DOMINION1/track02.wav` … `track06.wav`, and the same under `DOMINION2`. `trackNN.cdda.wav` is also accepted.
-  * "The disc in the drive" is whichever disc the game last asked for with `DSCheckCDIdentity`. Human and Darken missions ask for disc 1, Merc and Scorpion missions for disc 2. No disc is needed, and the no-CD byte patch isn't either.
-  * Music streams from a background thread into a DirectSound buffer, so it keeps playing during loading.
-  * When a track ends, the "track finished" message goes to the script from the engine's audio service call. The game then picks the next track itself.
-  * Volume: the game sends 0–10,000. This is mapped to DirectSound decibels.
-  * Checked in the game:
-    * A Human mission played disc 1 track 4. A recording of the output matched the ripped track.
-    * At the end of the track, the game moved on to track 5.
-    * A Merc mission played disc 2 track 4.
-  * Behavior changes:
-    * The original timed the end of a track from when it started, so a pause made the track "end" early. Ours ends when the music really ends.
-    * At the highest setting (10,000) the original's volume wrapped around to silence. Ours plays at full volume.
-* **Step 2 (next):** sound effects. These are WAV files in `audio.rdf`, looked up by a CRC32 of the file name, played on 8–20 channels with volume, pan and frequency control. The `DSAudioService` call streams the longer sounds.
+## 3. WAVEPLAY.R32 (done)
+Sources: `src/waveplay/waveplay.c` (sound effects and all exports), `cdmusic.c` (music).
+
+**Music** (`cdmusic.c`). The original played the CD's audio tracks through MCI; ours plays the files ripped with `tools/rip_music.sh`.
+* Folder layout: `music/DOMINION1/track02.wav` … `track06.wav`, and the same under `DOMINION2`. `trackNN.cdda.wav` is also accepted.
+* "The disc in the drive" is whichever disc the game last asked for with `DSCheckCDIdentity`. Human and Darken missions ask for disc 1, Merc and Scorpion missions for disc 2. No disc is needed, and the no-CD byte patch isn't either.
+* Music streams from a background thread, so it keeps playing during loading.
+* When a track ends, the game's "track finished" message is sent and the script picks the next track.
+* Checked in the game:
+  * A Human mission played disc 1 track 4. A recording of the output matched the ripped track.
+  * At the end of the track, the game moved on to track 5.
+  * A Merc mission played disc 2 track 4.
+
+**Sound effects** (`waveplay.c`).
+* Where sounds come from:
+  * `audio.rdf`, an archive of 725 WAV files with an index sorted by name; names are looked up ignoring case;
+  * loose WAV files, which take precedence over the archive;
+  * resources in the engine's `DOMINION.000`, PCM or IMA ADPCM, decoded with the engine's own `ima2pcm`.
+* Keys: a sound is identified by its archive index, the CRC32 of its file name (same table as the original, no final inversion), or its resource id.
+* Channels: 8–20, set by `Dominion.ini` `SoundBuffers`. Each has its own DirectSound buffer holding the whole sound. The original streamed sounds longer than ~2 s in pieces; the result sounds the same.
+* Stop messages: when a sound stops (it ended, the game stopped it, or its channel was taken), the message given at play time is run at once, before the channel is freed. The script may call back into the module from that message.
+* Volume and pan:
+  * Volume is 0–10,000; the DirectSound volume is volume − 10,000. Pan is −10,000…10,000. Unit sounds are positioned by distance and side.
+  * The master volume (`DSSetVolume(…, 0, v)`, which the game sets to 9600) goes on the primary buffer, as in the original. It therefore also covers the cutscene sound and the music.
+* Unloading: sounds played with "auto-unload" are unloaded after 10 s without use.
+* Checked: the same scripted session (logos, menu, Human mission with orders) was recorded with the original module and with ours. Loudness per 2 s matches (ratio 1.00), except for two sections:
+  * The stereo ambient loop `AMB0001.WAV` is 3 dB louder in ours. The original created its buffers with DirectSound's 3D flag, which mixes stereo down to mono in the center (at least under Wine). Ours plays it in stereo.
+  * The mission has music with ours. The original had none without a CD.
+* Kept from the original on purpose (marked `original:` in the source):
+  * A channel's priority is never stored, so when all channels are busy, priority-0 sounds are dropped and higher ones always take channel 0.
+  * `rdfUnloadAll` only unloads archive file 0.
+  * `DSSetMaxBuffers` also stops channel n−1.
+* Fixed:
+  * The unload queue removed the wrong entries after postponing one.
+  * The primary output format the game asks for (22 kHz 8-bit) is no longer applied; modern systems mix at their own rate.
+  * Music no longer "ends" early after a pause.
+  * Music at the highest volume no longer goes silent.
 * Music files are WAV for now: our modules don't use a C runtime, and an Opus/Vorbis decoder needs one. Compressed music comes with the SDL3 audio layer.

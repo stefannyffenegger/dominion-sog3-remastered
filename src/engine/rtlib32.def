@@ -3,11 +3,14 @@
 ; is stdcall (it removes N bytes of arguments itself); dlltool -k strips it again.
 LIBRARY Rtlib32.dll
 EXPORTS
+    ResReadResourceData@20
+    ima2pcm@20
     AudioSetServiceProc@12
     DebugStr
     RtGetDC
     RtGetDisplayMode
     RtGetHAL
+    RtGetHResfile
     RtGetGameInfo
     RtGetHSL
     RtGetResource

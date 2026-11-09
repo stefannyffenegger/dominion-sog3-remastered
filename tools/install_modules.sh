@@ -40,9 +40,8 @@ install_one "$BUILD/src/bmpfont/BmpFont.r32" BmpFont.r32
 install_one "$BUILD/src/smacker/Smacker.r32" Smacker.r32
 install_one "$BUILD/src/waveplay/WAVEPLAY.R32" WAVEPLAY.R32
 
-# Our WAVEPLAY still passes sound effects on to the original (unpatched) module.
 if [ -f "$BUILD/src/waveplay/WAVEPLAY.R32" ]; then
-    cp -p "$GAME/WAVEPLAY.R32.orig" "$GAME/WAVEPLAY_orig.R32"
+    rm -f "$GAME/WAVEPLAY_orig.R32" # left over from the step-1 module
     # music ripped with tools/rip_music.sh
     if [ -d "$DH/music" ] && [ ! -e "$GAME/music" ]; then
         ln -s ../music "$GAME/music"
