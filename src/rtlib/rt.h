@@ -16,4 +16,5 @@
 #include "tiles.h"
 #include "rt_bg.h"
 #include "rt_script.h"
+#include "rt_input.h"
 #endif

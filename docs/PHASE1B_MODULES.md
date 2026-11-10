@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 615 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 638 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -336,6 +336,14 @@ Expressions in the menu scripts are compiled to a small stack machine: one opcod
 * Calls go to a built-in function (270 of them in one 29 KB switch at 0x10003f6d, still original), to a function written in the script, or to a function in a plugin DLL (`ExternalCall`).
 * The game can register a hook that sees every function call.
 * Division by zero raises script error 0x6f (in debug mode) or fatal error 1000.
+
+### Engine core, part 3: input (`rt_input.c`, 23 functions)
+* **Mouse buttons:** the sprite under the pointer (or, failing that, the newest click rectangle there) gets its handler run. Sprites marked draggable are picked up instead and follow the pointer until the button is released.
+* **Hover:** events when the pointer enters or leaves a sprite, and a list of hover regions (rectangles or sprites) with enter and leave handlers.
+* **Keys:** a table of 256 keys with separate handlers for plain, Shift, Ctrl, Shift+Ctrl and release. The Pause key pauses the sound and the engine, or asks a script handler first.
+* The script can install handlers that see every mouse event and every key and can swallow them; the game can install a key hook in front of all of it.
+* **Collision pairs:** the script can ask for a handler to run when two sprites touch (the list is kept here; the check itself comes later).
+* Checked: menu tour and Human mission 1 (clicks, Escape, pause, drag-select, scrolling) against the all-original runs.
 
 ### What's left
 | Part | Functions | Decompiled lines |
