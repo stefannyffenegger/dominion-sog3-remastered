@@ -58,12 +58,7 @@
 typedef void(__stdcall *MsgProc)(void *, uint32_t);
 
 /* original functions not rewritten yet */
-#define cmd_2 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1006254a)
-#define cmd_curve ORIG(uint32_t(__stdcall *)(uint8_t *), 0x100634b0)
-#define cmd_line ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10063180)
-#define cmd_10 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10063368)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 
 /* value at off with its flag byte at flag */
 #define VAL(c, off, flag) (uint32_t) sprite_delay(C(int32_t, c, off), C(char, c, flag))
@@ -222,7 +217,7 @@ uint32_t __stdcall sprite_step(uint8_t *s)
         if (!S(uint32_t, s, SP_POSITIONED))
             S(uint32_t, s, SP_CC) = 0;
         sprite_set_positioned(s, 1, 0);
-        r = cmd_2(s);
+        r = cmd_parts(s);
         break;
     case 4: /* draw into the background */
         comp_to_background(s, 0);

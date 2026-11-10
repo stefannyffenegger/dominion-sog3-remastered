@@ -1,8 +1,7 @@
 /* The tile map (0x1005c010-0x1005f6ac): building the tile blitters' tables, choosing the
  * blitter for a clipped tile, and drawing the map's visible tiles and the layers above
  * them (overlays, the shroud) row by row. Rewritten from the original; the blitters
- * themselves are in tileblit.c. The DirectDraw full-tile blitter (0x10066470) is still
- * original assembly.
+ * themselves are in tileblit.c.
  *
  * Isometric maps (type 1 and 2) are drawn in half-tile rows: every second row is shifted
  * by half a tile. Other maps are a plain grid of bitmaps. */
@@ -208,14 +207,18 @@ void __cdecl tile_draw_clipped(uint32_t dst, uint32_t tile, uint32_t w, uint32_t
         tile_clip_left_top_c(dst, tile, w, h, x, y, cx, cy);
 }
 
+/* 0x10066470 */
+void __stdcall tile_full_dd_c(uint32_t dst, uint32_t tile, int x, int y)
+{
+    tile_full_dd(&g_tables, BM(dst), BM(tile), x, y);
+}
+
 static void full_tile(uint32_t dst, uint32_t tile, int x, int y)
 {
     if (!H(uint32_t, HSL_DIRECTDRAW))
         tile_full_c(dst, tile, x, y);
-    else {
-        uint32_t args[4] = {dst, tile, (uint32_t)x, (uint32_t)y};
-        orig_stdcall_unsafe(ORIG_PTR(0x10066470), 4, args); /* assembly, changes EBX */
-    }
+    else
+        tile_full_dd_c(dst, tile, x, y);
 }
 
 /* 0x1005e243: draws a tile w x h from cx, cy at x, y. With clip (GDI only) the visible

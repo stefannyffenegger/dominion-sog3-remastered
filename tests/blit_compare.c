@@ -390,7 +390,7 @@ static void test_tiles(void)
         uint8_t *a = ga + GUARD, *b = gb + GUARD;
         uint8_t *tile = dib(64, 24, 0); /* 1536 bytes: the tile and what follows it */
         int ox = rnd(pitch - 64 + 1), oy = rnd(dh - 32 + 1);
-        uint32_t kind = rnd(13), w = 64, h = 32, cx = 0, cy = 0;
+        uint32_t kind = rnd(14), w = 64, h = 32, cx = 0, cy = 0;
         const char *name;
         switch (kind) {
         case 0:
@@ -423,6 +423,11 @@ static void test_tiles(void)
             tile_frame(b, ox, oy, fw, fh);
             break;
         }
+        case 13:
+            name = "tile full (DirectDraw)";
+            ORIG(0x10066470, U(a), U(tile), ox, oy);
+            tile_full_dd(&t, b, tile, ox, oy);
+            break;
         default: {
             int k = (kind - 5) % 7;
             int left = k == 2 || k == 3 || k == 5, top = k == 0 || k == 3 || k == 4;
@@ -548,6 +553,43 @@ static void test_fx(void)
     printf("fx merge: done\n");
 }
 
+/* ---- line and curve points, pixel tests ---- */
+
+static void test_points(void)
+{
+    for (int i = 0; i < 20000; i++) {
+        uint32_t steps = 1 + rnd(rnd(4) ? 60 : 2000), step = rnd(steps + 1);
+        int32_t c[6], o1[2] = {0, 0}, o2[2] = {0, 0};
+        for (int k = 0; k < 6; k++)
+            c[k] = (int32_t)rnd(4000) - 2000;
+        ORIG(0x10062ccc, step, steps, c[0], c[1], c[2], c[3], U(o1));
+        line_point(step, steps, c[0], c[1], c[2], c[3], o2);
+        check("line point", o1[0] == o2[0] && o1[1] == o2[1], i);
+        ORIG(0x10062c34, step, steps, c[0], c[1], c[2], c[3], c[4], c[5], U(o1));
+        uint32_t t = curve_point(step, steps, c[0], c[1], c[2], c[3], c[4], c[5], o2);
+        check("curve point", o1[0] == o2[0] && o1[1] == o2[1] && t == *(uint32_t *)(base + 0x7bd24), i);
+    }
+    for (int i = 0; i < 20000; i++) {
+        int kind = rnd(3), w = 1 + rnd(60), h = 1 + rnd(30);
+        uint8_t *bm = kind == 0 ? dib(w, h, 0) : kind == 1 ? seg_dib(w, h) : rle_dib(w, h);
+        int x = rnd(w), y = rnd(h);
+        uint32_t flip = (rnd(2) ? 1 : 0) | (rnd(2) ? 0x100 : 0);
+        uint32_t a, b;
+        if (kind == 2) {
+            a = ORIG(0x10066a1c, U(bm), x, y, flip) & 0xff;
+            b = dib_pixel_plain(bm, x, y, flip);
+        } else {
+            a = ORIG_CDECL(0x10062d30, U(bm), x, y, flip);
+            b = dib_pixel(bm, x, y, flip);
+        }
+        if (a != b && failures < 6)
+            printf("  kind %d w=%d h=%d x=%d y=%d flip=%x orig=%u ours=%u\n", kind, w, h, x, y, flip, a, b);
+        check(kind == 0 ? "pixel plain" : kind == 1 ? "pixel coded" : "pixel copy-coded", a == b, i);
+        free(bm);
+    }
+    printf("points and pixels: done\n");
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -563,6 +605,7 @@ int main(int argc, char **argv)
     test_plain();
     test_tiles();
     test_fx();
+    test_points();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }

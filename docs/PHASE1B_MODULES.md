@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 512 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 524 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -295,6 +295,12 @@ The sprite engine's hand-written assembly, rewritten in portable C one routine a
 * **The effect merge** (0x1005adb3, from `SpriteSetBlitFX`) is C too, with its helpers: effect 1 blends the sprite with the screen through a 256 x 256 table (or, with the screen-door setting, copies every second pixel); effects 2 and 3 look pixels up in an effect table. Its three assembly routines (blend, blend through a color map, screen door) are C as well. Byte-exact on 20,000 random merges and 6,000 helper runs.
 * Two values the original passes are uninitialized stack memory: the shadow-dither row and the screen-door row of unclipped sprites. Each stays constant for the whole sprite; we use 0. Those cases are left out of the comparison.
 
+### Sprite parts, paths and pixel tests (`spritelib.c` +7, `sprite.c` +4, math in `blit.c`)
+* **Parts:** script command 2 shows several cels at once as one sprite (a unit's body and turret, say). Each part gets its own rectangle; if the first parts stay the same, only the changed ones are redrawn.
+* **Paths:** commands 9 and 5 move a sprite along a line or a curve in a fixed number of steps while its cels animate; command 10 jumps to a position. The point math was assembly: the line rounds to nearest, the curve is a quadratic in 10-bit fixed point.
+* **Pixel tests** for picking sprites with the mouse: whether a bitmap is solid at a point, for both run-length formats and plain bitmaps.
+* The math and the pixel tests are byte-exact against the original (20,000 random cases each).
+
 ### Tile map (`tiles.c` 19 functions, `tileblit.c` 9 blitters)
 The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile rows (every second row shifted by half a tile), with the layers above them.
 * Tile format: a 4-byte header, then the diamond's 32 rows without the transparent corners (2, 6, ..., 58, 64, 64, 58, ..., 2 pixels, each narrow row followed by 2 unused bytes).
@@ -302,7 +308,7 @@ The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile ro
 * A map cell has a tile number, an overlay number and two bit masks. The tile pass draws tiles, overlays numbered 0x37 and up (trees and other ground objects) and two masked overlays; the pass after the sprites draws overlays 2-0x36 and the shroud (overlay 1, filled with color 10 for whole tiles).
 * Non-isometric maps are a plain grid of bitmaps drawn with the plain merge.
 * The blitters are portable C, checked byte for byte with `tests/blit_compare.sh` (6,000 random cases, the tables for four pitches, and two deliberately broken versions caught).
-* The DirectDraw full-tile blitter (0x10066470) is hand-written assembly that writes a few bytes more than the C one, so it stays original until the remaining assembly is done.
+* The DirectDraw full-tile blitter (0x10066470) is hand-written assembly, a long unrolled copy. Measured by drawing tiles whose bytes encode their own position: it draws the same pixels as the C one, except that when the tile's top corner is not on a 4-byte boundary, row 30 is copied 2 bytes too long (the 2 unused bytes after it land right of the row). Our C does the same.
 * Checked: Human mission 1 matches the all-original runs (the scrolled view now pixel for pixel).
 
 ### What's left

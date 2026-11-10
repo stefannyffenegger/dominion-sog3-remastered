@@ -21,6 +21,11 @@ void dib_fx_run(const FxEnv *e, uint8_t *d, const uint8_t *s, uint32_t n, uint32
                 const uint32_t *cmap);
 void dib_fx_run_mirrored(const FxEnv *e, uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg,
                          const uint32_t *cmap);
+void line_point(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t *out);
+uint32_t curve_point(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t cx, int32_t cy, int32_t x1,
+                     int32_t y1, int32_t *out);
+uint32_t dib_pixel_plain(const void *bm, int x, int y, uint32_t flip);
+uint32_t dib_pixel(const void *bm, int x, int y, uint32_t flip);
 void dib_shadow(uint8_t *p, uint32_t n, const uint32_t *table); /* 0x10064e23 */
 void dib_shadow_dither(uint8_t *p, uint32_t n, uint32_t row);    /* 0x10065000 */
 void fx_blend(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend);
@@ -67,6 +72,11 @@ void dib_fx_run(const FxEnv *e, uint8_t *d, const uint8_t *s, uint32_t n, uint32
                 const uint32_t *cmap);
 void dib_fx_run_mirrored(const FxEnv *e, uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg,
                          const uint32_t *cmap);
+void line_point(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t *out);
+uint32_t curve_point(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t cx, int32_t cy, int32_t x1,
+                     int32_t y1, int32_t *out);
+uint32_t dib_pixel_plain(const void *bm, int x, int y, uint32_t flip);
+uint32_t dib_pixel(const void *bm, int x, int y, uint32_t flip);
 void dib_shadow(uint8_t *p, uint32_t n, const uint32_t *table); /* 0x10064e23 */
 void dib_shadow_dither(uint8_t *p, uint32_t n, uint32_t row);    /* 0x10065000 */
 void fx_blend(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend);

@@ -12,6 +12,7 @@ void __cdecl tile_tables_mirror(int pitch);
 void __cdecl tile_tables_make(int pitch);
 
 void __cdecl tile_full_c(uint32_t dst, uint32_t tile, int x, int y);
+void __stdcall tile_full_dd_c(uint32_t dst, uint32_t tile, int x, int y);
 void __cdecl tile_rect_c(uint32_t dst, uint32_t tile, int x, int y, uint32_t x0, uint32_t x1, uint32_t y0,
                          uint32_t y1);
 void __cdecl tile_clip_bottom_c(uint32_t dst, uint32_t tile, uint32_t w, uint32_t h, int x, int y);

@@ -110,6 +110,23 @@ void tile_full(const TileTables *t, void *dst, const void *tile, int x, int y)
     tile_clip_bottom(t, dst, tile, 0x40, 0x20, x, y);
 }
 
+/* 0x10066470: the whole-tile blitter used with DirectDraw, hand-written assembly. It
+ * draws the same pixels, except that when the tile's top corner is not at a 4-byte
+ * aligned address, its copy of row 30 runs 2 bytes long: the 2 unused bytes after that
+ * row land right of it. */
+void tile_full_dd(const TileTables *t, void *dst, const void *tile, int x, int y)
+{
+    tile_full(t, dst, tile, x, y);
+    int p = PITCH(dst);
+    uint8_t *top = BITS(dst) + p * y + x + 0x1f;
+    if ((uintptr_t)top & 3) {
+        const uint8_t *s = BITS(tile) + 4 + O[30] + W[30];
+        uint8_t *d = top + p * 30 + 4;
+        d[0] = s[0];
+        d[1] = s[1];
+    }
+}
+
 /* 0x1005cb5c: full width, the top h rows */
 void tile_clip_bottom(const TileTables *t, void *dst, const void *tile, uint32_t w, uint32_t h, int x, int y)
 {

@@ -119,8 +119,6 @@
 
 #define REDRAW_ALL 0x80000000u
 
-/* original functions not rewritten yet */
-#define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 
 
 
@@ -394,6 +392,220 @@ uint32_t __stdcall cmd_cels(uint8_t *s)
     sprite_reposition(s);
     S(int32_t, c, 10)--;
     return S(int32_t, c, 10) == 0 && S(int32_t, s, SP_MOTION) == 0;
+}
+
+/* ---- sprites made of parts (0x10062320, 0x1006254a) ----
+ * A part is 20 bytes at SP_PARTS: its bitmap and its rectangle on screen. */
+
+#define SP_FLIP_X 0x7c
+#define SP_FLIP_Y 0x7d
+#define SP_Y 0x40
+#define SP_CALLBACK 0xac
+#define SP_NEXT_STEP 0x64
+#define SP_SPEED 0x6c
+#define SP_LOOPS 0xd8
+#define INFO_RECT_PROC 0x24    /* proc(hsl, sprite, rect): may change a part's rectangle */
+#define INFO_PART_OFFSETS 0x34 /* x, y offsets of the first 8 parts */
+#define HSL_INDEX_TABLE 0x484
+typedef void(__stdcall *RectProc)(uint8_t *, uint8_t *, int32_t *);
+
+/* 0x10062320: works out each part's rectangle and the sprite's bounds around them */
+void __stdcall parts_update_bounds(uint8_t *s)
+{
+    if (!S(uint32_t, s, SP_POSITIONED))
+        return;
+    int32_t *part = S(int32_t *, s, SP_PARTS);
+    uint8_t *info = S(uint8_t *, s, SP_INFO);
+    for (uint32_t i = 0; i < S(uint32_t, s, SP_NPARTS); i++, part += 5) {
+        uint8_t *bm = (uint8_t *)(uintptr_t)part[0];
+        int hw = S(int32_t, bm, 4) - 1, hh = S(int32_t, bm, 0xc) - 1;
+        int ox = S(int32_t, bm, 0x14), oy = S(int32_t, bm, 0x18);
+        if (S(uint32_t, info, INFO_PART_OFFSETS) && i < 8) {
+            ox += S(int32_t *, info, INFO_PART_OFFSETS)[i * 2];
+            oy += S(int32_t *, info, INFO_PART_OFFSETS)[i * 2 + 1];
+        }
+        part[1] = S(int32_t, s, SP_X) - hw / 2 + (S(char, s, SP_FLIP_X) ? -ox : ox);
+        part[3] = part[1] + S(int32_t, bm, 4);
+        part[2] = S(int32_t, s, SP_Y) - hh / 2 + (S(char, s, SP_FLIP_Y) ? -oy : oy);
+        part[4] = part[2] + S(int32_t, bm, 0xc);
+        if (S(uint32_t, s, SP_SCROLLS))
+            OffsetRect((RECT *)(part + 1), H(int32_t, HSL_SCROLL_X), H(int32_t, HSL_SCROLL_Y));
+        if (S(uint32_t, info, INFO_RECT_PROC))
+            S(RectProc, info, INFO_RECT_PROC)(g_hsl, s, part + 1);
+        if (i == 0)
+            memcpy(s + SP_RECT, part + 1, 16);
+        else
+            union_rect(s + SP_RECT, s + SP_RECT, part + 1);
+    }
+}
+
+/* Command 2 (0x1006254a): show a set of cels as the sprite's parts. If the first parts
+ * are the ones already shown, only the changed ones are redrawn. Returns 1 when done. */
+uint32_t __stdcall cmd_parts(uint8_t *s)
+{
+    static int32_t before[8][4]; /* 0x1008f858 */
+    DWORD now = timeGetTime();
+    if (now < S(uint32_t, s, SP_NEXT_MOVE))
+        return 0;
+    uint8_t *c = S(uint8_t *, s, SP_QUEUE_CUR);
+    if (S(char, c, 10))
+        return 1;
+    if (S(int32_t, c, 2) != -1)
+        S(int32_t, s, SP_MOTION) = sprite_delay(S(int32_t, c, 2), S(char, c, 0xb));
+    if (!S(uint32_t, s, SP_PRIORITY) || !S(uint32_t, s, SP_NEXT_MOVE))
+        S(uint32_t, s, SP_NEXT_MOVE) = now;
+    S(int32_t, s, SP_NEXT_MOVE) += S(int32_t, s, SP_MOTION);
+    int32_t old[4];
+    memcpy(old, s + SP_RECT, 16);
+    if (!S(uint32_t, s, SP_PARTS))
+        S(HLOCAL, s, SP_PARTS) = LocalAlloc(LMEM_ZEROINIT, 0xa0);
+    if (!S(uint32_t, s, SP_PARTS))
+        return 1;
+    int32_t bm[8];
+    uint32_t n = 0;
+    uint8_t indexed = S(uint8_t, c, 0xd);
+    for (uint32_t i = 0; i < S(uint32_t, c, 6); i++, indexed >>= 1) {
+        uint32_t cel = S(uint32_t, c, 0xe + i * 4);
+        if (indexed & 1)
+            cel = H(uint32_t *, HSL_INDEX_TABLE)[cel];
+        if (cel == 0xffffffff)
+            continue;
+        if (S(uint32_t, s, SP_NCELS) <= cel)
+            return 1;
+        bm[n++] = S(int32_t *, s, SP_CELS)[cel];
+    }
+    int32_t *part = S(int32_t *, s, SP_PARTS);
+    int same = S(uint32_t, s, SP_CC) && S(uint32_t, s, SP_NPARTS) == n;
+    if (same)
+        for (uint32_t i = 0; i < n; i++)
+            memcpy(before[i], part + i * 5 + 1, 16);
+    uint32_t kept = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (!same || part[i * 5] != bm[i]) {
+            part[i * 5] = bm[i];
+            same = 0;
+        } else
+            kept++;
+    }
+    if (S(uint32_t, s, SP_NPARTS) == n)
+        same = kept != 0;
+    else
+        S(uint32_t, s, SP_NPARTS) = n;
+    parts_update_bounds(s);
+    uint32_t changed = 1;
+    if (!same)
+        S(uint32_t, s, SP_OVERLAPS) = intersect_rect(old, old, s + SP_RECT);
+    else {
+        changed = n - kept;
+        for (uint32_t i = kept; i < n; i++) {
+            if (i == kept)
+                memcpy(old, before[i], 16);
+            else
+                union_rect(old, old, before[i]);
+            union_rect(old, old, part + i * 5 + 1);
+        }
+    }
+    S(uint32_t, s, SP_CC) = 1;
+    S(uint32_t, s, SP_VISIBLE) = 1;
+    S(uint8_t, c, 10) = 1;
+    S(uint32_t, s, SP_UPDATED) = 0;
+    if (S(uint32_t, s, SP_CALLBACK))
+        sprite_callback(s);
+    if (!same) {
+        if (changed)
+            sprite_reposition(s);
+    } else {
+        draw_view_sprites(old, REDRAW_ALL);
+        memcpy(s + SP_OLD_RECT, s + SP_RECT, 16);
+        S(uint32_t, s, SP_DRAWN) = 1;
+    }
+    return S(int32_t, s, SP_MOTION) == 0;
+}
+
+/* ---- moving along a line or curve (0x10063180-0x100636b0) ---- */
+
+/* The animation part shared by the move commands: 1 when the next cel is due */
+static int cel_due(uint8_t *s, DWORD now)
+{
+    if (!S(uint32_t, s, SP_LOOPS) || now < S(uint32_t, s, SP_NEXT_MOVE))
+        return 0;
+    S(uint32_t, s, SP_UPDATED) = 1;
+    if (!S(uint32_t, s, SP_PRIORITY) || !S(uint32_t, s, SP_NEXT_MOVE))
+        S(uint32_t, s, SP_NEXT_MOVE) = now;
+    S(int32_t, s, SP_NEXT_MOVE) += S(int32_t, s, SP_MOTION);
+    return 1;
+}
+
+/* 1 when a movement step is due; schedules the next one */
+static int step_due(uint8_t *s, DWORD now)
+{
+    if (now < S(uint32_t, s, SP_NEXT_STEP))
+        return 0;
+    if (!S(uint32_t, s, SP_PRIORITY) || !S(uint32_t, s, SP_NEXT_STEP))
+        S(uint32_t, s, SP_NEXT_STEP) = now;
+    S(int32_t, s, SP_NEXT_STEP) += S(int32_t, s, SP_SPEED);
+    return 1;
+}
+
+/* 0x100632cc: the next point of a line command (step at +0x24 of +0x28) */
+uint32_t __stdcall line_step(uint8_t *s)
+{
+    uint8_t *c = S(uint8_t *, s, SP_QUEUE_CUR);
+    int32_t pt[2];
+    if (++S(uint32_t, c, 0x24) <= S(uint32_t, c, 0x28)) {
+        line_point(S(uint32_t, c, 0x24), S(uint32_t, c, 0x28), S(int32_t, c, 0x14), S(int32_t, c, 0x18),
+                   S(int32_t, c, 0x1c), S(int32_t, c, 0x20), pt);
+        sprite_move(s, pt[0], pt[1], 0, 1);
+    }
+    return S(uint32_t, c, 0x28) <= S(uint32_t, c, 0x24);
+}
+
+/* 0x100635fc: the next point of a curve command (step at +0x34 of +0x38) */
+uint32_t __stdcall curve_step(uint8_t *s)
+{
+    uint8_t *c = S(uint8_t *, s, SP_QUEUE_CUR);
+    int32_t pt[2];
+    if (++S(uint32_t, c, 0x34) <= S(uint32_t, c, 0x38)) {
+        G(uint32_t, 0x1007bd24) =
+            curve_point(S(uint32_t, c, 0x34), S(uint32_t, c, 0x38), S(int32_t, c, 0x1c), S(int32_t, c, 0x20),
+                        S(int32_t, c, 0x24), S(int32_t, c, 0x28), S(int32_t, c, 0x2c), S(int32_t, c, 0x30), pt);
+        sprite_move(s, pt[0], pt[1], 0, 1);
+    }
+    return S(uint32_t, c, 0x38) <= S(uint32_t, c, 0x34);
+}
+
+static uint32_t cmd_path(uint8_t *s, uint32_t(__stdcall *step)(uint8_t *))
+{
+    DWORD now = timeGetTime();
+    if (!step_due(s, now)) {
+        if (cel_due(s, now)) {
+            S(uint32_t, s, SP_OVERLAPS) = 1;
+            sprite_reposition(s);
+        }
+        return 0;
+    }
+    cel_due(s, now);
+    return step(s);
+}
+
+/* Commands 9 and 5 (0x10063180, 0x100634b0): move along a line or a curve, animating */
+uint32_t __stdcall cmd_line(uint8_t *s) { return cmd_path(s, line_step); }
+uint32_t __stdcall cmd_curve(uint8_t *s) { return cmd_path(s, curve_step); }
+
+/* Command 10 (0x10063368): jump to a position when the step is due */
+uint32_t __stdcall cmd_10(uint8_t *s)
+{
+    DWORD now = timeGetTime();
+    int cel = cel_due(s, now);
+    if (!step_due(s, now)) {
+        if (cel)
+            sprite_reposition(s);
+        return 0;
+    }
+    uint8_t *c = S(uint8_t *, s, SP_QUEUE_CUR);
+    sprite_move(s, sprite_delay(S(int32_t, c, 6), S(char, c, 3)), sprite_delay(S(int32_t, c, 10), S(char, c, 4)),
+                S(uint8_t, c, 2), 1);
+    return 1;
 }
 
 /* Brings s up to date on screen: next cel, then redraw where it was and where it is */

@@ -102,6 +102,8 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - the shadow dither and the screen door of unclipped sprites get an uninitialized row number, so their pattern is stripes in a random phase rather than a checkerboard;
   - mirrored, effect 3 recolors the screen's pixel instead of the sprite's, and effect 1 never uses the screen door;
   - plain (not run-length) bitmaps are drawn without the effect and lose their color map.
+* **code.** The DirectDraw tile blitter copies row 30 of a tile 2 bytes too long when the tile isn't 4-byte aligned on screen: two unused bytes of the tile file appear right of the diamond's lower tip, until the next row of tiles covers them.
+* **code.** The pixel test for mirrored run-length sprites mirrors around the bitmap's row pitch instead of its width, so picking a mirrored sprite with the mouse is off by the difference (0-3 pixels).
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

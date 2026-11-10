@@ -21,6 +21,7 @@ void tile_tables_adv_build(TileTables *t);
  * (x, y) is where the visible part starts on the screen; cx, cy is how much of the tile is
  * clipped off on the left and top, and w, h is the visible size. */
 void tile_full(const TileTables *t, void *dst, const void *tile, int x, int y);
+void tile_full_dd(const TileTables *t, void *dst, const void *tile, int x, int y);
 void tile_clip_bottom(const TileTables *t, void *dst, const void *tile, uint32_t w, uint32_t h, int x, int y);
 void tile_clip_top(const TileTables *t, void *dst, const void *tile, uint32_t w, uint32_t h, int x, int y,
                    uint32_t cx, uint32_t cy);

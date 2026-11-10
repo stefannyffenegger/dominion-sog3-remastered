@@ -129,10 +129,8 @@
 #define MAX_SPRITES 4000
 
 /* original functions not rewritten yet */
-#define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 /* pixel test of a bitmap: > 3 is a drawn pixel */
-#define bitmap_pixel ORIG(uint32_t(__cdecl *)(uint32_t, int, int, uint32_t), 0x10062d30)
 
 typedef uint32_t(__stdcall *DoneProc)(uint8_t *, uint32_t);
 typedef void(__stdcall *SpriteServiceFn)(uint32_t);
@@ -841,8 +839,7 @@ uint32_t __stdcall SpriteCurvePoint(uint32_t a, uint32_t n, uint32_t c, uint32_t
                                     uint32_t f, uint32_t g, uint32_t h, uint32_t i)
 {
     if (n) {
-        uint32_t args[9] = {a, n, c, d, e, f, g, h, i};
-        orig_stdcall_unsafe(ORIG_PTR(0x10062c34), 9, args);
+        curve_point_asm(a, n, c, d, e, f, g, h, (int32_t *)(uintptr_t)i);
     }
     return 0;
 }
@@ -851,8 +848,7 @@ int __stdcall SpriteLinePoint(uint32_t a, uint32_t n, uint32_t c, uint32_t d, ui
                               uint32_t f, uint32_t g)
 {
     if (n) {
-        uint32_t args[7] = {a, n, c, d, e, f, g};
-        orig_stdcall_unsafe(ORIG_PTR(0x10062ccc), 7, args);
+        line_point(a, n, c, d, e, f, (int32_t *)(uintptr_t)g);
     }
     return n != 0;
 }
@@ -1442,4 +1438,27 @@ void __stdcall SpriteScrollPosition(uint8_t *hsl, uint8_t *s, int x, int y)
     S(int32_t, s, SP_RECT + 12) = S(int32_t, s, SP_RECT + 4) + h;
     if (S(uint32_t, s, SP_SCROLLS))
         OffsetRect((RECT *)(s + SP_RECT), H(int32_t, HSL_SCROLL_X), H(int32_t, HSL_SCROLL_Y));
+}
+
+/* 0x10062c34, 0x10062ccc, 0x10066a1c, 0x10062d30: the assembly routines, now in blit.c */
+void __stdcall curve_point_asm(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t cx, int32_t cy,
+                               int32_t x1, int32_t y1, int32_t *out)
+{
+    G(uint32_t, 0x1007bd24) = curve_point(step, steps, x0, y0, cx, cy, x1, y1, out);
+}
+
+void __stdcall line_point_asm(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t x1, int32_t y1,
+                              int32_t *out)
+{
+    line_point(step, steps, x0, y0, x1, y1, out);
+}
+
+uint32_t __stdcall bitmap_pixel_plain(uint32_t bm, int x, int y, uint32_t flip)
+{
+    return dib_pixel_plain((void *)(uintptr_t)bm, x, y, flip);
+}
+
+uint32_t __cdecl bitmap_pixel(uint32_t bm, int x, int y, uint32_t flip)
+{
+    return dib_pixel((void *)(uintptr_t)bm, x, y, flip);
 }

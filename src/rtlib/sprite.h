@@ -116,4 +116,11 @@ void __stdcall sprite_offset_rects(uint8_t *s, int dx, int dy);
 void __stdcall SpriteScrollOffset(uint8_t *hsl, uint8_t *s, int dx, int dy);
 void __stdcall SpriteScrollPosition(uint8_t *hsl, uint8_t *s, int x, int y);
 
+void __stdcall curve_point_asm(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t cx, int32_t cy,
+                               int32_t x1, int32_t y1, int32_t *out);
+void __stdcall line_point_asm(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t x1, int32_t y1,
+                              int32_t *out);
+uint32_t __stdcall bitmap_pixel_plain(uint32_t bm, int x, int y, uint32_t flip);
+uint32_t __cdecl bitmap_pixel(uint32_t bm, int x, int y, uint32_t flip);
+
 #endif

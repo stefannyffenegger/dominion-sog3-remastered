@@ -907,3 +907,103 @@ void dib_merge_fx_rle(const FxEnv *e, void *dst, void *src, uint32_t w, uint32_t
         }
     }
 }
+
+/* ---- points along a line and a curve (0x10062ccc, 0x10062c34) ---- */
+
+static int32_t line_part(int32_t d, uint32_t step, uint32_t steps)
+{
+    uint32_t half = steps >> 1;
+    if (d >= 0)
+        return (int32_t)(((uint64_t)(uint32_t)d * step + half) / steps);
+    return (int32_t)(((int64_t)d * (int32_t)step - half) / (int32_t)steps);
+}
+
+/* 0x10062ccc: the point step/steps of the way from (x0, y0) to (x1, y1), rounded */
+void line_point(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t *out)
+{
+    out[0] = line_part(x1 - x0, step, steps) + x0;
+    out[1] = line_part(y1 - y0, step, steps) + y0;
+}
+
+static int32_t curve_part(uint32_t t, uint32_t u, int32_t c, int32_t end)
+{
+    uint64_t sum = (uint64_t)((int64_t)(int32_t)u * (int32_t)(((uint32_t)c << 2) - (uint32_t)end)) +
+                   (uint64_t)((int64_t)(int32_t)(t * t) * end);
+    return (int32_t)(uint32_t)(sum >> 20);
+}
+
+/* 0x10062c34: the point step/steps along the curve from (x0, y0) to (x1, y1) that is
+ * pulled towards (cx, cy), in 10-bit fixed point. Returns the fraction it used. */
+uint32_t curve_point(uint32_t step, uint32_t steps, int32_t x0, int32_t y0, int32_t cx, int32_t cy, int32_t x1,
+                     int32_t y1, int32_t *out)
+{
+    uint32_t t = ((step << 10) + (steps >> 1)) / steps;
+    uint32_t u = t * (0x400 - t);
+    out[0] = curve_part(t, u, cx - x0, x1 - x0) + x0;
+    out[1] = curve_part(t, u, cy - y0, y1 - y0) + y0;
+    return t;
+}
+
+/* ---- the pixel at a point (0x10066a1c, 0x10062d30) ---- */
+
+/* 0x10066a1c: the pixel of a plain bitmap, or of one in the copy routine's run-length
+ * format (then the value or literal byte that covers x) */
+uint32_t dib_pixel_plain(const void *bm, int x, int y, uint32_t flip)
+{
+    const uint8_t *bits = F(const uint8_t *, bm, 0x20);
+    uint32_t row = (flip & 0xff00) ? (uint32_t)y : F(uint32_t, bm, 0xc) - y - 1;
+    int32_t col = (flip & 0xff) ? (int32_t)(F(uint32_t, bm, 4) - x - 1) : x;
+    if (!(F(uint32_t, bm, 0x10) & 0x80))
+        return bits[row * F(uint32_t, bm, 8) + (uint32_t)col];
+    /* (the rows are counted the other way round here) */
+    row = (flip & 0xff00) ? F(uint32_t, bm, 0xc) - y - 1 : (uint32_t)y;
+    const uint8_t *p = bits + *(const uint16_t *)(bits + row * 2);
+    for (;;) {
+        uint32_t code = *p++;
+        if (code <= 0x7f) { /* a run */
+            p++;
+            col -= (int32_t)code;
+            if (col < 0)
+                return p[-1];
+        } else {
+            code ^= 0xff;
+            if (!code)
+                code = *p++;
+            p += code;
+            col -= (int32_t)code;
+            if (col < 0)
+                return p[col];
+        }
+    }
+}
+
+/* 0x10062d30: whether a sprite bitmap is solid at x, y: 0xff or 0 for a run-length
+ * coded one (shadow counts as empty, the unused type 2 as solid), the pixel itself for
+ * a plain one. Mirrored, the coded case uses the row pitch instead of the width. */
+uint32_t dib_pixel(const void *bm, int x, int y, uint32_t flip)
+{
+    if (!(F(uint8_t, bm, 0x10) & 0x80))
+        return dib_pixel_plain(bm, x, y, flip);
+    int32_t col = (flip & 0xff) ? F(int32_t, bm, 8) - 1 - x : x;
+    int32_t row = (flip & 0xff00) ? y : F(int32_t, bm, 0xc) - 1 - y;
+    const uint8_t *p = F(const uint8_t *, bm, 0x20);
+    for (int32_t r = 0; r <= row; r++) {
+        int32_t pos = -1;
+        uint32_t nseg = p[0];
+        p += 2;
+        for (; nseg; nseg--) {
+            uint16_t v = *(const uint16_t *)p;
+            p += 2;
+            uint32_t type = v >> 11, len = v & 0x7ff;
+            pos += (int32_t)len;
+            int hit = r == row && col <= pos;
+            if (type == 3) {
+                if (hit)
+                    return 0xff;
+                p = align2(p + len);
+            } else if (hit)
+                return type <= 1 ? 0 : 0xff;
+        }
+    }
+    return 0;
+}
