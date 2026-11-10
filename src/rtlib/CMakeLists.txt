@@ -7,10 +7,10 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/rtlib32_orig.def)
 add_custom_target(rtlib32_orig_implib DEPENDS ${ORIG_IMPLIB})
 
-add_library(rtlib SHARED hooks.c res.c utils.c compress.c codec.c audio.c rtlib32.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+add_library(rtlib SHARED hooks.c res.c utils.c compress.c codec.c audio.c display.c rtlib32.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
 add_dependencies(rtlib rtlib32_orig_implib)
 set_target_properties(rtlib PROPERTIES PREFIX "" OUTPUT_NAME "Rtlib32" SUFFIX ".dll")
 target_compile_options(rtlib PRIVATE ${DOM_MODULE_FLAGS})
 # away from the original's preferred address (0x10000000)
 target_link_options(rtlib PRIVATE ${DOM_MODULE_LINK} -Wl,--image-base,0x60000000)
-target_link_libraries(rtlib PRIVATE ${ORIG_IMPLIB} kernel32 user32 winmm gcc)
+target_link_libraries(rtlib PRIVATE ${ORIG_IMPLIB} kernel32 user32 gdi32 winmm ddraw dxguid gcc)

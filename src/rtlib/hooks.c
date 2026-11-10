@@ -46,6 +46,30 @@ __attribute__((naked)) uint32_t __cdecl orig_call2_unsafe(void *fn, uint32_t a, 
                      "ret");
 }
 
+/* Same for any number of arguments: stdcall fn(args[0], ..., args[n-1]) */
+__attribute__((naked)) uint32_t __cdecl orig_stdcall_unsafe(void *fn, uint32_t n, const uint32_t *args)
+{
+    (void)fn, (void)n, (void)args;
+    __asm__ volatile("pushl %ebx\n\t"
+                     "pushl %esi\n\t"
+                     "pushl %edi\n\t"
+                     "pushl %ebp\n\t"
+                     "movl 20(%esp), %eax\n\t" /* fn */
+                     "movl 24(%esp), %ecx\n\t" /* n */
+                     "movl 28(%esp), %edx\n\t" /* args */
+                     "1: testl %ecx, %ecx\n\t"
+                     "jz 2f\n\t"
+                     "decl %ecx\n\t"
+                     "pushl (%edx,%ecx,4)\n\t"
+                     "jmp 1b\n\t"
+                     "2: call *%eax\n\t"
+                     "popl %ebp\n\t"
+                     "popl %edi\n\t"
+                     "popl %esi\n\t"
+                     "popl %ebx\n\t"
+                     "ret");
+}
+
 typedef struct Hook {
     uint32_t addr;   /* original address */
     void *func;      /* our rewrite */

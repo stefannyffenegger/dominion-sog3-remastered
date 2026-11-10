@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 169 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 231 of ~1,450 engine functions rewritten |
 
 ## Building
 Needs `cmake` and the 32-bit MinGW compiler (`dnf install mingw32-gcc`).
@@ -222,11 +222,19 @@ The engine has its own sound system: a software wave mixer on `waveOut`, a MIDI 
 * The mixer, sequencer and CD player stay original. They only run once a device is open, which doesn't happen in Dominion. Whether to rewrite them or replace them when the original goes away is decided then.
 * Checked: menu tour and Human mission 1 identical to the all-original run; the mission music starts through WAVEPLAY as before.
 
+### Display layer (done, `display.c`, 62 functions)
+The sprite engine's DirectDraw code: creating the DirectDraw object, setting the 8-bit display mode (and the "not supported" warning), the flip chain (double or triple buffering, decided by video memory), the palette, page flipping with timing, the back buffer locked as the "screen" bitmap the blitters draw into, the frame around a smaller view, and the interface panel. The panel is a separate surface that is only redrawn where its sprites changed (dirty rectangles) and copied below the play area every frame.
+* The sprite engine's state (over 4 KB) is still shared with original code, so its fields are reached at the original's offsets. The DirectDraw objects sit in a 0xb4-byte block of their own (`DisplayDD`).
+* The calls use DirectDraw's C interface instead of raw vtable offsets, so this file also documents exactly what the engine asks of DirectDraw. That is the list the SDL replacement has to cover.
+* One of the Phase 1a `palette` byte patches sat in this code (`display_set_size`). The rewrite has the fix built in: the display is always treated as a palette device. The other four patched spots are in code not rewritten yet.
+* Left original: the background setup at 0x10049a02, which calls hand-written blitters; and a debug assertion.
+* Checked: menu tour and Human mission 1 identical to the all-original run.
+
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|
 | Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
-| Sprites, screen, DirectDraw (`Sprite*` + blitters, partly hand-written assembly) | ~380 | 19,400 |
+| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~345 | 17,600 |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~170 | 4,800 |
 | C runtime (not ported; replaced by the system's) | ~430 | |
 
