@@ -4,13 +4,14 @@
  *
  * A command is a 16-bit type followed by its data, packed. Most values come with a flag
  * byte: when set, the value is an index into the game's variable table (sprite_delay).
- * Commands still original: 1 (cels), 2, 5 (curve), 9 (line), 10, 0x17. */
+ * Commands still original: 2, 5 (curve), 9 (line), 10. */
 #include "orig.h"
 #include "spritelib.h"
 #include "queue.h"
 #include "sprite.h"
 #include "view.h"
 #include "utils.h"
+#include "blit.h"
 #include "display.h"
 
 #define g_hsl G(uint8_t *, 0x10089e24)
@@ -61,7 +62,6 @@ typedef void(__stdcall *MsgProc)(void *, uint32_t);
 #define cmd_curve ORIG(uint32_t(__stdcall *)(uint8_t *), 0x100634b0)
 #define cmd_line ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10063180)
 #define cmd_10 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10063368)
-#define cmd_17 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1005bd70)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 
@@ -301,7 +301,7 @@ uint32_t __stdcall sprite_step(uint8_t *s)
         break;
     case 0x17:
         sprite_set_positioned(s, 1, 0);
-        r = cmd_17(s);
+        r = cmd_movie(s);
         break;
     case 0x18:
         cmd_level(s, c);
@@ -876,4 +876,89 @@ void __stdcall SpriteSendMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const
 {
     g_hsl = hsl;
     msg_dispatch(s, msg, count, 1);
+}
+
+/* ---- movies and blit effects (0x1005bbf7-0x1005c010) ---- */
+
+#define HSL_MOVIE_PROC 0x020   /* proc(sprite, current command): 0 = show the command's frame */
+#define HSL_FX_TABLE1 0xb6c
+#define HSL_FX_TABLE2 0xb70
+#define SP_BITMAP 0x18
+#define SP_RECT 0x44
+#define SP_OVERLAPS 0xc4
+#define SP_UPDATED 0xe8
+#define SP_VISIBLE 0xec
+#define INFO_FX 0x2c
+#define INFO_FX_ARG 0x30
+#define HSL_SCROLL_X 0x8d4
+#define HSL_SCROLL_Y 0x8d8
+
+typedef uint32_t(__stdcall *MovieProc)(uint8_t *, uint8_t *);
+
+void __stdcall set_fx_table(uint8_t *hsl, int which, uint32_t table)
+{
+    g_hsl = hsl;
+    if (which == 1)
+        H(uint32_t, HSL_FX_TABLE1) = table;
+    else if (which == 2)
+        H(uint32_t, HSL_FX_TABLE2) = table;
+}
+
+void __stdcall SpriteSetBlitFX(uint8_t *s, uint32_t fx, uint32_t arg)
+{
+    INFO(uint32_t, s, INFO_FX) = fx;
+    INFO(uint32_t, s, INFO_FX_ARG) = arg;
+}
+
+void __stdcall SpriteSetMovieProc(uint8_t *hsl, uint32_t proc)
+{
+    g_hsl = hsl;
+    H(uint32_t, HSL_MOVIE_PROC) = proc;
+}
+
+/* Asks the game's movie procedure about s; 1 when there is none or it handled the frame */
+int __stdcall movie_call(uint8_t *s)
+{
+    if (!H(MovieProc, HSL_MOVIE_PROC))
+        return 1;
+    S(uint32_t, s, SP_ENABLED) = 0;
+    S(uint32_t, s, SP_MSG_PENDING) = 1;
+    int r = H(MovieProc, HSL_MOVIE_PROC)(s, S(uint8_t *, s, SP_QUEUE_CUR)) == 0;
+    /* (the original checks the state that is current after the call) */
+    if ((H(uint8_t *, HSL_CURRENT) == s || sprite_check(s) != -1) && S(uint32_t, s, SP_MSG_PENDING)) {
+        S(uint32_t, s, SP_ENABLED) = 1;
+        S(uint32_t, s, SP_MSG_PENDING) = 0;
+        return r;
+    }
+    return 0;
+}
+
+/* Command 0x17: show the movie frame (bitmap at +0xc, flag at +10) unless the movie
+ * procedure handled it; returns 1 when the command is done */
+uint32_t __stdcall cmd_movie(uint8_t *s)
+{
+    if (movie_call(s))
+        return 1;
+    uint8_t *c = S(uint8_t *, s, SP_QUEUE_CUR);
+    if (!c || !C(char, c, 10) || !C(uint32_t, c, 0xc))
+        return 0;
+    uint8_t *bm = C(uint8_t *, c, 0xc);
+    S(uint8_t *, s, SP_BITMAP) = bm;
+    int32_t hw = (S(int32_t, bm, 4) - 1) / 2, hh = (S(int32_t, bm, 0xc) - 1) / 2;
+    int32_t old[4];
+    memcpy(old, s + SP_RECT, 16);
+    int32_t *r = (int32_t *)(s + SP_RECT);
+    r[0] = S(int32_t, s, SP_X) - hw + S(int32_t, bm, 0x14);
+    r[2] = r[0] + S(int32_t, bm, 4);
+    r[1] = S(int32_t, s, SP_Y) - hh + S(int32_t, bm, 0x18);
+    r[3] = r[1] + S(int32_t, bm, 0xc);
+    if (S(uint32_t, s, SP_SCROLLS))
+        OffsetRect((RECT *)r, H(int32_t, HSL_SCROLL_X), H(int32_t, HSL_SCROLL_Y));
+    S(uint32_t, s, SP_OVERLAPS) = rect_intersect(old, old, r);
+    S(uint32_t, s, SP_UPDATED) = 0;
+    S(uint32_t, s, SP_VISIBLE) = 1;
+    if (S(uint32_t, s, SP_CALLBACK))
+        sprite_callback(s);
+    sprite_reposition(s);
+    return 0;
 }

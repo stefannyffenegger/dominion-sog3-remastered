@@ -48,4 +48,10 @@ int __stdcall msg_dispatch(uint8_t *s, const uint32_t *msg, uint32_t count, int 
 void __stdcall SpritePostMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const uint32_t *msg);
 void __stdcall SpriteSendMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const uint32_t *msg);
 
+void __stdcall set_fx_table(uint8_t *hsl, int which, uint32_t table);
+void __stdcall SpriteSetBlitFX(uint8_t *s, uint32_t fx, uint32_t arg);
+void __stdcall SpriteSetMovieProc(uint8_t *hsl, uint32_t proc);
+int __stdcall movie_call(uint8_t *s);
+uint32_t __stdcall cmd_movie(uint8_t *s);
+
 #endif
