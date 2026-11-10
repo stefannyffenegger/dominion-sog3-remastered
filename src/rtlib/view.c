@@ -9,6 +9,7 @@
 #include "view.h"
 #include "display.h"
 #include "sprite.h"
+#include "queue.h"
 #include "utils.h"
 
 #define g_hsl G(uint8_t *, 0x10089e24)
@@ -65,10 +66,8 @@
 #define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
 #define tiles_create ORIG(uint8_t *(__stdcall *)(uint32_t), 0x1005e5bf)
 #define background_draw ORIG(void(__stdcall *)(int, int, uint32_t), 0x100579a7)
-#define window_dib_resize ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10054da0)
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
 #define SpriteHide ORIG(void(__stdcall *)(uint8_t *, uint8_t *, int), 0x100579e3)
-#define SpriteEmptyQueue ORIG(void(__stdcall *)(uint8_t *, uint8_t *), 0x10054bf7)
 /* merges a bitmap into another: dst, src, w, h, dst x, y, src x, y, flip, color map */
 #define dib_merge                                                                                  \
     ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t), 0x10059e74)
@@ -290,7 +289,7 @@ int __stdcall SpriteSetBackground(uint8_t *hsl, uint8_t *bg, RECT *out)
     g_hsl = hsl;
     H(uint32_t, HSL_BACKGROUND) = 0;
     if (!H(uint32_t, HSL_DIRECTDRAW))
-        window_dib_resize(H(uint32_t, HSL_WIDTH), H(uint32_t, HSL_HEIGHT));
+        screen_dib_create(H(uint32_t, HSL_WIDTH), H(uint32_t, HSL_HEIGHT));
     H(uint32_t, HSL_TILE_MAP) = 0;
     if (H(uint32_t, HSL_TILES))
         winfree(H(void *, HSL_TILES));
@@ -612,4 +611,130 @@ void __stdcall SpriteSaveScreenShot(uint8_t *p, char *path)
     if (!ok)
         mmioOpenA(path, NULL, MMIO_DELETE);
     winfree(colors);
+}
+
+/* ---- the screen bitmap (0x10054da0-0x10055321) ---- */
+
+#define HSL_BITMAPINFO 0x02c    /* BITMAPINFOHEADER of the screen bitmap */
+#define HSL_SCREEN_SIZE 0x454   /* header + pixels */
+#define HSL_DEPTH 0x8bc
+#define HSL_RESIZED 0x94c       /* the window size wins over the requested one */
+#define HSL_TOP_DOWN 0x950
+#define HSL_DIB_SECTION 0xa0c   /* draw into a GDI DIB section */
+#define HSL_DIB_DC 0xa10
+#define HSL_DIB_BITMAP 0xa14    /* after selecting: the DC's previous bitmap */
+#define HSL_IFACE_DIB 0xb58
+
+/* A bitmap header without pixels, w x h */
+static uint8_t *dib_header(int w, int h)
+{
+    uint8_t *p = SpriteDibCreate(0, 0, 1, 8);
+    H(uint8_t *, HSL_SCREEN_DIB) = p;
+    if (p) {
+        S(int32_t, p, 4) = w;
+        S(int32_t, p, 8) = w;
+        S(int32_t, p, 0xc) = h;
+    }
+    return p;
+}
+
+/* (Re)creates the bitmap sprites are drawn into */
+int __stdcall screen_dib_create(int w, int h)
+{
+    if (H(uint32_t, HSL_RESIZED))
+        w = H(int32_t, HSL_WIDTH);
+    if (H(uint32_t, HSL_RESIZED))
+        h = H(int32_t, HSL_HEIGHT);
+    if (H(void *, HSL_SCREEN_DIB))
+        H(void *, HSL_SCREEN_DIB) = winfree(H(void *, HSL_SCREEN_DIB));
+    if (H(void *, HSL_IFACE_DIB))
+        H(void *, HSL_IFACE_DIB) = winfree(H(void *, HSL_IFACE_DIB));
+    if (H(uint32_t, HSL_DIB_SECTION)) {
+        if (!dib_header(w, h) || !dib_section_create())
+            return 0;
+    } else if (!H(uint32_t, HSL_DIRECTDRAW)) {
+        H(uint8_t *, HSL_SCREEN_DIB) = SpriteDibCreate(w, h, 1, H(uint32_t, HSL_DEPTH));
+    } else {
+        /* the pixels are the locked back buffer */
+        uint8_t *p = dib_header(w, h);
+        if (!p)
+            return 0;
+        S(uint32_t, p, 0x10) |= 0x40;
+    }
+    uint8_t *p = H(uint8_t *, HSL_SCREEN_DIB);
+    if (!p)
+        return 0;
+    if (H(uint32_t, HSL_TOP_DOWN))
+        S(uint32_t, p, 0x10) |= 0x40;
+    H(uint32_t, HSL_SCREEN_SIZE) = S(int32_t, p, 8) * S(int32_t, p, 0xc) + 0x24;
+    return 1;
+}
+
+/* A GDI DIB section for the screen bitmap's pixels */
+int __cdecl dib_section_create(void)
+{
+    uint8_t buf[0x428];
+    BITMAPINFO *bi = (BITMAPINFO *)buf;
+    dib_section_delete();
+    memcpy(buf, &H(uint8_t, HSL_BITMAPINFO), 0x28);
+    if (!H(uint8_t *, HSL_SCREEN_DIB)) {
+        bi->bmiHeader.biWidth = 640;
+        bi->bmiHeader.biHeight = 480;
+    } else {
+        bi->bmiHeader.biWidth = S(int32_t, H(uint8_t *, HSL_SCREEN_DIB), 8);
+        bi->bmiHeader.biHeight = S(int32_t, H(uint8_t *, HSL_SCREEN_DIB), 0xc);
+    }
+    for (int i = 0; i < 0x100; i++) {
+        bi->bmiColors[i].rgbRed = H(uint8_t, HSL_PALETTE + i * 4);
+        bi->bmiColors[i].rgbGreen = H(uint8_t, HSL_PALETTE + i * 4 + 1);
+        bi->bmiColors[i].rgbBlue = H(uint8_t, HSL_PALETTE + i * 4 + 2);
+        bi->bmiColors[i].rgbReserved = 0;
+    }
+    H(HDC, HSL_DIB_DC) = CreateCompatibleDC(NULL);
+    if (!H(HDC, HSL_DIB_DC))
+        return 0;
+    /* (the screen bitmap must exist here: the original writes its pixel pointer) */
+    H(HBITMAP, HSL_DIB_BITMAP) = CreateDIBSection(H(HDC, HSL_DIB_DC), bi, DIB_RGB_COLORS,
+                                                  (void **)(H(uint8_t *, HSL_SCREEN_DIB) + 0x20), NULL, 0);
+    if (!H(HBITMAP, HSL_DIB_BITMAP))
+        return dib_section_delete();
+    H(HGDIOBJ, HSL_DIB_BITMAP) = SelectObject(H(HDC, HSL_DIB_DC), H(HGDIOBJ, HSL_DIB_BITMAP));
+    SetStretchBltMode(H(HDC, HSL_DIB_DC), HALFTONE);
+    return 1;
+}
+
+/* original: deletes the bitmap that was selected before (the section itself stays), and
+ * the DC with DeleteObject */
+int __cdecl dib_section_delete(void)
+{
+    if (H(HGDIOBJ, HSL_DIB_BITMAP)) {
+        SelectObject(H(HDC, HSL_DIB_DC), H(HGDIOBJ, HSL_DIB_BITMAP));
+        DeleteObject(H(HGDIOBJ, HSL_DIB_BITMAP));
+        H(HGDIOBJ, HSL_DIB_BITMAP) = NULL;
+    }
+    if (H(HDC, HSL_DIB_DC)) {
+        DeleteObject(H(HDC, HSL_DIB_DC));
+        H(HDC, HSL_DIB_DC) = NULL;
+    }
+    return 0;
+}
+
+UINT __cdecl dib_section_colors(void)
+{
+    RGBQUAD q[256];
+    if (!H(HDC, HSL_DIB_DC))
+        return 0;
+    for (int i = 0; i < 0x100; i++) {
+        q[i].rgbRed = H(uint8_t, HSL_PALETTE + i * 4);
+        q[i].rgbGreen = H(uint8_t, HSL_PALETTE + i * 4 + 1);
+        q[i].rgbBlue = H(uint8_t, HSL_PALETTE + i * 4 + 2);
+        q[i].rgbReserved = 0;
+    }
+    return SetDIBColorTable(H(HDC, HSL_DIB_DC), 0, 0x100, q);
+}
+
+uint32_t __stdcall view_false4(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+{
+    (void)a, (void)b, (void)c, (void)d;
+    return 0;
 }

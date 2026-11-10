@@ -40,4 +40,10 @@ void __stdcall SpriteDibGetBox(uint8_t *p, int32_t *r);
 void __stdcall SpriteInitScreenCapture(uint8_t *hsl, const char *name);
 void __stdcall SpriteSaveScreenShot(uint8_t *p, char *path);
 
+int __stdcall screen_dib_create(int w, int h);
+int __cdecl dib_section_create(void);
+int __cdecl dib_section_delete(void);
+UINT __cdecl dib_section_colors(void);
+uint32_t __stdcall view_false4(uint32_t a, uint32_t b, uint32_t c, uint32_t d);
+
 #endif

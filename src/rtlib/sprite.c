@@ -11,6 +11,7 @@
 #include "sprite.h"
 #include "display.h"
 #include "view.h"
+#include "queue.h"
 #include "utils.h"
 
 #define g_hsl G(uint8_t *, 0x10089e24)
@@ -123,14 +124,10 @@
 #define MAX_SPRITES 4000
 
 /* original functions not rewritten yet */
-#define sprite_step ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10054373)
-#define sprite_redraw ORIG(void(__stdcall *)(uint8_t *), 0x10053f6b)
 #define sprite_move ORIG(void(__stdcall *)(uint8_t *, int, int, int, int), 0x10057753)
-#define SpriteSetQueue ORIG(int(__stdcall *)(uint8_t *, uint8_t *, void *, uint32_t), 0x10054cde)
 #define SpriteHide ORIG(void(__stdcall *)(uint8_t *, uint8_t *, int), 0x100579e3)
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define sprite_callback ORIG(void(__stdcall *)(uint8_t *), 0x10053c50)
 #define SpriteShow ORIG(void(__stdcall *)(uint8_t *, uint8_t *, uint32_t, int), 0x10057c57)
 #define SpriteReplaceBitmap ORIG(int(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10057a63)
 #define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
@@ -645,7 +642,7 @@ void __stdcall SpriteAnimate(uint8_t *hsl)
                 dirty_add_if_shown(H(uint8_t *, HSL_CURRENT));
             stop = (int)sprite_done(H(uint8_t *, HSL_CURRENT));
             if (moved)
-                sprite_redraw(H(uint8_t *, HSL_CURRENT));
+                cmd_start(H(uint8_t *, HSL_CURRENT));
             if (H(void *, HSL_SERVICE))
                 sprite_service();
             if (!H(uint8_t *, HSL_CURRENT))

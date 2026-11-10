@@ -8,4 +8,5 @@
 #include "display.h"
 #include "sprite.h"
 #include "view.h"
+#include "queue.h"
 #endif

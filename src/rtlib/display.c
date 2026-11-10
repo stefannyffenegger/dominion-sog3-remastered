@@ -106,7 +106,6 @@ _Static_assert(sizeof(DisplayDD) == 0xb4, "DisplayDD");
 /* original functions not rewritten yet */
 #define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
 #define draw_iface_rect ORIG(void(__stdcall *)(void *), 0x100562d9)
-#define palette_check_a0c ORIG(uint32_t(__cdecl *)(void), 0x10055256)
 #define g_static_low ((PALETTEENTRY *)ORIG_PTR(0x1007b148))  /* Windows' static colors 0-9 */
 #define g_static_high ((PALETTEENTRY *)ORIG_PTR(0x1007b170)) /* 246-255 */
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
@@ -1555,7 +1554,7 @@ int __stdcall SpriteSetPalette(uint8_t *hsl, const void *colors)
     if (!colors)
         return 0;
     memcpy(&H(uint8_t, HSL_PALETTE), colors, 0x400);
-    if (H(uint32_t, HSL_A0C) && !palette_check_a0c())
+    if (H(uint32_t, HSL_A0C) && !dib_section_colors())
         return 0;
     H(uint32_t, HSL_LOGPALETTE) = 0x1000300; /* version 0x300, 256 entries */
     if (H(uint32_t, HSL_PALETTE_DEVICE))
