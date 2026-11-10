@@ -105,11 +105,6 @@ typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 
 
 
-static void dib_copy(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t key)
-{
-    uint32_t args[9] = {dst, src, (uint32_t)w, (uint32_t)h, (uint32_t)dx, (uint32_t)dy, (uint32_t)sx, (uint32_t)sy, key};
-    orig_stdcall_unsafe(ORIG_PTR(0x100629f4), 9, args);
-}
 
 /* Draws one bitmap of s, with its effect if it has one */
 static void blit(uint8_t *s, uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy)
@@ -330,7 +325,7 @@ void __stdcall draw_background(uint32_t w, uint32_t h)
     if (H(uint32_t, HSL_TILES)) {
         if (H(uint32_t, HSL_IFACE_ON) && H(int32_t, HSL_ORIGIN_Y) + H(int32_t, HSL_VIEW2_BOTTOM) == (int)(y + h))
             h++;
-        dib_copy(screen, H(uint32_t, HSL_TILES), w, h, x, y, bx, by, 0xff00);
+        dib_copy((void *)(uintptr_t)screen, H(void *, HSL_TILES), w, h, x, y, bx, by, 0xff00);
     } else if (!bg) {
         if (H(int32_t, HSL_FILL) == -1)
             return;
@@ -341,7 +336,7 @@ void __stdcall draw_background(uint32_t w, uint32_t h)
     } else if (H(uint32_t, HSL_DEPTH) == 16) {
         dib_copy16(screen, bg, w, h, x, y, sx, sy, 0);
     } else if (!(S(uint8_t, (uintptr_t)bg, 0x10) & 0x80)) {
-        dib_copy(screen, bg, w, h, x, y, sx, sy, 0);
+        dib_copy((void *)(uintptr_t)screen, (void *)(uintptr_t)bg, w, h, x, y, sx, sy, 0);
     } else {
         dib_merge(screen, bg, w, h, x, y, sx, sy, 0, 0); /* run-length coded background */
     }

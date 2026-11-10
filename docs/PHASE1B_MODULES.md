@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 436 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 441 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -277,7 +277,13 @@ Redrawing a rectangle: the background (bitmap, tile map or fill color) into the 
 * A sprite can have its own draw procedure, a clip box, a color map and an effect (which picks a different blitter).
 * The blitters themselves are still the original code: the run-length merge (0x10059e74) and the effect merge (0x1005adb3) are compiled C; the copy and fill routines are hand-written assembly called through the register-safe wrapper.
 * Checked: menu tour and Human mission 1 match the all-original runs. Dominion draws through DirectDraw, so the GDI paths (copying to the window, stretching, 16-bit modes) are ported but not exercised by these tests.
-* Next: the blitters.
+
+### Assembly routines in C (`blit.c`, 5 so far)
+The sprite engine's hand-written assembly, rewritten in portable C one routine at a time: rectangle intersect and union, palette fade, 8-bit fill, and the copy routine (raw or run-length source, with flips).
+* `tests/blit_compare.sh <unmodified Rtlib32.dll>` builds a Windows program that runs each routine and the original side by side on random input under Wine and compares the results byte for byte. A deliberately broken version is caught.
+* The C keeps the original's quirks where they change results: the copy routine advances one pointer with a 16-bit add (`inc si`), copies 512 bytes for a zero-length literal, reads run-length row offsets as 32 bits from a 16-bit table (so its multi-row run-length path can't have worked), and doesn't really mirror raw sources.
+* Our code now calls these directly, without the register-safe wrapper.
+* Next: the merge blitters and their helpers (0x10059e74 and the assembly under it), and the effect blitter.
 
 ### What's left
 | Part | Functions | Decompiled lines |

@@ -96,6 +96,75 @@ static void test_fill(void)
     printf("fill8: done\n");
 }
 
+/* a run-length coded bitmap: row table of 16-bit offsets, then per row runs
+ * (code n <= 0x7f, value) and literals (code 0xff - n, or 0xff, n, then n bytes) */
+static uint8_t *rle_dib(int w, int h)
+{
+    uint8_t *p = calloc(1, 0x24 + 2 * h + h * (w * 3 + 8) + 64);
+    *(int32_t *)(p + 4) = w, *(uint32_t *)(p + 8) = w, *(int32_t *)(p + 0xc) = h;
+    *(uint32_t *)(p + 0x10) = 0x80, *(uint8_t **)(p + 0x20) = p + 0x24;
+    uint8_t *bits = p + 0x24, *q = bits + 2 * h;
+    for (int y = 0; y < h; y++) {
+        ((uint16_t *)bits)[y] = (uint16_t)(q - bits);
+        for (int left = w; left > 0;) {
+            int n = 1 + rnd(left < 100 ? left : 100);
+            if (rnd(2)) {
+                *q++ = (uint8_t)n, *q++ = (uint8_t)rnd(256);
+            } else {
+                if (n <= 0x7f && rnd(2))
+                    *q++ = (uint8_t)(0xff - n);
+                else
+                    *q++ = 0xff, *q++ = (uint8_t)n;
+                for (int k = 0; k < n; k++)
+                    *q++ = (uint8_t)rnd(256);
+            }
+            left -= n;
+        }
+        *q++ = 0, *q++ = 0;
+    }
+    return p;
+}
+
+static uint8_t *clone(const uint8_t *a)
+{
+    uint32_t size = 0x24 + *(uint32_t *)(a + 8) * *(uint32_t *)(a + 0xc);
+    uint8_t *b = malloc(size + 64);
+    memcpy(b, a, size), *(uint8_t **)(b + 0x20) = b + 0x24;
+    return b;
+}
+
+static void test_copy(void)
+{
+    for (int i = 0; i < 20000; i++) {
+        int rle = rnd(2);
+        int sw = 1 + rnd(120), sh = rle ? 1 : 1 + rnd(50);
+        uint8_t *src = rle ? rle_dib(sw, sh) : dib(sw, sh, 0);
+        int dw = sw + rnd(40), dh = sh + rnd(40);
+        uint8_t *a = dib(dw, dh, rnd(2) ? 0x40 : 0), *b = clone(a);
+        int w = 1 + rnd(sw), h = 1 + rnd(sh), sx = rnd(sw - w + 1), sy = rnd(sh - h + 1);
+        int dx = rnd(dw - w + 1), dy = rnd(dh - h + 1);
+        uint32_t flip = (rle && rnd(2) ? 1 : 0) | (rnd(2) ? 0x100 : 0);
+        ORIG(0x100629f4, U(a), U(src), w, h, dx, dy, sx, sy, flip);
+        dib_copy(b, src, w, h, dx, dy, sx, sy, flip);
+        check(rle ? "copy rle" : "copy", !memcmp(a + 0x24, b + 0x24, *(uint32_t *)(a + 8) * dh), i);
+        free(a), free(b), free(src);
+    }
+    /* raw source with a horizontal flip: one row, read from src.w - sx onwards */
+    for (int i = 0; i < 5000; i++) {
+        int sw = 2 + rnd(120), w = 1 + rnd(sw / 2), sx = w + rnd(sw - 2 * w + 1);
+        uint8_t *src = dib(sw, 1 + rnd(4), 0);
+        int sh = *(int32_t *)(src + 0xc), dw = sw + rnd(40), dh = 1 + rnd(40);
+        uint8_t *a = dib(dw, dh, rnd(2) ? 0x40 : 0), *b = clone(a);
+        int dx = rnd(dw - w + 1), dy = rnd(dh), sy = rnd(sh);
+        uint32_t flip = 1 | (rnd(2) ? 0x100 : 0);
+        ORIG(0x100629f4, U(a), U(src), w, 1, dx, dy, sx, sy, flip);
+        dib_copy(b, src, w, 1, dx, dy, sx, sy, flip);
+        check("copy flip", !memcmp(a + 0x24, b + 0x24, *(uint32_t *)(a + 8) * dh), i);
+        free(a), free(b), free(src);
+    }
+    printf("copy: done\n");
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2 || !(base = (uint8_t *)LoadLibraryA(argv[1]))) {
@@ -105,6 +174,7 @@ int main(int argc, char **argv)
     test_rects();
     test_fade();
     test_fill();
+    test_copy();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }

@@ -833,10 +833,7 @@ void __stdcall SpriteCopyRect(uint8_t *dst, uint8_t *src, int32_t *r)
     if (S(int32_t, src, 0xc) < r[3])
         r[3] = S(int32_t, src, 0xc);
     if (r[2] - r[0] > 0 && r[3] - r[1] > 0) {
-        uint32_t a[9] = {(uint32_t)(uintptr_t)dst, (uint32_t)(uintptr_t)src, (uint32_t)(r[2] - r[0]),
-                         (uint32_t)(r[3] - r[1]), (uint32_t)r[0], (uint32_t)r[1], (uint32_t)r[0],
-                         (uint32_t)r[1], 0};
-        orig_stdcall_unsafe(ORIG_PTR(0x100629f4), 9, a);
+        dib_copy(dst, src, r[2] - r[0], r[3] - r[1], r[0], r[1], r[0], r[1], 0);
     }
 }
 
