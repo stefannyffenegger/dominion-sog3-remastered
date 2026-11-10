@@ -6,6 +6,7 @@
  *
  * Sprite coordinates are relative to the center of the background (HSL_ORIGIN). */
 #include "orig.h"
+#include "draw.h"
 #include "spritelib.h"
 #include "view.h"
 #include "display.h"
@@ -62,7 +63,6 @@
 #define REDRAW_ALL 0x80000000u
 
 /* original functions not rewritten yet */
-#define draw_view_sprites ORIG(int(__stdcall *)(void *, uint32_t), 0x10056c51)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 #define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
 #define tiles_create ORIG(uint8_t *(__stdcall *)(uint32_t), 0x1005e5bf)

@@ -7,6 +7,7 @@
  * 0xb4-byte block it points to (DisplayDD). */
 #define COBJMACROS
 #include "orig.h"
+#include "draw.h"
 #include "display.h"
 #include "view.h"
 #include "utils.h"
@@ -104,8 +105,6 @@ _Static_assert(sizeof(DisplayDD) == 0xb4, "DisplayDD");
 #define g_n_modes G(uint32_t, 0x1008f850)
 
 /* original functions not rewritten yet */
-#define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
-#define draw_iface_rect ORIG(void(__stdcall *)(void *), 0x100562d9)
 #define g_static_low ((PALETTEENTRY *)ORIG_PTR(0x1007b148))  /* Windows' static colors 0-9 */
 #define g_static_high ((PALETTEENTRY *)ORIG_PTR(0x1007b170)) /* 246-255 */
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)

@@ -8,6 +8,7 @@
  *  - the animation list (prev +8, next +0xc) that SpriteAnimate walks, in the same order.
  * The sprite engine's state (HSL) is shared with code not rewritten yet (H()). */
 #include "orig.h"
+#include "draw.h"
 #include "spritelib.h"
 #include "sprite.h"
 #include "display.h"
@@ -127,7 +128,6 @@
 /* original functions not rewritten yet */
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
 /* pixel test of a bitmap: > 3 is a drawn pixel */
 #define bitmap_pixel ORIG(uint32_t(__cdecl *)(uint32_t, int, int, uint32_t), 0x10062d30)
 

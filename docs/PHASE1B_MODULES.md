@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 429 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 436 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -269,13 +269,21 @@ Creating, resetting and freeing the engine state, the screen modes of the drawin
 * Redrawing a sprite: if its new bounds overlap the old ones, one pass redraws both; otherwise the old place is redrawn without the sprite, then the new one.
 * Two more spots of the Phase 1a `palette` patch were in this code (`SpriteInitLibrary` and the desktop-size function); the rewrite has the fix built in. Without it the screen stays black.
 * Checked: menu tour and Human mission 1 match the all-original runs.
-* Next: the drawing pass (0x100562d9-0x100573d5) together with the hand-written blitters.
+
+### Drawing pass (`draw.c`, 7 functions)
+Redrawing a rectangle: the background (bitmap, tile map or fill color) into the screen bitmap, then every visible sprite over it in level order, then the result to the window (GDI) or the end of the DirectDraw frame.
+* Sprites above level 24,500 are drawn in a second pass, after the tile overlay, so they stay on top of it.
+* With the interface panel on, the panel's sprites go into the panel's own bitmap, shifted up by the play area's height.
+* A sprite can have its own draw procedure, a clip box, a color map and an effect (which picks a different blitter).
+* The blitters themselves are still the original code: the run-length merge (0x10059e74) and the effect merge (0x1005adb3) are compiled C; the copy and fill routines are hand-written assembly called through the register-safe wrapper.
+* Checked: menu tour and Human mission 1 match the all-original runs. Dominion draws through DirectDraw, so the GDI paths (copying to the window, stretching, 16-bit modes) are ported but not exercised by these tests.
+* Next: the blitters.
 
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|
 | Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
-| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~200 | 13,300 |
+| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~190 | 12,300 |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~170 | 4,800 |
 | C runtime (not ported; replaced by the system's) | ~430 | |
 

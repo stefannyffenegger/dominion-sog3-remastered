@@ -3,6 +3,7 @@
  * redrawing sprites. Rewritten from the original (0x10055321-0x100562d9 and
  * 0x10057662-0x10057f40; the drawing pass between them is still original). */
 #include "orig.h"
+#include "draw.h"
 #include "spritelib.h"
 #include "display.h"
 #include "queue.h"
@@ -116,8 +117,6 @@
 #define REDRAW_ALL 0x80000000u
 
 /* original functions not rewritten yet */
-#define draw_view_sprites ORIG(int(__stdcall *)(void *, uint32_t), 0x10056c51)
-#define screen_blit ORIG(void(__stdcall *)(uint8_t *), 0x100573d5)
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 
 /* assembly that changes EBX: called through orig_stdcall_unsafe */
