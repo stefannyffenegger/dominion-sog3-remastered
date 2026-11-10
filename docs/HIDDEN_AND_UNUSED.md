@@ -8,7 +8,7 @@ Found while rewriting the game's modules (see `PHASE1B_MODULES.md`). Each entry 
 Addresses refer to the original files (`Rtlib32.dll`, `ISO.R32`, `NETPLAY.R32`, ...) of the English v1.1 release.
 
 ## How much of the engine the game uses
-**traced.** The engine (`Rtlib32.dll`) has about 1,450 functions of its own. During the menus and Human mission 1, only about 640 of them ran: the 231 already rewritten, plus 411 of the remaining 1,286. Much of the rest is probably the script compiler, editor support and the unused sound system below. Screens the trace didn't visit (multiplayer, save/load, options, cinematics) will add some.
+**traced.** The engine (`Rtlib32.dll`) has about 1,450 functions of its own. During the menus and Human mission 1, only about 640 of them ran: the 231 rewritten at the time, plus 411 of the remaining 1,286. Much of the rest is probably the script compiler, editor support and the unused sound system below. Screens the trace didn't visit (multiplayer, save/load, options, cinematics) will add some.
 
 ## Cheat codes
 **code**, `ISO.R32` `IsoCheckCheatCodes` (0x10052df4). The game compares a text against a table of 30 codes (case does not matter). The text comes from a script variable; how a player enters it is not tested yet.
@@ -69,6 +69,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 ## Unfinished or broken in the original
 These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.
 * **code.** `SpriteGetSprite` is exported by the engine but was never written: it logs "**** SpriteGetSprite UNIMPLEMENTED ****" and returns nothing.
+* **code.** Three more sprite functions were never written and only log "UNIMPLEMENTED": `SpriteSetTopMost` (keep a sprite above all others), `SpriteSwapOrder` (swap two sprites' drawing order), and `SpriteSetLevelRelative` (not exported, but the script queue interpreter and two other places call it, so a script command for it exists).
+* **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.
 * **code.** `ResExtractFile` reads a file's 6-byte head through the main resource file instead of the data file.

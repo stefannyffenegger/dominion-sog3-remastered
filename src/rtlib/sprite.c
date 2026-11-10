@@ -1,5 +1,5 @@
 /* The sprite engine's sprite objects: creating, listing, animating, bounds, getters and
- * setters. Rewritten from the original (0x1004d270-0x1004f2f1 and 0x10050a90).
+ * setters, picking, levels, scroll positions. Rewritten from the original (0x1004d270-0x100510f0).
  *
  * A sprite is a 0xf4-byte block (fields at the original's offsets, S()). Sprites sit in
  * two doubly linked lists between two sentinels created with the first sprite:
@@ -24,17 +24,35 @@
 #define HSL_DONE_PROC 0x014    /* proc(sprite, arg): animation step finished */
 #define HSL_DONE_ARG 0x018
 #define HSL_SERVICE 0x024      /* proc(arg), called between sprites */
+#define HSL_PAINT_HOOK 0x028
+#define HSL_PAINT_HOOK_ARG 0x45c
 #define HSL_SERVICE_ARG 0x460
 #define HSL_DC 0x468
+#define HSL_HWND 0x470
+#define HSL_SCROLLABLE 0x474
+#define HSL_COMPOSE 0x478
+#define HSL_IFACE 0x47c
+#define HSL_SCROLL_MARGINS_ALT 0x480 /* if set: a block with other scroll margins at +0x5c */
 #define HSL_DELAYS 0x484       /* delay table for queue waits */
 #define HSL_ANIMATING 0x89c
 #define HSL_COUNT 0x8c4        /* sprites, not counting the sentinels */
 #define HSL_ANIMATED 0x8c8     /* sprites visited by the last SpriteAnimate */
 #define HSL_SCROLL_X 0x8d4
+#define HSL_WIDTH 0x8a4
+#define HSL_HEIGHT 0x8a8
 #define HSL_SCROLL_Y 0x8d8
+#define HSL_AUX_SCROLL 0x8dc  /* x, y */
+#define HSL_SCROLL_MARGINS 0x8e4
+#define HSL_VIEW 0x8f4        /* rect */
+#define HSL_SCROLL_CLIP 0x914 /* rect */
 #define HSL_VIEW_BOTTOM 0x920
+#define HSL_SCROLL_BOX 0x934  /* rect */
+#define HSL_NO_SEND_MSG 0x944
 #define HSL_DIRECTDRAW 0x954
 #define HSL_DEFAULT_MERGE 0x9f8
+#define HSL_SYNC 0xa04
+#define HSL_QUALITY_B74 0xb74
+#define HSL_QUALITY_B7C 0xb7c
 #define HSL_B5C 0xb5c
 #define HSL_IFACE_ON 0xb68
 
@@ -43,6 +61,7 @@
 #define SP_NEXT 0x04
 #define SP_APREV 0x08
 #define SP_ANEXT 0x0c
+#define SP_NO_MSGS 0x10    /* not in the animation list */
 #define SP_BITMAP 0x18     /* current cel */
 #define SP_1C 0x1c
 #define SP_PARTS 0x20      /* composed sprites: 0x14 bytes each */
@@ -51,6 +70,7 @@
 #define SP_QUEUE_CUR 0x2c
 #define SP_QUEUE_END 0x30
 #define SP_INFO 0x34       /* 0x4a-byte block */
+#define SP_DISPLAY_ARG 0x38
 #define SP_X 0x3c
 #define SP_Y 0x40
 #define SP_RECT 0x44       /* bounds */
@@ -69,12 +89,17 @@
 #define SP_NPARTS 0x90
 #define SP_ID 0x94
 #define SP_LEVEL 0x98
+#define SP_PICK_BOUNDS 0xa0 /* picked anywhere in its bounds */
 #define SP_BREAK_LOOPS 0xa4
 #define SP_CALLBACK 0xac
+#define SP_CLIPPED 0xb0
 #define SP_ENABLED 0xb8
+#define SP_EXTERNAL_DRAW 0xbc
 #define SP_FORWARD 0xc0
 #define SP_MOVED 0xc4      /* new bounds overlap the old ones */
+#define SP_CC 0xcc
 #define SP_PAUSED 0xd0
+#define SP_PRIORITY 0xd4
 #define SP_LOOPS 0xd8      /* more than one cel to animate */
 #define SP_POSITIONED 0xdc
 #define SP_SCROLLS 0xe4
@@ -82,7 +107,13 @@
 #define SP_VISIBLE 0xec
 #define SP_MERGE 0xf0
 #define SP_SIZE 0xf4
+#define INFO_CLIP_BOX 0x08
+#define INFO_DISPLAY_PROC 0x1c
 #define INFO_BOUNDS_PROC 0x24
+#define INFO_COLOR_MAP 0x28
+#define INFO_EXT_OFFSETS 0x34
+#define INFO_FLIP 0x40      /* flip waiting for the sprite to be positioned */
+#define INFO_PICK_MODE 0x44 /* 1 pickable when hidden, 2 never */
 #define INFO_PAUSED_AT 0x18
 #define INFO_USER 0x20
 #define INFO_EXTRA_ID 0x38
@@ -99,6 +130,12 @@
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 #define sprite_callback ORIG(void(__stdcall *)(uint8_t *), 0x10053c50)
+#define SpriteShow ORIG(void(__stdcall *)(uint8_t *, uint8_t *, uint32_t, int), 0x10057c57)
+#define SpriteReplaceBitmap ORIG(int(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10057a63)
+#define SpritePaintRect ORIG(void(__stdcall *)(uint8_t *, RECT *, int), 0x10052cb2)
+#define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
+/* pixel test of a bitmap: > 3 is a drawn pixel */
+#define bitmap_pixel ORIG(uint32_t(__cdecl *)(uint32_t, int, int, uint32_t), 0x10062d30)
 
 typedef uint32_t(__stdcall *DoneProc)(uint8_t *, uint32_t);
 typedef void(__stdcall *SpriteServiceFn)(uint32_t);
@@ -830,4 +867,591 @@ int __stdcall SpriteLinePoint(uint32_t a, uint32_t n, uint32_t c, uint32_t d, ui
         orig_stdcall_unsafe(ORIG_PTR(0x10062ccc), 7, args);
     }
     return n != 0;
+}
+
+/* ---- picking ---- */
+
+static int in_rect(const int32_t *r, int x, int y) { return r[0] <= x && x < r[2] && r[1] <= y && y < r[3]; }
+
+/* hidden sprites can be picked with pick mode 1, never with 2 */
+static int pickable(uint8_t *s)
+{
+    uint32_t mode = S(uint32_t, S(uint8_t *, s, SP_INFO), INFO_PICK_MODE);
+    return mode != 2 && (S(uint32_t, s, SP_VISIBLE) || mode == 1);
+}
+
+int __stdcall SpriteIsPicked(uint8_t *hsl, uint8_t *s, int x, int y)
+{
+    g_hsl = hsl;
+    if (!pickable(s) || !in_rect((int32_t *)(s + SP_RECT), x, y))
+        return 0;
+    if (S(uint32_t, s, SP_PICK_BOUNDS))
+        return 1;
+    if (!S(uint32_t, s, SP_NPARTS))
+        return bitmap_pixel(S(uint32_t, s, SP_BITMAP), x - S(int32_t, s, SP_RECT),
+                            y - S(int32_t, s, SP_RECT + 4), S(uint32_t, s, SP_FLIP_X)) > 3;
+    int32_t *part = S(int32_t *, s, SP_PARTS);
+    for (uint16_t i = 0; i < S(uint32_t, s, SP_NPARTS); i++, part += 5) /* 16-bit counter: original */
+        if (in_rect(part + 1, x, y) &&
+            bitmap_pixel(part[0], x - part[1], y - part[2], S(uint32_t, s, SP_FLIP_X)) > 3)
+            return 1;
+    return 0;
+}
+
+/* The topmost sprite with a pixel at x, y (any pixel, unlike SpriteIsPicked) */
+uint8_t *__stdcall SpritePicked(uint8_t *hsl, int x, int y)
+{
+    g_hsl = hsl;
+    uint8_t *head = H(uint8_t *, HSL_HEAD);
+    if (!in_rect(&H(int32_t, HSL_VIEW), x, y) || !H(uint32_t, HSL_COUNT) || !head)
+        return NULL;
+    for (uint8_t *s = S(uint8_t *, H(uint8_t *, HSL_TAIL), SP_PREV); s != head; s = S(uint8_t *, s, SP_PREV)) {
+        if (!pickable(s) || !in_rect((int32_t *)(s + SP_RECT), x, y))
+            continue;
+        if (S(uint32_t, s, SP_PICK_BOUNDS))
+            return s;
+        if (!S(uint32_t, s, SP_NPARTS)) {
+            if (bitmap_pixel(S(uint32_t, s, SP_BITMAP), x - S(int32_t, s, SP_RECT),
+                             y - S(int32_t, s, SP_RECT + 4), S(uint32_t, s, SP_FLIP_X)))
+                return s;
+            continue;
+        }
+        int32_t *part = S(int32_t *, s, SP_PARTS);
+        for (uint32_t i = 0; i < S(uint32_t, s, SP_NPARTS); i++, part += 5)
+            if (in_rect(part + 1, x, y) &&
+                bitmap_pixel(part[0], x - part[1], y - part[2], S(uint32_t, s, SP_FLIP_X)))
+                return s;
+    }
+    return NULL;
+}
+
+/* The cel (bitmap) of s with a pixel at x, y; parts are searched from the top */
+uint32_t __stdcall SpriteCelPicked(uint8_t *hsl, uint8_t *s, int x, int y)
+{
+    g_hsl = hsl;
+    if (!pickable(s) || !in_rect((int32_t *)(s + SP_RECT), x, y))
+        return 0;
+    if (!S(uint32_t, s, SP_NPARTS))
+        return bitmap_pixel(S(uint32_t, s, SP_BITMAP), x - S(int32_t, s, SP_RECT),
+                            y - S(int32_t, s, SP_RECT + 4), S(uint32_t, s, SP_FLIP_X))
+                   ? S(uint32_t, s, SP_BITMAP)
+                   : 0;
+    uint16_t n = (uint16_t)S(uint32_t, s, SP_NPARTS); /* 16 bits: original */
+    int32_t *part = S(int32_t *, s, SP_PARTS) + n * 5;
+    while (n--) {
+        part -= 5;
+        if (in_rect(part + 1, x, y) &&
+            bitmap_pixel(part[0], x - part[1], y - part[2], S(uint32_t, s, SP_FLIP_X)))
+            return part[0];
+    }
+    return 0;
+}
+
+/* ---- cels ---- */
+
+int __stdcall SpriteReplaceCell(uint8_t *hsl, uint8_t *s, int x, int y, int redraw, uint32_t bitmap)
+{
+    int ok = 1;
+    g_hsl = hsl;
+    S(uint32_t, s, SP_VISIBLE) = 0;
+    sprite_move(s, x, y, redraw, 0);
+    if (S(uint32_t, s, SP_BITMAP) != bitmap) {
+        if (!S(uint32_t, s, SP_BITMAP))
+            ok = SpriteAppendBitmap(hsl, s, bitmap);
+        else
+            SpriteReplaceBitmap(hsl, s, S(uint32_t, s, SP_BITMAP), bitmap);
+    }
+    S(uint32_t, s, SP_VISIBLE) = 1;
+    sprite_reposition(s);
+    return ok;
+}
+
+/* Copies cel `from` of src to cel `to` of dst, adding cels to dst as needed */
+int __stdcall sprite_copy_cel(uint8_t *src, uint8_t *dst, uint32_t from, uint32_t to)
+{
+    if (from >= S(uint32_t, src, SP_NCELS))
+        return 0;
+    uint32_t cel = S(uint32_t *, src, SP_CELS)[from];
+    if (!cel)
+        return 0;
+    if (to >= S(uint32_t, dst, SP_NCELS))
+        for (uint32_t i = S(uint32_t, dst, SP_NCELS); i <= to; i++) {
+            if (!SpriteAppendBitmap(g_hsl, dst, cel))
+                return 0;
+            S(uint32_t *, dst, SP_CELS)[i] = cel;
+        }
+    S(uint32_t *, dst, SP_CELS)[to] = cel;
+    return 1;
+}
+
+int __stdcall SpriteReplaceCellRange(uint8_t *hsl, uint8_t *src, uint8_t *dst, uint32_t from, uint32_t to,
+                                     uint32_t n)
+{
+    g_hsl = hsl;
+    for (uint32_t i = 0; i < n; i++)
+        if (!sprite_copy_cel(src, dst, from + i, to + i))
+            return 0;
+    return 1;
+}
+
+void __stdcall SpriteSetCell(uint8_t *hsl, uint8_t *s, uint32_t cel)
+{
+    g_hsl = hsl;
+    if (S(uint32_t, s, SP_VISIBLE) && S(uint32_t, s, SP_SHOWN_CEL) <= S(uint32_t, s, SP_NCELS))
+        SpriteShow(hsl, s, cel, 1);
+    if (S(uint32_t, s, SP_SHOWN_CEL) == cel)
+        return;
+    sprite_set_positioned(s, 1, 0);
+    S(uint32_t, s, SP_CC) = 0;
+    if (cel < S(uint32_t, s, SP_NCELS)) {
+        S(uint32_t, s, SP_CEL) = cel;
+        S(uint32_t, s, SP_UPDATED) = 1;
+    } else if (!S(uint32_t, s, SP_BITMAP)) {
+        S(uint32_t, s, SP_CEL) = S(uint32_t, s, SP_SHOWN_CEL);
+        S(uint32_t, s, SP_UPDATED) = 1;
+    }
+    if (S(uint32_t, s, SP_UPDATED))
+        sprite_next_cel(s);
+}
+
+/* ---- levels ---- */
+
+void __stdcall SpriteSetLevel(uint8_t *hsl, uint8_t *s, int32_t level)
+{
+    g_hsl = hsl;
+    if (sprite_check(s) < 0)
+        return;
+    /* (debug assertions of the original left out) */
+    uint8_t *prev = S(uint8_t *, s, SP_PREV), *next = S(uint8_t *, s, SP_NEXT);
+    S(uint8_t *, next, SP_PREV) = prev;
+    S(uint8_t *, prev, SP_NEXT) = next;
+    if (S(uint8_t *, s, SP_ANEXT)) {
+        S(uint8_t *, S(uint8_t *, s, SP_ANEXT), SP_APREV) = S(uint8_t *, s, SP_APREV);
+        S(uint8_t *, S(uint8_t *, s, SP_APREV), SP_ANEXT) = S(uint8_t *, s, SP_ANEXT);
+    }
+    if (level < S(int32_t, s, SP_LEVEL)) {
+        /* insert after the first sprite (searching back) with a level <= level */
+        uint8_t *after = next;
+        while (after != H(uint8_t *, HSL_HEAD) && level < S(int32_t, after, SP_LEVEL))
+            after = S(uint8_t *, after, SP_PREV);
+        S(uint8_t *, s, SP_PREV) = after;
+        S(uint8_t *, s, SP_NEXT) = S(uint8_t *, after, SP_NEXT);
+        S(uint8_t *, S(uint8_t *, after, SP_NEXT), SP_PREV) = s;
+        S(uint8_t *, after, SP_NEXT) = s;
+    } else {
+        /* insert before the first sprite (searching on) with a level >= level */
+        uint8_t *before = prev;
+        while (before != H(uint8_t *, HSL_TAIL) && S(int32_t, before, SP_LEVEL) < level)
+            before = S(uint8_t *, before, SP_NEXT);
+        S(uint8_t *, s, SP_NEXT) = before;
+        S(uint8_t *, s, SP_PREV) = S(uint8_t *, before, SP_PREV);
+        S(uint8_t *, S(uint8_t *, before, SP_PREV), SP_NEXT) = s;
+        S(uint8_t *, before, SP_PREV) = s;
+    }
+    if (S(uint8_t *, s, SP_ANEXT)) {
+        uint8_t *p = sprite_anim_prev(s);
+        S(uint8_t *, s, SP_ANEXT) = S(uint8_t *, p, SP_ANEXT);
+        S(uint8_t *, s, SP_APREV) = p;
+        S(uint8_t *, S(uint8_t *, p, SP_ANEXT), SP_APREV) = s;
+        S(uint8_t *, p, SP_ANEXT) = s;
+    }
+    S(int32_t, s, SP_LEVEL) = level;
+}
+
+/* Not exported, but the script queue calls it */
+void __stdcall sprite_set_level_relative(uint8_t *hsl, uint32_t a, uint32_t b, uint32_t c)
+{
+    (void)a, (void)b, (void)c;
+    g_hsl = hsl;
+    OutputDebugStringA("**** SpriteSetLevelRelative UNIMPLEMENTED ****\r\n"); /* original */
+}
+
+void __stdcall SpriteSetTopMost(uint8_t *hsl, uint8_t *s)
+{
+    g_hsl = hsl;
+    if (!s)
+        H(uint8_t *, HSL_TOPMOST) = NULL;
+    if (sprite_check(s) >= 0)
+        OutputDebugStringA("*** SpriteSetTopMost UNIMPLEMENTED ***\r\n"); /* original */
+}
+
+uint32_t __stdcall SpriteSwapOrder(uint8_t *hsl, uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+{
+    (void)a, (void)b, (void)c, (void)d;
+    g_hsl = hsl;
+    OutputDebugStringA("*** SpriteSwapOrder UNIMPLEMENTED ***\r\n"); /* original */
+    return 0;
+}
+
+/* Adds s to the animation list (on) or removes it */
+void __cdecl SpriteSetProcessMsgs(uint8_t *hsl, uint8_t *s, int on)
+{
+    g_hsl = hsl;
+    if (S(int, s, SP_NO_MSGS) != on)
+        return;
+    if (!on) {
+        if (H(uint8_t *, HSL_CURRENT) == s)
+            H(uint8_t *, HSL_CURRENT) = S(uint8_t *, s, SP_ANEXT)
+                                            ? S(uint8_t *, s, SP_ANEXT)
+                                            : S(uint8_t *, H(uint8_t *, HSL_HEAD), SP_ANEXT);
+        S(uint8_t *, S(uint8_t *, s, SP_ANEXT), SP_APREV) = S(uint8_t *, s, SP_APREV);
+        S(uint8_t *, S(uint8_t *, s, SP_APREV), SP_ANEXT) = S(uint8_t *, s, SP_ANEXT);
+        S(uint8_t *, s, SP_APREV) = NULL;
+        S(uint8_t *, s, SP_ANEXT) = NULL;
+    } else {
+        uint8_t *p = sprite_anim_prev(s);
+        S(uint8_t *, S(uint8_t *, p, SP_ANEXT), SP_APREV) = s;
+        S(uint8_t *, s, SP_ANEXT) = S(uint8_t *, p, SP_ANEXT);
+        S(uint8_t *, s, SP_APREV) = p;
+        S(uint8_t *, p, SP_ANEXT) = s;
+    }
+    S(uint32_t, s, SP_NO_MSGS) = !on;
+}
+
+/* ---- setters ---- */
+
+#define INFO(type, s, off) S(type, S(uint8_t *, s, SP_INFO), off)
+
+void __stdcall SpriteSetColorMap(uint8_t *hsl, uint8_t *s, uint32_t map)
+{
+    g_hsl = hsl;
+    INFO(uint32_t, s, INFO_COLOR_MAP) = map;
+}
+
+void __stdcall SpriteSetDebugProc(uint8_t *hsl, uint32_t proc, uint32_t arg)
+{
+    g_hsl = hsl;
+    H(uint32_t, HSL_DONE_PROC) = proc;
+    H(uint32_t, HSL_DONE_ARG) = arg;
+}
+
+void __stdcall SpriteSetDisplayProc(uint8_t *s, uint32_t proc, uint32_t arg)
+{
+    INFO(uint32_t, s, INFO_DISPLAY_PROC) = proc;
+    S(uint32_t, s, SP_DISPLAY_ARG) = arg;
+}
+
+void __stdcall SpriteSetBoundsProc(uint8_t *s, uint32_t proc) { INFO(uint32_t, s, INFO_BOUNDS_PROC) = proc; }
+void __stdcall SpriteSetExternalDraw(uint8_t *s, uint32_t v) { S(uint32_t, s, SP_EXTERNAL_DRAW) = v; }
+
+void __stdcall SpriteSetExtOffsets(uint8_t *hsl, uint8_t *s, uint32_t offsets)
+{
+    g_hsl = hsl;
+    INFO(uint32_t, s, INFO_EXT_OFFSETS) = offsets;
+}
+
+void __stdcall SpriteSetExtraId(uint8_t *s, uint32_t id) { INFO(uint32_t, s, INFO_EXTRA_ID) = id; }
+
+void __cdecl SpriteSetFlip(uint8_t *hsl, uint8_t *s, uint32_t fx, uint32_t fy)
+{
+    g_hsl = hsl;
+    uint32_t old = S(uint32_t, s, SP_FLIP_X);
+    /* an unpositioned sprite keeps it in its info block, still compared with the current flip */
+    uint32_t *flip = S(uint32_t, s, SP_POSITIONED) ? &S(uint32_t, s, SP_FLIP_X) : &INFO(uint32_t, s, INFO_FLIP);
+    *flip = fy << 8 | fx;
+    if (*flip != old) {
+        if (S(uint32_t, s, SP_NPARTS))
+            parts_update_bounds(s);
+        sprite_reposition(s);
+    }
+}
+
+void __stdcall SpriteSetId(uint8_t *s, uint32_t id) { S(uint32_t, s, SP_ID) = id; }
+void __stdcall SpriteSetMerge(uint8_t *s, uint32_t v) { S(uint32_t, s, SP_MERGE) = v; }
+
+void __stdcall SpriteSetMergeDefault(uint8_t *hsl, uint32_t v)
+{
+    g_hsl = hsl;
+    H(uint32_t, HSL_DEFAULT_MERGE) = v;
+}
+
+uint32_t __stdcall SpriteSetPaintHook(uint8_t *hsl, uint32_t proc, uint32_t arg, uint32_t *old_arg)
+{
+    g_hsl = hsl;
+    uint32_t old = H(uint32_t, HSL_PAINT_HOOK);
+    if (old_arg)
+        *old_arg = H(uint32_t, HSL_PAINT_HOOK_ARG);
+    H(uint32_t, HSL_PAINT_HOOK) = proc;
+    H(uint32_t, HSL_PAINT_HOOK_ARG) = arg;
+    return old;
+}
+
+void __stdcall SpriteSetPickMode(uint8_t *s, uint32_t bounds, uint32_t mode)
+{
+    S(uint32_t, s, SP_PICK_BOUNDS) = bounds;
+    INFO(uint32_t, s, INFO_PICK_MODE) = mode;
+}
+
+void __cdecl SpriteSetRedraw(uint8_t *hsl, uint8_t *s, uint32_t on, int update)
+{
+    g_hsl = hsl;
+    sprite_set_positioned(s, on, update);
+}
+
+/* returns whether messages were being sent */
+int __stdcall SpriteSetSendMsg(uint8_t *hsl, int on)
+{
+    g_hsl = hsl;
+    int was = H(uint32_t, HSL_NO_SEND_MSG) == 0;
+    H(uint32_t, HSL_NO_SEND_MSG) = on == 0;
+    return was;
+}
+
+void __stdcall SpriteSetSpriteClipBox(uint8_t *s, const int32_t *r)
+{
+    S(uint32_t, s, SP_CLIPPED) = r && r[0] < r[2] && r[1] < r[3];
+    if (S(uint32_t, s, SP_CLIPPED))
+        memcpy(&INFO(uint8_t, s, INFO_CLIP_BOX), r, 16);
+    else
+        memset(&INFO(uint8_t, s, INFO_CLIP_BOX), 0, 16);
+}
+
+void __stdcall SpriteSetVarTable(uint8_t *hsl, uint32_t table)
+{
+    g_hsl = hsl;
+    H(uint32_t, HSL_DELAYS) = table;
+}
+
+void __stdcall SpriteSetPriority(uint8_t *s, uint32_t priority)
+{
+    S(uint32_t, s, SP_PRIORITY) = priority;
+    S(uint32_t, s, SP_NEXT_STEP) = 0;
+    S(uint32_t, s, SP_NEXT_MOVE) = priority ? timeGetTime() : 0;
+}
+
+void __stdcall SpriteSetSpotColor(uint8_t *hsl, uint8_t color)
+{
+    (void)hsl;
+    G(uint8_t, 0x10089e1c) = color;
+}
+
+void __stdcall SpriteSetSync(uint8_t *hsl, uint32_t on)
+{
+    g_hsl = hsl;
+    if (!on && !H(uint32_t, HSL_SYNC))
+        return;
+    H(uint32_t, HSL_SYNC) = on;
+    if (!on)
+        draw_view_sprites(&H(uint8_t, HSL_VIEW), 0x80000000);
+}
+
+uint32_t __stdcall SpriteSetUserData(uint8_t *s, uint32_t v)
+{
+    uint32_t old = INFO(uint32_t, s, INFO_USER);
+    INFO(uint32_t, s, INFO_USER) = v;
+    return old;
+}
+
+uint32_t __stdcall SpriteGetComposeBuffer(uint8_t *hsl)
+{
+    g_hsl = hsl;
+    return H(uint32_t, HSL_COMPOSE);
+}
+
+void __stdcall SpriteSetGraphicsQuality(uint8_t *hsl, const uint32_t *a, const uint32_t *b, uint32_t unused1,
+                                         uint32_t unused2)
+{
+    (void)unused1, (void)unused2;
+    g_hsl = hsl;
+    H(uint32_t, HSL_QUALITY_B7C) = *a;
+    H(uint32_t, HSL_QUALITY_B74) = *b;
+}
+
+/* The interface layer is on when there is one and off is 0 */
+void __stdcall sprite_set_interface(uint8_t *hsl, int off)
+{
+    g_hsl = hsl;
+    H(uint32_t, HSL_IFACE_ON) = H(uint32_t, HSL_IFACE) && !off;
+    if (H(uint32_t, HSL_DIRECTDRAW)) {
+        SpritePaintDirectDrawSurfacesBlack(hsl, H(uint32_t, HSL_WIDTH), H(uint32_t, HSL_HEIGHT));
+        sprites_clear_dirty_flag();
+    }
+}
+
+/* Moves the bitmaps, parts and position of src to dst */
+void __stdcall SpriteTransfer(uint8_t *src, uint8_t *dst)
+{
+    S(uint32_t, dst, SP_BITMAP) = S(uint32_t, src, SP_BITMAP);
+    S(uint32_t, src, SP_BITMAP) = 0;
+    S(uint32_t, dst, SP_NPARTS) = S(uint32_t, src, SP_NPARTS);
+    S(uint32_t, src, SP_NPARTS) = 0;
+    if (S(HLOCAL, dst, SP_PARTS))
+        LocalFree(S(HLOCAL, dst, SP_PARTS));
+    S(uint32_t, dst, SP_PARTS) = S(uint32_t, src, SP_PARTS);
+    S(uint32_t, src, SP_PARTS) = 0;
+    S(uint32_t, dst, SP_VISIBLE) = S(uint32_t, src, SP_VISIBLE);
+    memcpy(dst + SP_RECT, src + SP_RECT, 16);
+    S(uint32_t, dst, SP_X) = S(uint32_t, src, SP_X);
+    S(uint32_t, dst, SP_Y) = S(uint32_t, src, SP_Y);
+    S(uint32_t, dst, 0xe0) = S(uint32_t, src, 0xe0);
+    memcpy(dst + SP_OLD_RECT, src + SP_OLD_RECT, 16);
+    S(uint32_t, src, 0xe0) = 0;
+    S(uint32_t, src, SP_VISIBLE) = 0;
+    S(uint32_t, src, SP_UPDATED) = 0;
+    S(uint32_t, dst, SP_UPDATED) = 0;
+}
+
+/* Shakes the window contents by dx, dy and back, then repaints the uncovered edges */
+void __stdcall SpriteScreenShake(uint8_t *hsl, int dx, int dy)
+{
+    RECT r, band;
+    g_hsl = hsl;
+    GetClientRect(H(HWND, HSL_HWND), &r);
+    int32_t *view = &H(int32_t, HSL_VIEW);
+    int mx = r.right - (view[2] - view[0] + 1), my = r.bottom - (view[3] - view[1] + 1);
+    r.left = view[0], r.top = view[1], r.right = view[2], r.bottom = view[3];
+    if (mx < 0 || my < 0)
+        InflateRect(&r, mx / 2, my / 2);
+    ScrollDC(H(HDC, HSL_DC), dx, dy, &r, &r, NULL, NULL);
+    ScrollDC(H(HDC, HSL_DC), dx * -2, dy * -2, &r, &r, NULL, NULL);
+    ScrollDC(H(HDC, HSL_DC), dx, dy, &r, &r, NULL, NULL);
+    ValidateRect(H(HWND, HSL_HWND), NULL);
+    if (dx < 0)
+        dx = -dx;
+    if (dy < 0)
+        dy = -dy;
+    if (dx) {
+        band.left = r.left, band.top = r.top, band.bottom = r.bottom;
+        band.right = r.left + dx + 1;
+        SpritePaintRect(hsl, &band, 0);
+        band.right = r.right;
+        band.left = r.right - dx;
+        SpritePaintRect(hsl, &band, 0);
+    }
+    if (dy) {
+        band.left = r.left, band.top = r.top, band.right = r.right;
+        band.bottom = r.top + dy;
+        SpritePaintRect(hsl, &band, 0);
+        band.bottom = r.bottom;
+        band.top = r.bottom - dy - 1;
+        SpritePaintRect(hsl, &band, 0);
+    }
+}
+
+/* ---- scrolling ---- */
+
+/* Clamps the scroll position pos so that the scroll clip box stays inside the scroll margins;
+ * r gets the box used */
+uint32_t __stdcall sprite_scroll_box(int32_t *r, int32_t *pos)
+{
+    if (!H(uint32_t, HSL_SCROLLABLE)) {
+        memcpy(r, &H(int32_t, HSL_VIEW), 16);
+        return pos[1] | pos[0];
+    }
+    memcpy(r, &H(int32_t, HSL_SCROLL_CLIP), 16);
+    const int32_t *m = H(uint8_t *, HSL_SCROLL_MARGINS_ALT) ? (int32_t *)(H(uint8_t *, HSL_SCROLL_MARGINS_ALT) + 0x5c)
+                                                             : &H(int32_t, HSL_SCROLL_MARGINS);
+    int32_t ml = m[0], mt = m[1], mr = m[2], mb = m[3];
+    if (r[0] < H(int32_t, HSL_SCROLL_X) + pos[0] + ml)
+        pos[0] = r[0] - ml - H(int32_t, HSL_SCROLL_X);
+    else if (H(int32_t, HSL_SCROLL_X) + pos[0] + mr < r[2])
+        pos[0] = r[2] - mr - H(int32_t, HSL_SCROLL_X);
+    if (r[1] < H(int32_t, HSL_SCROLL_Y) + pos[1] + mt)
+        pos[1] = r[1] - mt - H(int32_t, HSL_SCROLL_Y);
+    else if (H(int32_t, HSL_SCROLL_Y) + pos[1] + mb < r[3])
+        pos[1] = r[3] - mb - H(int32_t, HSL_SCROLL_Y);
+    return pos[1] | pos[0];
+}
+
+void __stdcall SpriteCalculateScrollBox(uint8_t *hsl, int32_t *r, int32_t *pos)
+{
+    g_hsl = hsl;
+    sprite_scroll_box(r, pos);
+}
+
+void __stdcall SpriteGetAuxillaryScrollPos(uint8_t *hsl, int32_t *pos)
+{
+    g_hsl = hsl;
+    memcpy(pos, &H(int32_t, HSL_AUX_SCROLL), 8);
+}
+
+void __stdcall SpriteGetScrollBox(uint8_t *hsl, int32_t *r)
+{
+    g_hsl = hsl;
+    memcpy(r, &H(int32_t, HSL_SCROLL_BOX), 16);
+}
+
+void __stdcall SpriteGetScrollableClipBox(uint8_t *hsl, int32_t *r)
+{
+    g_hsl = hsl;
+    memcpy(r, &H(int32_t, HSL_SCROLL_CLIP), 16);
+}
+
+void __stdcall SpriteGetScrollPos(uint8_t *hsl, int32_t *pos)
+{
+    g_hsl = hsl;
+    pos[0] = H(int32_t, HSL_SCROLL_X);
+    pos[1] = H(int32_t, HSL_SCROLL_Y);
+}
+
+void __stdcall SpriteOffsetAuxillaryScrollPos(uint8_t *hsl, int dx, int dy)
+{
+    g_hsl = hsl;
+    H(int32_t, HSL_AUX_SCROLL) += dx;
+    H(int32_t, HSL_AUX_SCROLL + 4) += dy;
+}
+
+void __stdcall SpriteOffsetScrollPos(uint8_t *hsl, int dx, int dy)
+{
+    g_hsl = hsl;
+    H(int32_t, HSL_SCROLL_X) += dx;
+    H(int32_t, HSL_SCROLL_Y) += dy;
+}
+
+void __stdcall SpriteSetAuxillaryScrollPos(uint8_t *hsl, const int32_t *pos)
+{
+    g_hsl = hsl;
+    memcpy(&H(int32_t, HSL_AUX_SCROLL), pos, 8);
+}
+
+/* Moves the bounds, parts and a pending move command of s by dx, dy */
+void __stdcall sprite_offset_rects(uint8_t *s, int dx, int dy)
+{
+    OffsetRect((RECT *)(s + SP_RECT), dx, dy);
+    OffsetRect((RECT *)(s + SP_OLD_RECT), dx, dy);
+    for (uint32_t i = 0; i < S(uint32_t, s, SP_NPARTS); i++)
+        OffsetRect((RECT *)(S(uint8_t *, s, SP_PARTS) + i * 0x14 + 4), dx, dy);
+    int16_t *cmd = S(int16_t *, s, SP_QUEUE_CUR);
+    if (!cmd)
+        return;
+    int32_t *p = NULL;
+    int n = 0;
+    if (*cmd == 5) /* three points */
+        p = (int32_t *)(cmd + 0xe), n = 3;
+    else if (*cmd == 9) /* two points */
+        p = (int32_t *)(cmd + 10), n = 2;
+    for (int i = 0; i < n; i++)
+        p[2 * i] += dx, p[2 * i + 1] += dy;
+}
+
+void __stdcall SpriteScrollOffset(uint8_t *hsl, uint8_t *s, int dx, int dy)
+{
+    g_hsl = hsl;
+    sprite_offset_rects(s, dx, dy);
+    S(int32_t, s, SP_X) += dx;
+    S(int32_t, s, SP_Y) += dy;
+    INFO(int32_t, s, 0) = S(int32_t, s, SP_X);
+    INFO(int32_t, s, 4) = S(int32_t, s, SP_Y);
+}
+
+/* Sets the position and recomputes the bounds from the current cel, without redrawing */
+void __stdcall SpriteScrollPosition(uint8_t *hsl, uint8_t *s, int x, int y)
+{
+    g_hsl = hsl;
+    S(int32_t, s, SP_X) = x;
+    S(int32_t, s, SP_Y) = y;
+    INFO(int32_t, s, 0) = x;
+    INFO(int32_t, s, 4) = y;
+    uint8_t *bm = S(uint8_t *, s, SP_BITMAP);
+    if (!bm)
+        bm = *S(uint8_t **, s, SP_PARTS); /* the first part (0 if none) */
+    if (!bm)
+        return;
+    int32_t w = S(int32_t, bm, 4), h = S(int32_t, bm, 0xc);
+    S(int32_t, s, SP_RECT) = x - (w - 1) / 2 + S(int32_t, bm, 0x14);
+    S(int32_t, s, SP_RECT + 8) = S(int32_t, s, SP_RECT) + w;
+    S(int32_t, s, SP_RECT + 4) = y - (h - 1) / 2 + S(int32_t, bm, 0x18);
+    S(int32_t, s, SP_RECT + 12) = S(int32_t, s, SP_RECT + 4) + h;
+    if (S(uint32_t, s, SP_SCROLLS))
+        OffsetRect((RECT *)(s + SP_RECT), H(int32_t, HSL_SCROLL_X), H(int32_t, HSL_SCROLL_Y));
 }

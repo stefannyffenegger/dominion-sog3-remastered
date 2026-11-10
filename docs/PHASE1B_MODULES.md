@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 285 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 335 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -237,13 +237,21 @@ Creating and destroying sprites, their cel lists and animation ranges, bounds, p
 * A sprite is a 0xf4-byte block with a 0x4a-byte info block. Sprites sit in two doubly linked lists between a head sentinel (level -90000) and a tail sentinel (level 90000): one sorted by drawing level, and the animation list that `SpriteAnimate` walks. At most 4,000 sprites.
 * Sprites on the interface panel mark their old and new rectangles dirty around each animation step (see the display layer).
 * Checked: menu tour and Human mission 1 identical to the all-original run.
-* Next: part 2 (levels, flips, scrolling, messages, the queue interpreter), then the hand-written blitters.
+
+### Sprite objects, part 2 (`sprite.c`, 50 functions)
+Mouse picking, replacing and copying cels, drawing levels, flips, the remaining setters, moving a sprite between the animation list and out of it, screen shake and the scroll positions.
+* Picking: `SpritePicked` searches the level list from the top for a sprite with a pixel under the mouse; a sprite can instead be picked anywhere in its bounds, and its pick mode can make it pickable while hidden, or never. The pixel test (0x10062d30) is ordinary compiled code and stays original for now. Ghidra decompiled the three picking functions as `fastcall` returning 64 bits; the disassembly shows plain `stdcall`.
+* `SpriteSetLevel` moves a sprite in the level list (searching from its old place) and re-inserts it in the animation list.
+* `SpriteSetFlip`, `SpriteSetProcessMsgs` and `SpriteSetRedraw` are `cdecl`, unlike the rest; `SpriteSetGraphicsQuality` takes two unused arguments.
+* Three functions only log "UNIMPLEMENTED" (see `HIDDEN_AND_UNUSED.md`).
+* Checked: menu tour and Human mission 1 identical to the all-original run (apart from the usual animation timing).
+* Next: part 3 (sprite messages, the script queue interpreter, showing and hiding), then the hand-written blitters.
 
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|
 | Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
-| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~345 | 17,600 |
+| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~295 | 16,000 |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~170 | 4,800 |
 | C runtime (not ported; replaced by the system's) | ~430 | |
 
