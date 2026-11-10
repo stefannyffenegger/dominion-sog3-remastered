@@ -4,4 +4,5 @@
 #include "res.h"
 #include "utils.h"
 #include "compress.h"
+#include "audio.h"
 #endif

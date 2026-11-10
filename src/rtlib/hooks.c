@@ -100,6 +100,100 @@ static void install_hooks(void)
     rt_debug("RTLIB: %d functions rewritten, %d left original\n", installed, skipped);
 }
 
+/* ---- first-call tracing ----
+ * DOMINION_TRACE=<file>: the file lists original addresses (hex, one per line, an optional
+ * name after a space). Each listed function logs "RTLIB: first call <address> <name>" the
+ * first time it runs, then is restored and runs normally. Finds the code the game uses. */
+#define MAX_TRACE 4096
+typedef struct Trace {
+    uint8_t *at;
+    uint8_t saved[5];
+    char name[40];
+} Trace;
+static Trace *g_trace;
+static uint8_t *g_thunks;
+
+void __cdecl trace_hit(uint32_t i)
+{
+    Trace *t = &g_trace[i];
+    DWORD old;
+    VirtualProtect(t->at, 5, PAGE_EXECUTE_READWRITE, &old);
+    memcpy(t->at, t->saved, 5);
+    VirtualProtect(t->at, 5, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), t->at, 5);
+    rt_debug("RTLIB: first call %08x %s\n", (unsigned)(t->at - g_orig + ORIG_BASE), t->name);
+}
+
+static void install_trace(const char *path)
+{
+    HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    DWORD size, got, old;
+    char *text;
+    uint32_t n = 0;
+    if (f == INVALID_HANDLE_VALUE)
+        return;
+    size = GetFileSize(f, NULL);
+    text = HeapAlloc(GetProcessHeap(), 0, size + 1);
+    g_trace = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, MAX_TRACE * sizeof *g_trace);
+    g_thunks = VirtualAlloc(NULL, MAX_TRACE * 24, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    ReadFile(f, text, size, &got, NULL);
+    CloseHandle(f);
+    text[got] = 0;
+    for (char *p = text; *p && n < MAX_TRACE;) {
+        uint32_t a = 0;
+        int k = 0;
+        while (*p == ' ' || *p == '\r' || *p == '\n')
+            p++;
+        if (*p == '0' && (p[1] == 'x' || p[1] == 'X'))
+            p += 2;
+        for (;; p++) {
+            char c = *p;
+            int v = c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10
+                    : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+            if (v < 0)
+                break;
+            a = a * 16 + (uint32_t)v;
+        }
+        while (*p == ' ')
+            p++;
+        while (*p && *p != '\r' && *p != '\n') {
+            if (k < 39)
+                g_trace[n].name[k++] = *p;
+            p++;
+        }
+        if (a >= ORIG_BASE && a < ORIG_BASE + 0x9c000) {
+            Trace *t = &g_trace[n];
+            uint8_t *th = g_thunks + n * 24;
+            int32_t rel;
+            t->at = ORIG(uint8_t *, a);
+            if (t->at[0] == 0xE9) /* already rewritten: not traced */
+                continue;
+            memcpy(t->saved, t->at, 5);
+            /* pushad; push n; call trace_hit; add esp,4; popad; push at; ret */
+            th[0] = 0x60;
+            th[1] = 0x68;
+            memcpy(th + 2, &n, 4);
+            th[6] = 0xE8;
+            rel = (int32_t)((uint8_t *)trace_hit - (th + 11));
+            memcpy(th + 7, &rel, 4);
+            th[11] = 0x83, th[12] = 0xC4, th[13] = 0x04;
+            th[14] = 0x61;
+            th[15] = 0x68;
+            memcpy(th + 16, &t->at, 4);
+            th[20] = 0xC3;
+            VirtualProtect(t->at, 5, PAGE_EXECUTE_READWRITE, &old);
+            t->at[0] = 0xE9;
+            rel = (int32_t)(th - (t->at + 5));
+            memcpy(t->at + 1, &rel, 4);
+            VirtualProtect(t->at, 5, old, &old);
+            n++;
+        }
+    }
+    HeapFree(GetProcessHeap(), 0, text);
+    FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+    rt_debug("RTLIB: tracing %d functions\n", n);
+}
+
 BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved)
 {
     (void)inst;
@@ -112,6 +206,11 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved)
             return FALSE;
         }
         install_hooks();
+        {
+            char path[MAX_PATH];
+            if (GetEnvironmentVariableA("DOMINION_TRACE", path, sizeof path))
+                install_trace(path);
+        }
     }
     return TRUE;
 }
