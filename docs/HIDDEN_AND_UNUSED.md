@@ -32,6 +32,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** The game logic has debug files and modes: `IsoOpenDebugFiles`, `IsoDebugFile`, `IsoSetDebugMode`, `IsoSetDebugSprite`, `IsoDebugScriptMessageProc`, a profiler (`IsoGetProfilerValue`), and AI debug logs.
 * **code.** A map editor is built into the game logic: `IsoMapEditDisplayLoop`, the `EDITPATH_*` path editor and `IsoInitMapEditAITempFiles`. Whether the shipped menus can reach it is not tested yet. Single Player → Mission lists custom missions (`.wxp`) from that editor; the shipped campaign maps don't appear there (**tested**).
 * **code.** The script compiler's name, "Dominion Compiler", is in the engine's error messages, and the resource library has everything needed to *write* resource files (`ResCreateFile`, `ResWriteScriptBuf`, ...). The engine contains the tools side of Ion Storm's script system.
+* **code.** The engine has a plugin interface: its error texts are "plugin '%s' has no RtLibInit function", "plugin '%s' initialization failed" and "extern function '%s' not found". A script could call functions in extra DLLs.
+* **code.** Background transitions in the menu script engine: blinds, open from the middle, close from the edges, roll down, slides. Whether Dominion's menus use any is not checked yet.
 * **code.** Tile debugging leftovers: the tile engine can build a tile-shaped test pattern (edges in color 10, the upper half filled with 125, the lower with 115, the middle rows 225 and 230; 0x1005c010), draw any rectangle of a tile (0x1005c99a) and draw a frame in color 9 (0x1005df6e). Nothing calls them.
 
 ## The engine's own sound system, unused

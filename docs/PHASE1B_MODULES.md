@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 564 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 607 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -321,6 +321,14 @@ The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile ro
 * The blitters are portable C, checked byte for byte with `tests/blit_compare.sh` (6,000 random cases, the tables for four pitches, and two deliberately broken versions caught).
 * The DirectDraw full-tile blitter (0x10066470) is hand-written assembly, a long unrolled copy. Measured by drawing tiles whose bytes encode their own position: it draws the same pixels as the C one, except that when the tile's top corner is not on a 4-byte boundary, row 30 is copied 2 bytes too long (the 2 unused bytes after it land right of the row). Our C does the same.
 * Checked: Human mission 1 matches the all-original runs (the scrolled view now pixel for pixel).
+
+### Engine core, part 1: backgrounds (`rt_bg.c`, 43 functions)
+The core ("Rt") keeps its whole state in one packed block that the game allocates and passes to every `Rt*` call. The menu script's commands arrive as packed records. First part, 0x10001000-0x10003039:
+* **Background command:** a bitmap, a plain color, a tile map, or none; a bitmap larger than the screen makes the view scrollable. `RtSetBackground`, `RtSetTileBackground`, `RtSetScrollBox` and friends are the game's entry points to the same code.
+* **Palette commands:** set colors from the script or load a palette resource (colors 10-245; the first and last 10 stay Windows' own).
+* **Transitions** that bring a new background in: blinds, opening from the middle, closing from the edges, rolling down, and two slides (those two are still original).
+* **Screen capture** to an 8-bit `.bmp`, growable arrays, and the `RtError` texts for plugins.
+* Checked: menu tour and Human mission 1 against the all-original runs.
 
 ### What's left
 | Part | Functions | Decompiled lines |

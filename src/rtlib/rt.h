@@ -14,4 +14,5 @@
 #include "blit.h"
 #include "tileblit.h"
 #include "tiles.h"
+#include "rt_bg.h"
 #endif
