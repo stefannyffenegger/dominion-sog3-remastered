@@ -11,6 +11,7 @@
 #include "sprite.h"
 #include "view.h"
 #include "utils.h"
+#include "display.h"
 
 #define g_hsl G(uint8_t *, 0x10089e24)
 #define H(type, off) (*(type *)(g_hsl + (off)))
@@ -412,4 +413,467 @@ int __stdcall SpriteSetQueue(uint8_t *hsl, uint8_t *s, const void *cmds, SIZE_T 
     S(uint8_t *, s, SP_QUEUE_END) = q + size;
     cmd_start(s);
     return 1;
+}
+
+/* ---- messages: building queue commands from C (0x10058400-0x10059a70) ----
+ * SpritePostMessage appends the command to the sprite's queue (and starts the queue if
+ * it isn't running); SpriteSendMessage runs it at once, replacing the queue. A message is
+ * a type followed by its values. */
+
+#define SP_DIRTY_BOTTOM 0x50  /* bounds bottom */
+#define SP_SCROLLS 0xe4
+#define INFO_LOOP_START 0x3c   /* queue offset where the next loop jumps to */
+#define HSL_DIRECTDRAW 0x954
+#define HSL_B5C 0xb5c
+#define HSL_IFACE_ON 0xb68
+#define HSL_VIEW2_BOTTOM 0x920
+#define INFO(type, s, off) S(type, S(uint8_t *, s, SP_INFO), off)
+
+static void q_start(uint8_t *s)
+{
+    if (!S(uint8_t *, s, SP_QUEUE_CUR))
+        cmd_start(s);
+}
+
+/* Empties the queue without freeing it */
+void __stdcall queue_rewind(uint8_t *s)
+{
+    S(uint32_t, s, SP_QUEUE_END) = S(uint32_t, s, SP_QUEUE);
+    S(uint32_t, s, SP_QUEUE_CUR) = S(uint32_t, s, SP_QUEUE_END);
+    S(uint32_t, s, SP_RESTART) = 0;
+    S(uint32_t, s, SP_BREAK_LOOPS) = 0;
+}
+
+/* Appends a command of `type` (size from the table unless given), growing the queue in
+ * 128-byte steps. original: a queue with no current command gets its current pointer
+ * moved by the reallocation anyway. */
+uint8_t *__stdcall cmd_append(uint8_t *s, uint32_t type, uint32_t size)
+{
+    uint32_t cap = S(uint32_t, s, SP_QUEUE_SIZE);
+    uint32_t used = S(uint32_t, s, SP_QUEUE_END) - S(uint32_t, s, SP_QUEUE);
+    uint32_t need = used + (size ? size : g_cmd_size[type]);
+    if (cap < need) {
+        uint32_t ncap = (need + 0x7f) & ~0x7fu;
+        uint8_t *q = winrealloc(S(void *, s, SP_QUEUE), ncap, 0);
+        if (!q)
+            return NULL;
+        S(uint32_t, s, SP_QUEUE_SIZE) = ncap;
+        if (cap < ncap)
+            memset(q + cap, 0, ncap - cap);
+        S(uint32_t, s, SP_QUEUE_CUR) = S(uint32_t, s, SP_QUEUE_CUR) - S(uint32_t, s, SP_QUEUE) + (uint32_t)(uintptr_t)q;
+        S(uint8_t *, s, SP_QUEUE) = q;
+        S(uint8_t *, s, SP_QUEUE_END) = q + used;
+    }
+    uint8_t *c = S(uint8_t *, s, SP_QUEUE_END);
+    *(uint16_t *)c = (uint16_t)type;
+    S(uint8_t *, s, SP_QUEUE_END) = S(uint8_t *, s, SP_QUEUE) + need;
+    return c;
+}
+
+uint8_t *__stdcall cmd_alloc(uint8_t *s, uint32_t type, uint32_t size)
+{
+    if (S(void *, s, SP_QUEUE))
+        return cmd_append(s, type, size);
+    uint32_t n = size ? size : g_cmd_size[type], cap = (n + 0x7f) & ~0x7fu;
+    uint8_t *q = winmalloc(cap, 1);
+    if (!q)
+        return NULL;
+    S(uint8_t *, s, SP_QUEUE) = q;
+    S(uint32_t, s, SP_QUEUE_SIZE) = cap;
+    S(uint32_t, s, SP_QUEUE_CUR) = 0;
+    S(uint8_t *, s, SP_QUEUE_END) = q + n;
+    *(uint16_t *)q = (uint16_t)type;
+    return q;
+}
+
+/* Runs command c now; empties the queue when it finished */
+void __stdcall msg_run(uint8_t *s, uint8_t *c)
+{
+    S(uint8_t *, s, SP_QUEUE_CUR) = c;
+    if (sprite_step(s))
+        SpriteEmptyQueue(g_hsl, s);
+}
+
+#define ALLOC(type, size)                                                                          \
+    uint8_t *c = cmd_alloc(s, type, size);                                                         \
+    if (!c)                                                                                        \
+        return 0
+
+int __stdcall msg_cels(uint8_t *s, const uint32_t *d, int now)
+{
+    if (now)
+        queue_rewind(s);
+    ALLOC(1, 0);
+    C(uint32_t, c, 2) = d[0];
+    C(uint32_t, c, 6) = d[1];
+    C(uint32_t, c, 0xe) = d[2];
+    if (!now) {
+        q_start(s);
+    } else {
+        C(int32_t, c, 0xa) = sprite_set_cels(s, C(uint32_t, c, 2), C(uint32_t, c, 2), C(uint32_t, c, 6));
+        msg_run(s, c);
+    }
+    return 1;
+}
+
+int __stdcall msg_type2(uint8_t *s, const uint32_t *d, uint32_t count, int now)
+{
+    if (count - 2 < 3 || 9 < count - 2)
+        return 0;
+    if (now)
+        queue_rewind(s);
+    ALLOC(2, 0x2e - (8 - (count - 3)) * 4);
+    for (uint32_t k = 0; k < count - 3; k++)
+        C(uint32_t, c, 0xe + k * 4) = *d++;
+    C(uint32_t, c, 2) = *d;
+    C(uint32_t, c, 6) = (count - 3) & 0xff;
+    C(uint8_t, c, 0xa) = 0;
+    if (!now)
+        q_start(s);
+    else
+        msg_run(s, c);
+    return 1;
+}
+
+/* marks where the next loop jumps back to */
+int __stdcall msg_loop_start(uint8_t *s, int now)
+{
+    if (!now)
+        INFO(uint32_t, s, INFO_LOOP_START) = S(uint32_t, s, SP_QUEUE_END) - S(uint32_t, s, SP_QUEUE);
+    return 1;
+}
+
+int __stdcall msg_to_background(uint8_t *s, int now)
+{
+    if (!now) {
+        ALLOC(4, 0);
+        (void)c;
+        q_start(s);
+    } else {
+        comp_to_background(s, 0);
+    }
+    return 1;
+}
+
+int __stdcall msg_curve(uint8_t *s, const int32_t *d, int now)
+{
+    if (now)
+        queue_rewind(s);
+    ALLOC(5, 0);
+    if (!now) {
+        C(int32_t, c, 0xc) = d[0];
+        C(int32_t, c, 0x10) = d[1];
+        C(int32_t, c, 0x14) = d[2];
+        C(int32_t, c, 0x18) = d[3];
+        C(int32_t, c, 2) = d[4];
+        C(uint8_t, c, 6) = d[5] != 0;
+        q_start(s);
+    } else {
+        C(int32_t, c, 0x1c) = S(int32_t, s, SP_X);
+        C(int32_t, c, 0x20) = S(int32_t, s, SP_Y);
+        for (int i = 0; i < 4; i++)
+            C(int32_t, c, 0x24 + i * 4) = d[i];
+        C(int32_t, c, 0x38) = d[4];
+        if (d[5])
+            for (int i = 0; i < 4; i++)
+                C(int32_t, c, 0x24 + i * 4) += S(int32_t, s, i & 1 ? SP_Y : SP_X);
+        C(int32_t, c, 0x34) = 0;
+        msg_run(s, c);
+    }
+    return 1;
+}
+
+int __stdcall msg_loop(uint8_t *s, const uint32_t *d, uint32_t count, int now)
+{
+    if (now)
+        return 1;
+    ALLOC(6, 0);
+    C(uint32_t, c, 2) = count ? d[0] : 0;
+    C(uint32_t, c, 6) = C(uint32_t, c, 2);
+    C(uint32_t, c, 10) = INFO(uint32_t, s, INFO_LOOP_START);
+    q_start(s);
+    return 1;
+}
+
+int __stdcall msg_flip(uint8_t *s, const int32_t *d, int now)
+{
+    if (!now) {
+        ALLOC(7, 0);
+        C(uint32_t, c, 2) = d[0] != 0;
+        C(uint32_t, c, 6) = d[1] != 0;
+        C(uint32_t, c, 0x12) = 0;
+        C(uint32_t, c, 0xe) = 0;
+        q_start(s);
+        return 1;
+    }
+    uint32_t old = S(uint32_t, s, SP_FLIP);
+    uint32_t *flip = S(uint32_t, s, SP_POSITIONED) ? &S(uint32_t, s, SP_FLIP) : &INFO(uint32_t, s, INFO_FLIP);
+    *flip = (d[1] != 0) << 8 | (d[0] != 0);
+    if (*flip == old)
+        return 1;
+    if (S(uint32_t, s, SP_NPARTS))
+        parts_update_bounds(s);
+    sprite_reposition(s);
+    return 1;
+}
+
+int __stdcall msg_hide(uint8_t *s, int now)
+{
+    if (!now) {
+        ALLOC(8, 0);
+        (void)c;
+        q_start(s);
+    } else {
+        SpriteHide(g_hsl, s, 1);
+    }
+    return 1;
+}
+
+int __stdcall msg_level(uint8_t *s, const uint32_t *d, int now)
+{
+    uint32_t id = d[0], v = d[1];
+    if (!now) {
+        ALLOC(0x18, 0);
+        C(uint32_t, c, 2) = id;
+        C(uint32_t, c, 6) = v;
+        q_start(s);
+    } else {
+        uint8_t *other = id ? sprite_find_id(id) : NULL;
+        sprite_set_level_relative(g_hsl, (uint32_t)(uintptr_t)s, (uint32_t)(uintptr_t)other, v);
+    }
+    return 1;
+}
+
+int __stdcall msg_line(uint8_t *s, const int32_t *d, int now)
+{
+    if (now)
+        queue_rewind(s);
+    ALLOC(9, 0);
+    if (!now) {
+        C(int32_t, c, 0xc) = d[0];
+        C(int32_t, c, 0x10) = d[1];
+        C(int32_t, c, 2) = d[2];
+        C(uint8_t, c, 7) = d[3] != 0;
+        C(uint8_t, c, 6) = d[4] != 0;
+        q_start(s);
+    } else {
+        C(int32_t, c, 0x14) = S(int32_t, s, SP_X);
+        C(int32_t, c, 0x18) = S(int32_t, s, SP_Y);
+        C(int32_t, c, 0x1c) = d[0];
+        C(int32_t, c, 0x20) = d[1];
+        C(int32_t, c, 0x28) = d[2];
+        if (d[4]) {
+            C(int32_t, c, 0x1c) += S(int32_t, s, SP_X);
+            C(int32_t, c, 0x20) += S(int32_t, s, SP_Y);
+        }
+        if (d[3])
+            line_steps(c);
+        C(int32_t, c, 0x24) = 0;
+        msg_run(s, c);
+    }
+    return 1;
+}
+
+int __stdcall msg_type10(uint8_t *s, const uint32_t *d, uint32_t count, int now)
+{
+    if (count != 5)
+        return 0;
+    if (now)
+        queue_rewind(s);
+    ALLOC(10, 0);
+    C(uint32_t, c, 6) = d[0];
+    C(uint32_t, c, 10) = d[1];
+    C(uint8_t, c, 2) = d[2] != 0;
+    if (!now)
+        q_start(s);
+    else
+        msg_run(s, c);
+    return 1;
+}
+
+/* type 0x16: a message for the game, posted even "now" */
+int __stdcall msg_game(uint8_t *s, const uint32_t *d, uint32_t count, int now)
+{
+    if (count < 3 || 9 < count)
+        return 0;
+    if (now)
+        queue_rewind(s);
+    ALLOC(0x16, 0);
+    C(uint32_t, c, 2) = d[0];
+    for (uint32_t k = 0; k < count - 3; k++)
+        C(uint32_t, c, 0xa + k * 4) = d[1 + k];
+    C(uint32_t, c, 6) = count - 3;
+    q_start(s);
+    return 1;
+}
+
+int __stdcall msg_wait(uint8_t *s, const uint32_t *d, int now)
+{
+    if (!now) {
+        ALLOC(0xb, 0);
+        C(uint32_t, c, 2) = d[0];
+        C(uint8_t, c, 6) = 0;
+        q_start(s);
+    }
+    return 1;
+}
+
+int __stdcall msg_jump(uint8_t *s, const int32_t *d, uint32_t count, int now)
+{
+    if (count - 2 < 2)
+        return 0;
+    int32_t x = d[0], y = d[1], rel = count - 2 < 3 ? 0 : d[2];
+    if (!now) {
+        ALLOC(0xc, 0);
+        C(int32_t, c, 2) = x;
+        C(int32_t, c, 6) = y;
+        C(uint8_t, c, 10) = rel != 0;
+        q_start(s);
+    } else {
+        sprite_move(s, x, y, rel, 1);
+    }
+    return 1;
+}
+
+int __stdcall msg_priority(uint8_t *s, const int32_t *d, int now)
+{
+    uint32_t v = d[0] != 0;
+    if (!now) {
+        ALLOC(0xd, 0);
+        C(uint32_t, c, 2) = v;
+        q_start(s);
+    } else {
+        S(uint32_t, s, SP_PRIORITY) = v;
+        S(uint32_t, s, SP_NEXT_STEP) = 0;
+        S(uint32_t, s, SP_NEXT_MOVE) = 0;
+    }
+    return 1;
+}
+
+int __stdcall msg_cel_range(uint8_t *s, const uint32_t *d, int now)
+{
+    if (!now) {
+        ALLOC(0x10, 0);
+        C(uint32_t, c, 2) = d[0];
+        C(uint32_t, c, 6) = d[1];
+        C(uint32_t, c, 10) = d[2];
+        q_start(s);
+    } else {
+        sprite_set_cels(s, d[0], d[1], d[2]);
+    }
+    return 1;
+}
+
+int __stdcall msg_redraw(uint8_t *s, const int32_t *d, int now)
+{
+    if (!now) {
+        ALLOC(0xe, 0);
+        C(uint32_t, c, 2) = d[0] != 0;
+        q_start(s);
+    } else {
+        sprite_set_positioned(s, d[0], 1);
+    }
+    return 1;
+}
+
+int __stdcall msg_motion(uint8_t *s, const int32_t *d, int now)
+{
+    if (!now) {
+        ALLOC(0xf, 0);
+        C(int32_t, c, 2) = d[0];
+        q_start(s);
+    } else if (!S(void *, s, SP_QUEUE)) {
+        SpriteSetMotion(s, d[0]);
+    } else {
+        S(int32_t, s, SP_NEXT_MOVE) -= S(int32_t, s, SP_MOTION);
+        S(int32_t, s, SP_MOTION) = d[0];
+        S(int32_t, s, SP_NEXT_MOVE) += S(int32_t, s, SP_MOTION);
+    }
+    return 1;
+}
+
+int __stdcall msg_speed(uint8_t *s, const int32_t *d, uint32_t count, int now)
+{
+    if (!now) {
+        ALLOC(0x11, 0);
+        C(int32_t, c, 2) = d[0];
+        if (count > 1)
+            C(int32_t, c, 6) = d[1];
+        q_start(s);
+        return 1;
+    }
+    if (!S(void *, s, SP_QUEUE)) {
+        SpriteSetSpeed(s, d[0]);
+    } else {
+        S(int32_t, s, SP_NEXT_STEP) -= S(int32_t, s, SP_SPEED);
+        S(int32_t, s, SP_SPEED) = d[0];
+        S(int32_t, s, SP_NEXT_STEP) += S(int32_t, s, SP_SPEED);
+    }
+    if (count > 1)
+        msg_motion(s, d + 1, now);
+    return 1;
+}
+
+int __stdcall msg_show(uint8_t *s, const uint32_t *d, uint32_t count, int now)
+{
+    uint32_t cel = count ? d[0] : 0xffffffff;
+    if (!now) {
+        ALLOC(0x12, 0);
+        C(uint32_t, c, 2) = cel;
+        q_start(s);
+    } else {
+        SpriteShow(g_hsl, s, cel, 1);
+    }
+    return 1;
+}
+
+/* Runs or queues message msg (type, values...) with `count` values */
+int __stdcall msg_dispatch(uint8_t *s, const uint32_t *msg, uint32_t count, int now)
+{
+    /* sprites on the interface panel mark its dirty rectangles before and after
+     * (original: compared with >= here, > in sprite_move) */
+    int panel = !S(uint32_t, s, SP_SCROLLS) && H(uint32_t, HSL_DIRECTDRAW) && !H(uint32_t, HSL_B5C) &&
+                H(uint32_t, HSL_IFACE_ON) && H(int32_t, HSL_VIEW2_BOTTOM) <= S(int32_t, s, SP_DIRTY_BOTTOM);
+    if (panel)
+        dirty_add_if_shown(s);
+    const uint32_t *d = msg + 1;
+    int r = 1;
+    switch (msg[0]) {
+    case 1: r = msg_cels(s, d, now); break;
+    case 2: r = msg_type2(s, d, count, now); break;
+    case 3: r = msg_loop_start(s, now); break;
+    case 4: r = msg_to_background(s, now); break;
+    case 5: r = msg_curve(s, (const int32_t *)d, now); break;
+    case 6: r = msg_loop(s, d, count, now); break;
+    case 7: r = msg_flip(s, (const int32_t *)d, now); break;
+    case 8: msg_hide(s, now); break;
+    case 9: r = msg_line(s, (const int32_t *)d, now); break;
+    case 10: r = msg_type10(s, d, count, now); break;
+    case 0xb: r = msg_wait(s, d, now); break;
+    case 0xc: r = msg_jump(s, (const int32_t *)d, count, now); break;
+    case 0xd: r = msg_priority(s, (const int32_t *)d, now); break;
+    case 0xe: r = msg_redraw(s, (const int32_t *)d, now); break;
+    case 0xf: r = msg_motion(s, (const int32_t *)d, now); break;
+    case 0x10: r = msg_cel_range(s, d, now); break;
+    case 0x11: r = msg_speed(s, (const int32_t *)d, count, now); break;
+    case 0x12: r = msg_show(s, d, count, now); break;
+    case 0x16: r = msg_game(s, d, count, now); break;
+    case 0x18: r = msg_level(s, d, now); break;
+    default: r = 0; break;
+    }
+    if (panel)
+        dirty_add_if_shown(s);
+    return r;
+}
+
+void __stdcall SpritePostMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const uint32_t *msg)
+{
+    g_hsl = hsl;
+    msg_dispatch(s, msg, count, 0);
+}
+
+void __stdcall SpriteSendMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const uint32_t *msg)
+{
+    g_hsl = hsl;
+    msg_dispatch(s, msg, count, 1);
 }

@@ -20,4 +20,32 @@ void __stdcall SpriteEmptyQueue(uint8_t *hsl, uint8_t *s);
 void __stdcall SpriteSetMessageProc(uint8_t *hsl, uint32_t proc);
 int __stdcall SpriteSetQueue(uint8_t *hsl, uint8_t *s, const void *cmds, SIZE_T size);
 
+void __stdcall queue_rewind(uint8_t *s);
+uint8_t *__stdcall cmd_append(uint8_t *s, uint32_t type, uint32_t size);
+uint8_t *__stdcall cmd_alloc(uint8_t *s, uint32_t type, uint32_t size);
+void __stdcall msg_run(uint8_t *s, uint8_t *c);
+int __stdcall msg_cels(uint8_t *s, const uint32_t *d, int now);
+int __stdcall msg_type2(uint8_t *s, const uint32_t *d, uint32_t count, int now);
+int __stdcall msg_loop_start(uint8_t *s, int now);
+int __stdcall msg_to_background(uint8_t *s, int now);
+int __stdcall msg_curve(uint8_t *s, const int32_t *d, int now);
+int __stdcall msg_loop(uint8_t *s, const uint32_t *d, uint32_t count, int now);
+int __stdcall msg_flip(uint8_t *s, const int32_t *d, int now);
+int __stdcall msg_hide(uint8_t *s, int now);
+int __stdcall msg_level(uint8_t *s, const uint32_t *d, int now);
+int __stdcall msg_line(uint8_t *s, const int32_t *d, int now);
+int __stdcall msg_type10(uint8_t *s, const uint32_t *d, uint32_t count, int now);
+int __stdcall msg_game(uint8_t *s, const uint32_t *d, uint32_t count, int now);
+int __stdcall msg_wait(uint8_t *s, const uint32_t *d, int now);
+int __stdcall msg_jump(uint8_t *s, const int32_t *d, uint32_t count, int now);
+int __stdcall msg_priority(uint8_t *s, const int32_t *d, int now);
+int __stdcall msg_cel_range(uint8_t *s, const uint32_t *d, int now);
+int __stdcall msg_redraw(uint8_t *s, const int32_t *d, int now);
+int __stdcall msg_motion(uint8_t *s, const int32_t *d, int now);
+int __stdcall msg_speed(uint8_t *s, const int32_t *d, uint32_t count, int now);
+int __stdcall msg_show(uint8_t *s, const uint32_t *d, uint32_t count, int now);
+int __stdcall msg_dispatch(uint8_t *s, const uint32_t *msg, uint32_t count, int now);
+void __stdcall SpritePostMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const uint32_t *msg);
+void __stdcall SpriteSendMessage(uint8_t *hsl, uint8_t *s, uint32_t count, const uint32_t *msg);
+
 #endif
