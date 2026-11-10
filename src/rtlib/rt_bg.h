@@ -58,5 +58,7 @@ void __stdcall fx_sides(const int32_t *a, const int32_t *b);
 void __stdcall fx_bands(const int32_t *a, const int32_t *b);
 void __stdcall fx_rect(int step, int32_t *r, int steps, int sides);
 void __stdcall fx_roll(uint32_t n, uint32_t ms);
+void __stdcall fx_slide_x(uint32_t n, uint32_t ms, int dir);
+void __stdcall fx_slide_y(uint32_t n, uint32_t ms, int dir);
 
 #endif

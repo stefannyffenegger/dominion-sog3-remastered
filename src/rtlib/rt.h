@@ -15,4 +15,5 @@
 #include "tileblit.h"
 #include "tiles.h"
 #include "rt_bg.h"
+#include "rt_script.h"
 #endif

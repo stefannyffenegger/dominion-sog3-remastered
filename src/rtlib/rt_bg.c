@@ -582,8 +582,6 @@ int __stdcall bmi_save_bmp(int32_t *bi, LPSTR path)
 
 #define g_fx_dst G(uint8_t *, 0x1007c400)
 #define g_fx_src G(uint8_t *, 0x1007c404)
-#define fx_slide ORIG(void(__stdcall *)(uint32_t, uint32_t, int), 0x10003039)
-#define fx_slide2 ORIG(void(__stdcall *)(uint32_t, uint32_t, int), 0x1000316e)
 
 /* 0x10002d33: one piece */
 void __stdcall fx_show(const int32_t *r)
@@ -702,6 +700,44 @@ void __stdcall fx_roll(uint32_t n, uint32_t ms)
     }
 }
 
+/* 0x10003039 and 0x1000316e: sweep across in n strips over about ms milliseconds, from
+ * the left or top (dir 1) or from the right or bottom (dir -1) */
+static void fx_slide(uint32_t n, uint32_t ms, int dir, int vertical)
+{
+    uint32_t len = R(uint32_t, vertical ? RT_BKG_H : RT_BKG_W);
+    if (!n)
+        n = 0x3c;
+    else if (len < n)
+        n = len;
+    int32_t step = (int32_t)(len / n) * dir;
+    int32_t r[4];
+    int lo = vertical ? 1 : 0, hi = lo + 2;
+    r[lo] = step < 0 ? (int32_t)len + step : 0;
+    r[hi] = step < 0 ? (int32_t)len : step;
+    r[1 - lo] = 0;
+    r[3 - lo] = R(int32_t, vertical ? RT_BKG_W : RT_BKG_H);
+    uint32_t wait = ms / n, next = timeGetTime();
+    while ((uint32_t)r[lo] < R(uint32_t, vertical ? RT_BKG_H : RT_BKG_W) && r[hi] >= 0) {
+        SpriteAnimate(HSL);
+        if (next <= timeGetTime()) {
+            next += wait;
+            fx_show(r);
+            r[lo] += step;
+            r[hi] += step;
+        }
+    }
+}
+
+void __stdcall fx_slide_x(uint32_t n, uint32_t ms, int dir)
+{
+    fx_slide(n, ms, dir, 0);
+}
+
+void __stdcall fx_slide_y(uint32_t n, uint32_t ms, int dir)
+{
+    fx_slide(n, ms, dir, 1);
+}
+
 /* 0x10002910: copies src into dst with transition params[0] (1 blinds, 2-5 open or
  * close with or without sides, 6 roll, 7-10 slides). Sprite messages are off meanwhile. */
 void __stdcall bg_effect(uint32_t dst, uint32_t src, const uint32_t *params)
@@ -729,16 +765,16 @@ void __stdcall bg_effect(uint32_t dst, uint32_t src, const uint32_t *params)
         fx_roll(params[1], params[2]);
         break;
     case 7:
-        fx_slide(params[1], params[2], -1);
+        fx_slide_x(params[1], params[2], -1);
         break;
     case 8:
-        fx_slide(params[1], params[2], 1);
+        fx_slide_x(params[1], params[2], 1);
         break;
     case 9:
-        fx_slide2(params[1], params[2], -1);
+        fx_slide_y(params[1], params[2], -1);
         break;
     case 10:
-        fx_slide2(params[1], params[2], 1);
+        fx_slide_y(params[1], params[2], 1);
         break;
     }
     SpriteSetSendMsg(HSL, msgs);
