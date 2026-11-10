@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 231 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 285 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -231,6 +231,13 @@ The sprite engine's DirectDraw code: creating the DirectDraw object, setting the
 * One of the Phase 1a `palette` byte patches sat in this code (`display_set_size`). The rewrite has the fix built in: the display is always treated as a palette device. The other four patched spots are in code not rewritten yet.
 * Left original: the background setup at 0x10049a02, which calls hand-written blitters; and a debug assertion.
 * Checked: menu tour and Human mission 1 identical to the all-original run.
+
+### Sprite objects, part 1 (`sprite.c`, 54 functions)
+Creating and destroying sprites, their cel lists and animation ranges, bounds, position and speed, pausing, the per-frame animation pass (`SpriteAnimate`) and the getters and setters.
+* A sprite is a 0xf4-byte block with a 0x4a-byte info block. Sprites sit in two doubly linked lists between a head sentinel (level -90000) and a tail sentinel (level 90000): one sorted by drawing level, and the animation list that `SpriteAnimate` walks. At most 4,000 sprites.
+* Sprites on the interface panel mark their old and new rectangles dirty around each animation step (see the display layer).
+* Checked: menu tour and Human mission 1 identical to the all-original run.
+* Next: part 2 (levels, flips, scrolling, messages, the queue interpreter), then the hand-written blitters.
 
 ### What's left
 | Part | Functions | Decompiled lines |

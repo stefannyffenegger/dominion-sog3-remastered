@@ -68,6 +68,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 
 ## Unfinished or broken in the original
 These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.
+* **code.** `SpriteGetSprite` is exported by the engine but was never written: it logs "**** SpriteGetSprite UNIMPLEMENTED ****" and returns nothing.
+* **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.
 * **code.** `ResExtractFile` reads a file's 6-byte head through the main resource file instead of the data file.
 * **code.** `Tangent` reads one entry past its table for exactly 180 degrees.

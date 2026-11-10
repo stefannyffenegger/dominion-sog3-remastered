@@ -6,4 +6,5 @@
 #include "compress.h"
 #include "audio.h"
 #include "display.h"
+#include "sprite.h"
 #endif
