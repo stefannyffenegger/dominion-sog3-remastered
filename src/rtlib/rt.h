@@ -11,4 +11,5 @@
 #include "queue.h"
 #include "spritelib.h"
 #include "draw.h"
+#include "blit.h"
 #endif

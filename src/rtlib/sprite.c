@@ -8,6 +8,9 @@
  *  - the animation list (prev +8, next +0xc) that SpriteAnimate walks, in the same order.
  * The sprite engine's state (HSL) is shared with code not rewritten yet (H()). */
 #include "orig.h"
+#include "blit.h"
+#define intersect_rect(o, a, b) rect_intersect((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
+#define union_rect(o, a, b) rect_union((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
 #include "draw.h"
 #include "spritelib.h"
 #include "sprite.h"
@@ -135,12 +138,6 @@ typedef uint32_t(__stdcall *DoneProc)(uint8_t *, uint32_t);
 typedef void(__stdcall *SpriteServiceFn)(uint32_t);
 typedef void(__stdcall *BoundsProc)(uint8_t *, uint8_t *, RECT *);
 
-/* assembly that changes EBX: called through orig_stdcall_unsafe */
-static uint32_t intersect_rect(RECT *out, const RECT *a, const RECT *b)
-{
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    return orig_stdcall_unsafe(ORIG_PTR(0x1005f6ac), 3, args);
-}
 
 /* ---- lists ---- */
 

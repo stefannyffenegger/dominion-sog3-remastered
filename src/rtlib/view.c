@@ -6,6 +6,9 @@
  *
  * Sprite coordinates are relative to the center of the background (HSL_ORIGIN). */
 #include "orig.h"
+#include "blit.h"
+#define intersect_rect(o, a, b) rect_intersect((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
+#define union_rect(o, a, b) rect_union((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
 #include "draw.h"
 #include "spritelib.h"
 #include "view.h"
@@ -71,18 +74,7 @@
 #define dib_merge                                                                                  \
     ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t), 0x10059e74)
 
-/* assembly that changes EBX: called through orig_stdcall_unsafe */
-static int intersect_rect(void *out, const void *a, const void *b)
-{
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    return (int)orig_stdcall_unsafe(ORIG_PTR(0x1005f6ac), 3, args);
-}
 
-static void union_rect(void *out, const void *a, const void *b)
-{
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    orig_stdcall_unsafe(ORIG_PTR(0x1005f70a), 3, args);
-}
 
 #define FOR_SPRITES(s)                                                                             \
     for (uint8_t *s = S(uint8_t *, H(uint8_t *, HSL_HEAD), SP_NEXT), *end_ = H(uint8_t *, HSL_TAIL); \

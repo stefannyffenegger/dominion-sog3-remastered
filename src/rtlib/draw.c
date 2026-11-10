@@ -7,6 +7,9 @@
  * interface panel on, sprites that belong to it (field 0x9c) are drawn into its own
  * bitmap. */
 #include "orig.h"
+#include "blit.h"
+#define intersect_rect(o, a, b) rect_intersect((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
+#define union_rect(o, a, b) rect_union((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
 #include "draw.h"
 #include "display.h"
 #include "spritelib.h"
@@ -100,18 +103,7 @@ typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 #define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
 #define SpriteDibCopy ORIG(void(__stdcall *)(uint8_t *, uint32_t, uint32_t, uint32_t, int, int, int, int), 0x100537b1)
 
-/* assembly that changes EBX: called through orig_stdcall_unsafe */
-static int intersect_rect(void *out, const void *a, const void *b)
-{
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    return (int)orig_stdcall_unsafe(ORIG_PTR(0x1005f6ac), 3, args);
-}
 
-static void dib_fill8(uint32_t dst, int x, int y, int w, int h, uint32_t color)
-{
-    uint32_t args[6] = {dst, (uint32_t)x, (uint32_t)y, (uint32_t)w, (uint32_t)h, color};
-    orig_stdcall_unsafe(ORIG_PTR(0x100630cc), 6, args);
-}
 
 static void dib_copy(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t key)
 {
@@ -345,7 +337,7 @@ void __stdcall draw_background(uint32_t w, uint32_t h)
         if (H(uint32_t, HSL_DEPTH) == 16)
             dib_fill16(screen, x, y, w, h, H(uint16_t, HSL_FILL));
         else
-            dib_fill8(screen, x, y, w, h, H(uint8_t, HSL_FILL));
+            dib_fill8((void *)(uintptr_t)screen, x, y, w, h, H(uint8_t, HSL_FILL));
     } else if (H(uint32_t, HSL_DEPTH) == 16) {
         dib_copy16(screen, bg, w, h, x, y, sx, sy, 0);
     } else if (!(S(uint8_t, (uintptr_t)bg, 0x10) & 0x80)) {

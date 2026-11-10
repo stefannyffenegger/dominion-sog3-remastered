@@ -3,6 +3,9 @@
  * redrawing sprites. Rewritten from the original (0x10055321-0x100562d9 and
  * 0x10057662-0x10057f40; the drawing pass between them is still original). */
 #include "orig.h"
+#include "blit.h"
+#define intersect_rect(o, a, b) rect_intersect((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
+#define union_rect(o, a, b) rect_union((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
 #include "draw.h"
 #include "spritelib.h"
 #include "display.h"
@@ -119,18 +122,7 @@
 /* original functions not rewritten yet */
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 
-/* assembly that changes EBX: called through orig_stdcall_unsafe */
-static int intersect_rect(void *out, const void *a, const void *b)
-{
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    return (int)orig_stdcall_unsafe(ORIG_PTR(0x1005f6ac), 3, args);
-}
 
-static void union_rect(void *out, const void *a, const void *b)
-{
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    orig_stdcall_unsafe(ORIG_PTR(0x1005f70a), 3, args);
-}
 
 /* ---- the engine state ---- */
 

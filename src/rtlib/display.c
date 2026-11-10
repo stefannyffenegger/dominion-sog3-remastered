@@ -7,6 +7,9 @@
  * 0xb4-byte block it points to (DisplayDD). */
 #define COBJMACROS
 #include "orig.h"
+#include "blit.h"
+#define intersect_rect(o, a, b) rect_intersect((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
+#define union_rect(o, a, b) rect_union((int32_t *)(o), (const int32_t *)(a), (const int32_t *)(b))
 #include "draw.h"
 #include "display.h"
 #include "view.h"
@@ -109,12 +112,6 @@ _Static_assert(sizeof(DisplayDD) == 0xb4, "DisplayDD");
 #define g_static_high ((PALETTEENTRY *)ORIG_PTR(0x1007b170)) /* 246-255 */
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
 
-static void union_rect(RECT *out, const RECT *a, const RECT *b)
-{
-    /* original: assembly that changes EBX */
-    uint32_t args[3] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)a, (uint32_t)(uintptr_t)b};
-    orig_stdcall_unsafe(ORIG_PTR(0x1005f70a), 3, args);
-}
 
 /* Restores a lost surface (the window lost the screen) */
 static int restored(IDirectDrawSurface *s)
@@ -1509,9 +1506,7 @@ int __stdcall SpriteFadePalette(uint8_t *hsl, uint32_t step, uint32_t steps, uin
         return 0;
     uint32_t first = H(uint32_t, HSL_DIRECTDRAW) == 0; /* GDI: leave the static colors alone */
     uint32_t n = first ? 0xfe : 0x100;
-    uint32_t args[5] = {(uint32_t)(uintptr_t)faded, (uint32_t)(uintptr_t)(hsl + HSL_PALETTE + first * 4), step,
-                        steps, n};
-    orig_stdcall_unsafe(ORIG_PTR(0x10062ed8), 5, args);
+palette_fade((uint8_t *)faded, hsl + HSL_PALETTE + first * 4, step, steps, n);
     if (!H(uint32_t, HSL_DIRECTDRAW)) {
         AnimatePalette(H(HPALETTE, HSL_HPALETTE), first, n, faded);
     } else {
