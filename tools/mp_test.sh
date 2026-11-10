@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Two-player LAN test on one machine: two Wine installs, each on its own hidden Xvfb
-# display, host and join over TCP/IP (DirectPlay), start 2_2Prong.
+# display, host and join over TCP/IP, start 2_2Prong. Expects our NETPLAY.R32: the
+# joiner types the address into the game's own "Enter host address" box. (The original
+# module shows DirectPlay's "Locate Session" dialog instead.)
 #
 #   tools/mp_test.sh setup   create the second install ($DOMINION_HOME2) next to the first
 #   tools/mp_test.sh start   start both games, host + join, start the match
@@ -19,6 +21,7 @@ X="$HERE/xvfb_session.sh"
 host() { DOMINION_HOME=$DH1 XVFB_DISPLAY=:99 "$X" "$@"; }
 join() { DOMINION_HOME=$DH2 XVFB_DISPLAY=:98 "$X" "$@"; }
 type_on() { DISPLAY=$1 xdotool type --delay 100 "$2"; }
+clear_field() { for _ in $(seq 20); do DISPLAY=$1 xdotool key BackSpace; done; }
 renderer() { # gdi | default
     local dh
     for dh in "$DH1" "$DH2"; do
@@ -37,7 +40,7 @@ to_session_list() {
     for _ in 1 2 3 4; do $who key Escape; sleep 3; done; sleep 5
     $who click 320 136; sleep 4
     $who click 260 171; sleep 3
-    $who click 350 326; type_on "$disp" "$name"; $who key Return; sleep 6
+    $who click 350 326; clear_field "$disp"; type_on "$disp" "$name"; $who key Return; sleep 6
 }
 
 case "${1:-}" in
@@ -58,13 +61,12 @@ start)
     renderer gdi
     host start; join start; sleep 20
     to_session_list host :99 host
-    host click 250 52; sleep 5            # "Locate Session" dialog: OK (blank = search LAN)
     host click 320 381; sleep 5           # Create
-    host click 400 195; type_on :99 testgame; host key Return; sleep 8
+    host click 400 195; clear_field :99; type_on :99 testgame; host key Return; sleep 8
     to_session_list join :98 joiner
-    join click 100 113; type_on :98 127.0.0.1; join click 250 52; sleep 8
-    join click 91 162; sleep 2            # pick the session
-    join click 330 321; sleep 10          # Join
+    join click 328 321; sleep 3           # Search: "Enter host address" (blank = search the LAN)
+    clear_field :98; type_on :98 127.0.0.1
+    join key Return; sleep 10             # finds the game and joins it
     join click 86 108; sleep 2            # Go (ready)
     host click 86 93; sleep 4
     host click 330 381                    # Start game

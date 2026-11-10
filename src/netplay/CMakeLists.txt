@@ -1,0 +1,5 @@
+add_library(netplay SHARED netplay.c net.c netplay.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+set_target_properties(netplay PROPERTIES PREFIX "" OUTPUT_NAME "NETPLAY" SUFFIX ".R32")
+target_compile_options(netplay PRIVATE ${DOM_MODULE_FLAGS})
+target_link_options(netplay PRIVATE ${DOM_MODULE_LINK})
+target_link_libraries(netplay PRIVATE rtlib32 kernel32 user32 winmm ws2_32 gcc)

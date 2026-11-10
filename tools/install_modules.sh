@@ -8,7 +8,7 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 DH=${DOMINION_HOME:-$HOME/.local/share/dominion-remastered}
-MODULES="BmpFont.r32 Smacker.r32 WAVEPLAY.R32"
+MODULES="BmpFont.r32 Smacker.r32 WAVEPLAY.R32 NETPLAY.R32"
 
 if [ "${1:-}" = --restore ]; then
     GAME=${2:-$DH/game}
@@ -39,6 +39,7 @@ install_one() { # built file, name in game folder
 install_one "$BUILD/src/bmpfont/BmpFont.r32" BmpFont.r32
 install_one "$BUILD/src/smacker/Smacker.r32" Smacker.r32
 install_one "$BUILD/src/waveplay/WAVEPLAY.R32" WAVEPLAY.R32
+install_one "$BUILD/src/netplay/NETPLAY.R32" NETPLAY.R32
 
 if [ -f "$BUILD/src/waveplay/WAVEPLAY.R32" ]; then
     rm -f "$GAME/WAVEPLAY_orig.R32" # left over from the step-1 module

@@ -12,8 +12,8 @@ Order (smallest and most self-contained first):
 | 1 | `BmpFont.r32` | Draws text with the game's bitmap fonts | **Done**: pixel-identical |
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
-| 4 | `NETPLAY.R32` | Multiplayer (DirectPlay) | next |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | |
+| 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | next |
 
 ## Building
 Needs `cmake` and the 32-bit MinGW compiler (`dnf install mingw32-gcc`).
@@ -36,6 +36,7 @@ How the modules are built:
 2. The same tour with a test build that draws nothing proves which screens actually use the module's code.
 3. In-game use is checked during a match (`tools/mp_test.sh`).
 4. `tools/make_proxy.py` builds a logging stand-in for an original module. It records every call with its arguments in the Wine log, then passes the call on to the original. This is how we learn which functions the game really calls, and with what.
+   * With `--call` (for modules whose functions are all cdecl) it also logs each return value and the values behind pointer arguments, so output parameters show up. It works on our own modules too, which makes side-by-side comparison with the original easy.
 
 ## 1. BmpFont.r32 (done)
 * Source: `src/bmpfont/bmpfont.c`, about 450 lines replacing the original 1998 code.
@@ -116,3 +117,57 @@ Sources: `src/waveplay/waveplay.c` (sound effects and all exports), `cdmusic.c` 
   * Music no longer "ends" early after a pause.
   * Music at the highest volume no longer goes silent.
 * Music files are WAV for now: our modules don't use a C runtime, and an Opus/Vorbis decoder needs one. Compressed music comes with the SDL3 audio layer.
+
+## 4. NETPLAY.R32 (done)
+Sources: `src/netplay/netplay.c` (the 64 exports), `net.c` (our network code, replacing DirectPlay).
+
+**What the original was.** A thin layer over DirectPlay with some logic of its own:
+* Players have slot numbers 1–8. The host hands them out; slot 1 is the host.
+* Its own small messages: slot assignment (types 3 and 6), "leave" (2), "player gone" (7), latency pings (4), and map transfer in chunks (1).
+* It turns DirectPlay sessions and players into messages for the menu script.
+
+Who uses it:
+* The menu script calls most exports: connection types, session list, create/join, and the lobby's chat and settings (`DPSendMsg`/`DPReceiveMsg`).
+* The game logic (`ISO.R32`) sends and receives in-game messages from its network thread (`DPReceiveMsgDirect`). It reacts to only two system messages: 5 (a player left) and 0x31 (connection lost).
+
+**What ours keeps.** That logic is ported function by function. The menu script and the game see the same messages, in the same order, with the same values as with the original. This was checked by logging both modules' calls with `make_proxy.py --call` through the same lobby and match.
+
+Details that matter:
+* The script reads the player type field (always 1) of DirectPlay's "player created" message and uses it as a slot number. With 0 there, the host greeted every player twice, and the match start failed with "Internal program error: Invalid resource."
+* DirectPlay sends "player data changed" and "session changed" to the local player as well. The script expects them.
+
+**What replaces DirectPlay** (`net.c`). The model is DirectPlay's peer-to-peer session:
+* The host listens on TCP and UDP port 47624 (DirectPlay's port; `[Dominion] NetPort` in Dominion.ini changes it).
+* A joining game asks the host, then connects directly to every other game. Every game is connected to every other one. Messages go straight from sender to receiver, so messages between two players stay in order.
+* Changes to a player are announced by the game that owns it. Player ids are unique without asking the host.
+* If the host leaves, the others keep playing, as with DirectPlay. Nobody can join any more, because these sessions never moved the host role.
+* LAN search: a UDP broadcast (plus 127.0.0.1, for a host on the same machine). An address entered in the game's address box is asked directly. "Host" or "host:port" both work.
+* Firewall: the host needs TCP and UDP 47624 open. The other players accept connections on a random TCP port, or on `[Dominion] NetPeerPort`.
+
+**Visible differences:**
+* The menu now shows the game's own "Enter host address:" box (under SEARCH), and the game's own address on the session screen.
+  * The original module asked DirectPlay what kind of address its TCP/IP connection uses. With the DirectPlay 6 files in the game folder the answer was "other" (4), so the script left addressing to DirectPlay's "Locate Session" dialog.
+  * Ours answers "internet address" (1), the case the script was written for. It joins as soon as the search finds the game at that address. A blank address searches the LAN and lists what it finds.
+* DirectPlay is no longer used. The `dplay*` overrides from Phase 1a only matter for the original module.
+
+**Kept from the original** (marked `original:` in the source):
+* `DPSetMaxPlayers`/`DPLockGame` pass a 0-based index where a slot number is expected when they drop players above a lowered maximum.
+* `DPDisconnectPlayer` may pick the leaving slot itself as the new host slot.
+* `DPReceiveMsgDirect` hands file-transfer chunks to code that reads the module's own buffer instead of the caller's.
+
+**Fixed:**
+* Slot 0, slot numbers outside 1–8 and missing size pointers no longer write outside the tables.
+* The event that signals new messages is no longer named. Two games on one Windows machine shared it before.
+* A file that can't be opened for sending is reported instead of being used.
+* The address shown for this machine skips loopback addresses.
+* `DPGetPlayerAddress` writes "a.b.c.d" instead of DirectPlay's binary address block.
+
+**Not carried over:** MPlayer.com and DirectPlay lobby launching (`DPCheckForConnect` reports none, `DPIsMPlayer` is false), and modem and serial connections.
+
+**Tested** (two or three games on one machine, `tools/mp_test.sh`):
+* Host and join, with an address and by LAN search; lobby; start of 2_2Prong. Messages flow in the match.
+* Three players in one lobby and in a match on 3_Death Valley. The second and third game connected directly.
+* The joiner quits during a match: the host gets "player 2 left" and wins.
+* The host quits during a 3-player match: both others see "HOST HAS BEEN DEFEATED!" and keep playing.
+* Not yet tested: separate machines, a full match to the end, map transfer.
+

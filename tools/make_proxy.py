@@ -5,9 +5,14 @@ The stand-in has the same exports. Each call writes the export name and the firs
 WINEDEBUG=+debugstr), then jumps to the same export in the renamed original.
 The call itself is untouched, so it works for cdecl and stdcall alike.
 
-Usage: python3 tools/make_proxy.py <original dll> <renamed original name> <out dir> [max calls logged per export]
+Usage: python3 tools/make_proxy.py <original dll> <renamed original name> <out dir> [max calls logged per export] [--call]
   e.g. python3 tools/make_proxy.py work/bin/Smacker.r32 Smacker_orig.r32 work/proxy/smacker
 Then copy the original to <game>/<renamed original name> and <out dir>/proxy.dll to <game>/<original name>.
+
+--call: for modules whose exports are all cdecl. The stand-in calls the original itself
+and logs after it returns: the return value and, for each argument that points to
+readable memory, the dword it points to (shows output parameters). Calls that return 0
+are only counted, not logged, once an export has been logged max times.
 """
 import os
 import struct
@@ -43,8 +48,10 @@ def exports(path):
 def main():
     if len(sys.argv) < 4:
         sys.exit(__doc__)
-    src, orig_name, outdir = sys.argv[1:4]
-    max_calls = int(sys.argv[4]) if len(sys.argv) > 4 else 20
+    call_mode = "--call" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--call"]
+    src, orig_name, outdir = args[0:3]
+    max_calls = int(args[3]) if len(args) > 3 else 20
     exps = exports(src)
     os.makedirs(outdir, exist_ok=True)
     n = len(exps)
@@ -71,7 +78,34 @@ def main():
         "}",
         "BOOL WINAPI DllMain(HINSTANCE h, DWORD r, LPVOID p) { (void)h; (void)r; (void)p; return TRUE; }",
     ]
-    for i, (_, nm) in enumerate(exps):
+    if call_mode:
+        c += [
+            "typedef DWORD(__cdecl *fn8)(DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD);",
+            "static DWORD deref(DWORD p) {",
+            "    if (p < 0x10000 || IsBadReadPtr((void *)p, 4)) return 0xdeadbeef;",
+            "    return *(DWORD *)p;",
+            "}",
+            "DWORD __cdecl proxy_call(DWORD i, DWORD *a) {",
+            "    if (!proxy_target[0]) load();",
+            "    DWORD r = ((fn8)proxy_target[i])(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);",
+            f"    if (r == 0 && counts[i] >= {max_calls}) return r;",
+            f"    if (InterlockedIncrement(&counts[i]) > {max_calls} && r == 0) return r;",
+            "    char buf[400];",
+            '    wsprintfA(buf, "proxy %s(%08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx) = %08lx'
+            ' [%lx %lx %lx %lx %lx %lx %lx]\\n", names[i], a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], r,',
+            "              deref(a[1]), deref(a[2]), deref(a[3]), deref(a[4]), deref(a[5]), deref(a[6]), deref(a[7]));",
+            "    OutputDebugStringA(buf);",
+            "    return r;",
+            "}",
+        ]
+        for i, (_, nm) in enumerate(exps):
+            c += [
+                f"DWORD __cdecl stub{i}(DWORD a0, DWORD a1, DWORD a2, DWORD a3, DWORD a4, DWORD a5, DWORD a6, DWORD a7) {{",
+                "    (void)a1; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; (void)a7;",
+                f"    return proxy_call({i}, &a0);",
+                "}",
+            ]
+    for i, (_, nm) in enumerate([] if call_mode else exps):
         c += [
             f"__attribute__((naked)) void stub{i}(void) {{",
             "    __asm__ volatile(",

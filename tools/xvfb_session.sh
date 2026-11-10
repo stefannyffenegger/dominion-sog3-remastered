@@ -10,7 +10,7 @@ set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 DH=${DOMINION_HOME:-$HOME/.local/share/dominion-remastered}
 DISP=${XVFB_DISPLAY:-:99}
-SIZE=$(cat "$DH/desktop_size" 2>/dev/null || echo 640x480)
+SIZE=$("$HERE/desktop_size.sh" "$DH")
 export WINEPREFIX="$DH/prefix"
 
 case "${1:-}" in

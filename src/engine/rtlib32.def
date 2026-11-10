@@ -17,9 +17,11 @@ EXPORTS
     RtGetString
     RtGetWindow
     RtPostMsg
+    RtRestoreFromGDISurface
     RtRunMsg
     RtSetDisplayMode
     RtSetGameInfo
+    RtShowGDISurface
     SpriteCreateDirectDrawPalette@4
     SpriteCreateDirectDrawSurfaces@4
     SpriteDibColorMapMerge@40
