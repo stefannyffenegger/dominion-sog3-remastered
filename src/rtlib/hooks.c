@@ -28,6 +28,24 @@ void rt_debug(const char *fmt, ...)
     OutputDebugStringA(buf);
 }
 
+__attribute__((naked)) uint32_t __cdecl orig_call2_unsafe(void *fn, uint32_t a, uint32_t b)
+{
+    (void)fn, (void)a, (void)b;
+    __asm__ volatile("pushl %ebx\n\t"
+                     "pushl %esi\n\t"
+                     "pushl %edi\n\t"
+                     "pushl %ebp\n\t"
+                     "movl 20(%esp), %eax\n\t" /* fn */
+                     "pushl 28(%esp)\n\t"      /* b */
+                     "pushl 28(%esp)\n\t"      /* a */
+                     "call *%eax\n\t"           /* stdcall: pops a and b */
+                     "popl %ebp\n\t"
+                     "popl %edi\n\t"
+                     "popl %esi\n\t"
+                     "popl %ebx\n\t"
+                     "ret");
+}
+
 typedef struct Hook {
     uint32_t addr;   /* original address */
     void *func;      /* our rewrite */

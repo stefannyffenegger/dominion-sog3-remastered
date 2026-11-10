@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 126 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 142 of ~1,450 engine functions rewritten |
 
 ## Building
 Needs `cmake` and the 32-bit MinGW compiler (`dnf install mingw32-gcc`).
@@ -198,12 +198,27 @@ Memory (`winmalloc` & co.: Windows global memory plus a byte counter), strings, 
 * Left original for now: `GetAngle`, `Collide`, `Distance`, `SquareRoot` and `GetIntersect` use x87 floating point through the C runtime, and unit movement may depend on their exact results. They move together with the C runtime's math. Also `ExternalCall` and `LinearSearch` (hand-written assembly).
 * Checked: menu tour identical to the all-original run (`DOMINION_ORIGINAL=all`), Human mission 1 identical.
 
+### Compression (done, `codec.c` + `compress.c`, 16 entry points)
+`codec.c` is plain portable C, tested natively; `compress.c` connects it to the engine's exports.
+* **Bitmaps** are a series of blocks, each a 2-byte header (method in the top 3 bits, data size below) and the data:
+  * raw bytes;
+  * LZW with 10, 11 or 12-bit codes, as sub-chunks of a 2-byte length plus codes. Each sub-chunk covers up to 8 KB of output and starts with an empty dictionary. Codes are packed MSB first; 256 and up are new strings, `2^bits - 1` ends a sub-chunk;
+  * 0xE000 ends the stream.
+  The original's packer can also write a run-length method (0x2000) that its own unpacker refuses. Its setting is never changed from 1 (LZW with 11-bit codes), so the game files only contain raw and 11-bit LZW blocks.
+* **Sound** is standard IMA ADPCM (4 bits per sample) after a 10-byte header. The original keeps the step index times 8 and precomputes its tables; they match the standard ones exactly, so ours computes them.
+* The original's decoder core is hand-written assembly with arguments in registers. It can't be redirected on its own, but nothing outside the codec uses its state, so the codec is replaced as a whole and the old internals are no longer called.
+* **Checked byte for byte** (`tests/codec_compare.sh <unmodified Rtlib32.dll> <game folder> [wine prefix]`):
+  * all 29,211 bitmaps of `DOMINION.bin` unpacked by ours (natively) and by the original engine (under Wine);
+  * all 876 LZW blocks in the game files re-packed by our packer;
+  * IMA unpacking and packing, mono and stereo.
+  The menu tour and Human mission 1 are identical too.
+* **Register rule found here:** some original functions are hand-written assembly that changes EBX (the IMA functions, the sprite run-length expander). Our compiled code expects EBX, ESI and EDI to be kept. Where our code still calls such an original function, it goes through `orig_call2_unsafe` (`hooks.c`), which saves them. The resource code's call to the sprite expander needed this.
+
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|
 | Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
 | Sprites, screen, DirectDraw (`Sprite*` + blitters, partly hand-written assembly) | ~380 | 19,400 |
 | Audio (`Audio*`) | 194 | 5,300 |
-| Compression (bitmaps, sound) | ~65 | 2,700 |
 | C runtime (not ported; replaced by the system's) | ~430 | |
 

@@ -24,4 +24,8 @@ extern uint8_t *g_orig; /* where Rtlib32_orig.dll is loaded */
 
 void rt_debug(const char *fmt, ...);
 
+/* Calls a 2-argument stdcall function of the original that may change EBX, ESI or EDI
+ * (hand-written assembly); our compiled code expects them kept. */
+uint32_t __cdecl orig_call2_unsafe(void *fn, uint32_t a, uint32_t b);
+
 #endif

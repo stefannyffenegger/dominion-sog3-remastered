@@ -3,20 +3,17 @@
  * Behavior kept from the original on purpose is marked "original:". */
 #include "orig.h"
 #include "res.h"
+#include "utils.h"
+#include "compress.h"
 
 /* ---- original engine functions we call (not rewritten yet) ---- */
-#define winmalloc ORIG(void *(__stdcall *)(uint32_t, int), 0x1003e09e)       /* 1 = zeroed */
-#define winfree ORIG(void *(__stdcall *)(void *), 0x1003e035)                 /* returns NULL */
-#define CopyHugeBytes ORIG(void(__stdcall *)(void *, const void *, uint32_t), 0x1003d800)
-#define DecompressBitmapInit ORIG(void *(__cdecl *)(void), 0x10046a30)
-#define DecompressBitmapExit ORIG(void(__stdcall *)(void *), 0x10046c07)
-/* returns a C++ bool: only the low byte is set */
-#define DecompressBitmapData ORIG(uint8_t(__stdcall *)(void *, const void *, void *, uint32_t), 0x10046a45)
-#define ExpandRleDib ORIG(void(__stdcall *)(void *, const void *), 0x1006a588)
 #define AudioCreateMidi ORIG(void *(__stdcall *)(uint32_t, void *, void *), 0x100416e6)
-#define FileExist ORIG(int(__stdcall *)(LPCSTR), 0x1003e3b0)
-#define GetPathAndFile ORIG(void(__stdcall *)(LPCSTR, char *, char *), 0x1003e3d3)
-#define MakeFullPath ORIG(void(__stdcall *)(char *, const char *, const char *), 0x1003e489)
+
+/* The sprite code's run-length expander is hand-written assembly that doesn't keep EBX */
+static void expand_rle_dib(void *dst, const void *src)
+{
+    orig_call2_unsafe(ORIG_PTR(0x1006a588), (uint32_t)(uintptr_t)dst, (uint32_t)(uintptr_t)src);
+}
 
 /* globals of the original */
 #define g_res_module G(HMODULE, 0x1008f900)
@@ -382,7 +379,7 @@ uint8_t *__stdcall res_expand_bitmap(ResFile *rf, ResDib *src, uint32_t *size)
         }
         dst->bits = p + src->header_size;
     } else {
-        ExpandRleDib(p, src);
+        expand_rle_dib(p, src);
         dst->bits = p + src->header_size;
         dst->flags &= ~DIB_RLE;
     }

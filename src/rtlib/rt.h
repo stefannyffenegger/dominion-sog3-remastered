@@ -3,4 +3,5 @@
 #define DOMINION_RTLIB_RT_H
 #include "res.h"
 #include "utils.h"
+#include "compress.h"
 #endif
