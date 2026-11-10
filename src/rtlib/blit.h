@@ -61,4 +61,19 @@ void fx_blend(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend);
 void fx_blend_cmap(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend, const uint32_t *cmap);
 void fx_dither(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t row);
 
+void dib_setup(void *src, void *dst, int sx, int sy, int dx, int dy, int w, int h, uint32_t flip, uint8_t **ps,
+               uint8_t **pd, int32_t *rows, int32_t *sgap, int32_t *dgap, int bpp);
+void __stdcall dib_fill8_wide(void *bm, int w, int h, int x, int y, uint32_t color);
+void __stdcall dib_fill16(void *bm, int w, int h, int x, int y, uint32_t color);
+/* pal: NULL for an 8-bit destination, else the palette for a 16-bit one */
+void dib_copy_c(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip, const uint32_t *pal,
+                int is565);
+void dib_copy_key_c(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                    const uint32_t *pal, int is565);
+void dib_copy_both_c(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                     const uint32_t *pal, int is565);
+
+void __stdcall dib_copy_out(uint8_t *dst, int32_t pitch, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx,
+                            int sy);
+
 #endif /* DOMINION_RTLIB_BLIT_H */

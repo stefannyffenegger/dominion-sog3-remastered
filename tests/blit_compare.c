@@ -640,6 +640,95 @@ static void test_points(void)
     printf("points and pixels: done\n");
 }
 
+/* ---- 16-bit screens and the plain C copies ---- */
+
+/* a bitmap dw x dh "pixels" with room for 2 bytes per pixel and some slack */
+static uint8_t *dib_wide(int dw, int dh, uint32_t flags)
+{
+    uint8_t *p = dib(2 * dw + 8, dh + 3, flags);
+    *(int32_t *)(p + 4) = dw, *(uint32_t *)(p + 8) = dw, *(int32_t *)(p + 0xc) = dh;
+    return p;
+}
+#define WIDE_BYTES(dw, dh) ((((2 * (dw) + 8) + 3) & ~3u) * ((dh) + 3))
+
+static void test_wide(void)
+{
+    static uint8_t hsl[0x1000];
+    *(uint8_t **)(base + 0x89e24) = hsl;
+    uint32_t *pal = (uint32_t *)(hsl + 0x54);
+    for (int i = 0; i < 20000; i++) {
+        for (int k = 0; k < 256; k++)
+            pal[k] = rnd(0x1000000);
+        int is565 = rnd(2), kind = rnd(6);
+        *(uint32_t *)(hsl + 0x8c0) = is565;
+        int sw = 1 + rnd(60), sh = 1 + rnd(30);
+        uint8_t *src = dib(sw, sh, 0);
+        for (uint32_t k = 0; k < *(uint32_t *)(src + 8) * sh; k++)
+            if (rnd(3) == 0)
+                src[0x24 + k] = 0;
+        int dw = sw + rnd(30), dh = sh + rnd(30);
+        uint8_t *a = dib_wide(dw, dh, rnd(2) ? 0x40 : 0), *b = malloc(0x24 + WIDE_BYTES(dw, dh) + 64);
+        memcpy(b, a, 0x24 + WIDE_BYTES(dw, dh)), *(uint8_t **)(b + 0x20) = b + 0x24;
+        int w = 1 + rnd(sw), h = 1 + rnd(sh), sx = rnd(sw - w + 1), sy = rnd(sh - h + 1);
+        int dx = rnd(dw - w + 1), dy = rnd(dh - h + 1);
+        uint32_t flip = rnd(2) ? 0x100 : 0, color = rnd(0x10000);
+        const char *name;
+        switch (kind) {
+        case 0:
+            name = "fill16";
+            ORIG(0x100638d8, U(a), w, h, dx, dy, color);
+            dib_fill16(b, w, h, dx, dy, color);
+            break;
+        case 1:
+            name = "fill8 wide";
+            ORIG(0x100637ff, U(a), w, h, dx, dy, color);
+            dib_fill8_wide(b, w, h, dx, dy, color);
+            break;
+        case 2:
+            name = "copy8 (C)";
+            ORIG(0x100639b9, U(a), U(src), w, h, dx, dy, sx, sy, flip);
+            dib_copy_c(b, src, w, h, dx, dy, sx, sy, flip, NULL, 0);
+            break;
+        case 3:
+            name = "copy16";
+            ORIG(0x10063a78, U(a), U(src), w, h, dx, dy, sx, sy, flip);
+            dib_copy_c(b, src, w, h, dx, dy, sx, sy, flip, pal, is565);
+            break;
+        case 4:
+            name = "copy8 keyed";
+            flip = rnd(4) ? 0 : flip;
+            ORIG(0x10063c0e, U(a), U(src), w, h, dx, dy, sx, sy, flip);
+            dib_copy_key_c(b, src, w, h, dx, dy, sx, sy, flip, NULL, 0);
+            break;
+        default:
+            name = "copy16 keyed";
+            flip = rnd(4) ? 0 : flip;
+            ORIG(0x10063cfd, U(a), U(src), w, h, dx, dy, sx, sy, flip);
+            dib_copy_key_c(b, src, w, h, dx, dy, sx, sy, flip, pal, is565);
+        }
+        int same = !memcmp(a + 0x24, b + 0x24, WIDE_BYTES(dw, dh));
+        if (!same && failures < 6)
+            printf("  %s w=%d h=%d dx=%d dy=%d sx=%d sy=%d flip=%x dst %dx%d flags %x\n", name, w, h, dx, dy, sx, sy, flip,
+                   dw, dh, *(uint32_t *)(a + 0x10));
+        check(name, same, i);
+        free(a), free(b), free(src);
+    }
+    for (int i = 0; i < 5000; i++) { /* bitmap to plain buffer */
+        int sw = 1 + rnd(60), sh = 1 + rnd(30), w = 1 + rnd(sw), h = 1 + rnd(sh);
+        uint8_t *src = dib(sw, sh, rnd(2) ? 0x40 : 0);
+        int pitch = w + rnd(20), dx = rnd(pitch - w + 1), dy = rnd(5);
+        uint8_t *a = malloc(pitch * (h + 6)), *b = malloc(pitch * (h + 6));
+        for (int k = 0; k < pitch * (h + 6); k++)
+            a[k] = b[k] = (uint8_t)rnd(256);
+        int sx = rnd(sw - w + 1), sy = rnd(sh - h + 1);
+        ORIG(0x10062000, U(a), pitch, U(src), w, h, dx, dy, sx, sy);
+        dib_copy_out(b, pitch, src, w, h, dx, dy, sx, sy);
+        check("copy out", !memcmp(a, b, pitch * (h + 6)), i);
+        free(a), free(b), free(src);
+    }
+    printf("16-bit and C copies: done\n");
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -656,6 +745,7 @@ int main(int argc, char **argv)
     test_tiles();
     test_fx();
     test_points();
+    test_wide();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }

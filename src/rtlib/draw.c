@@ -92,8 +92,6 @@ typedef void(__stdcall *DrawProc)(uint8_t *, uint8_t *, uint32_t, RECT *);
 typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 
 /* blitters, still original: dst, src, w, h, dst x, y, src x, y, flip, ... */
-#define dib_fill16 ORIG(void(__stdcall *)(uint32_t, int, int, int, int, uint32_t), 0x100638d8)
-#define dib_copy16 ORIG(void(__stdcall *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t), 0x10063a78)
 
 
 
@@ -449,7 +447,8 @@ void __stdcall draw_background(uint32_t w, uint32_t h)
         if (H(int32_t, HSL_FILL) == -1)
             return;
         if (H(uint32_t, HSL_DEPTH) == 16)
-            dib_fill16(screen, x, y, w, h, H(uint16_t, HSL_FILL));
+            /* (the original passes position and size the wrong way round) */
+            dib_fill16((void *)(uintptr_t)screen, x, y, w, h, H(uint16_t, HSL_FILL));
         else
             dib_fill8((void *)(uintptr_t)screen, x, y, w, h, H(uint8_t, HSL_FILL));
     } else if (H(uint32_t, HSL_DEPTH) == 16) {
@@ -576,4 +575,68 @@ char *__cdecl draw_order_name(int order)
     char *buf = (char *)ORIG_PTR(0x10089e78);
     lstrcpyA(buf, order >= 0 && order <= 5 ? names[order] : "???");
     return buf;
+}
+
+/* ---- 16-bit screens and the plain C copies (0x100636b0-0x10064334), see blit.c ---- */
+
+#define HSL_PALETTE 0x054 /* the screen bitmap's colors */
+#define HSL_565 0x8c0     /* 16-bit pixels are 5-6-5, not 5-5-5 */
+
+void __stdcall dib_setup_c(uint32_t src, uint32_t dst, int sx, int sy, int dx, int dy, int w, int h, uint32_t flip,
+                           uint8_t **ps, uint8_t **pd, int32_t *rows, int32_t *sgap, int32_t *dgap, int bpp)
+{
+    dib_setup(BMP(src), BMP(dst), sx, sy, dx, dy, w, h, flip, ps, pd, rows, sgap, dgap, bpp);
+}
+
+#define COPY_WRAPPER(name, fn, pal)                                                                               \
+    void __stdcall name(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip)  \
+    {                                                                                                             \
+        fn(BMP(dst), BMP(src), w, h, dx, dy, sx, sy, flip, pal, H(uint32_t, HSL_565) != 0);                       \
+    }
+#define PAL16 ((const uint32_t *)(g_hsl + HSL_PALETTE))
+COPY_WRAPPER(dib_copy8_c, dib_copy_c, NULL)         /* 0x100639b9 */
+COPY_WRAPPER(dib_copy16, dib_copy_c, PAL16)         /* 0x10063a78 */
+COPY_WRAPPER(dib_copy8_key, dib_copy_key_c, NULL)   /* 0x10063c0e */
+COPY_WRAPPER(dib_copy16_key, dib_copy_key_c, PAL16) /* 0x10063cfd */
+COPY_WRAPPER(dib_copy8_both, dib_copy_both_c, NULL) /* 0x10063ed7 */
+COPY_WRAPPER(dib_copy16_both, dib_copy_both_c, PAL16) /* 0x10063fc6 */
+
+/* 0x100641a9 (unused): the setup for a run-length source in the copy routine's format.
+ * Returns 2 if the area starts right of the bitmap's left edge, plus 1 if it doesn't end
+ * at its right edge. */
+int __stdcall dib_setup_coded(uint8_t *src, uint8_t *dst, int sx, int sy, int dx, int dy, int w, int h, uint32_t flip,
+                              const uint8_t **ps, uint8_t **pd, const uint8_t **table, int32_t *rows, int32_t *dgap)
+{
+    int clip = sx ? 2 : 0;
+    if (S(int32_t, src, 4) != sx + w)
+        clip++;
+    int row = (flip & 0xff00) ? S(int32_t, src, 0xc) - h - sy : sy;
+    const uint8_t *bits = S(const uint8_t *, src, 0x20);
+    G(const uint8_t *, 0x1008f8d8) = bits;
+    const uint8_t *t = bits + (h + row) * 2 - 2;
+    *table = t;
+    *ps = bits + *(const uint16_t *)t;
+    int32_t step = S(int32_t, dst, 4), drow;
+    if (!(S(uint8_t, dst, 0x10) & 0x40)) {
+        drow = S(int32_t, dst, 0xc) - dy;
+        if (!(flip & 0xff00))
+            drow -= h;
+        else {
+            step = -step;
+            drow--;
+        }
+    } else {
+        drow = dy;
+        if (!(flip & 0xff00)) {
+            step = -step;
+            drow = dy - h - 1;
+        }
+    }
+    *pd = S(uint8_t *, dst, 0x20) + S(int32_t, dst, 4) * drow + dx;
+    step -= w;
+    if (flip & 0xff)
+        step += w * 2;
+    *dgap = step;
+    *rows = h;
+    return clip;
 }

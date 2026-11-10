@@ -1239,3 +1239,140 @@ uint32_t __stdcall dib_overlap(void *a, void *b, uint32_t w, uint32_t h, int ax,
         }
     return 0;
 }
+
+/* ---- 16-bit screens and the plain C copies (0x100636b0-0x10064334) ----
+ * Compiled C in the original, for a screen bitmap of 16-bit pixels drawn from 8-bit
+ * sources through the palette. Dominion runs in 8 bits; only the copy and the fill are
+ * reachable at all. */
+
+/* 0x100636b0: start pointers, row count and row gaps for a w x h copy; bpp 16 doubles
+ * the destination's offsets */
+void dib_setup(void *src, void *dst, int sx, int sy, int dx, int dy, int w, int h, uint32_t flip, uint8_t **ps,
+               uint8_t **pd, int32_t *rows, int32_t *sgap, int32_t *dgap, int bpp)
+{
+    int32_t sstep = F(int32_t, src, 8), row;
+    if (!(flip & 0xff00))
+        row = F(int32_t, src, 0xc) - sy - h;
+    else {
+        sstep = -sstep;
+        row = h + sy - 1;
+    }
+    if (flip & 0xff)
+        sx = F(int32_t, src, 4) - sx;
+    *ps = F(uint8_t *, src, 0x20) + (F(int32_t, src, 8) * row + sx);
+    int32_t dstep = F(int32_t, dst, 8);
+    if (!(F(uint8_t, dst, 0x10) & 0x40))
+        row = F(int32_t, dst, 0xc) - dy - h;
+    else {
+        dstep = -dstep;
+        row = h + dy - 1;
+    }
+    int32_t off = F(int32_t, dst, 8) * row + dx;
+    if (bpp == 0x10)
+        off *= 2;
+    *pd = F(uint8_t *, dst, 0x20) + off;
+    sstep += (flip & 0xff) ? w : -w;
+    dstep -= w;
+    if (bpp == 0x10)
+        dstep *= 2;
+    *sgap = sstep;
+    *dgap = dstep;
+    *rows = h;
+}
+
+static uint16_t pixel16(uint32_t rgb, int is565)
+{
+    if (is565)
+        return (uint16_t)(((rgb & 0xfc00) >> 5) | ((rgb >> 8) & 0xf800) | ((rgb & 0xf8) >> 3));
+    return (uint16_t)(((rgb & 0xf8) >> 3) | ((rgb & 0xf800) >> 6) | ((rgb & 0xf80000) >> 9));
+}
+
+/* 0x100637ff (unused): an 8-bit fill that steps 2 bytes per pixel and uses the width as
+ * the row pitch */
+void __stdcall dib_fill8_wide(void *bm, int w, int h, int x, int y, uint32_t color)
+{
+    if (!w || !h || (F(uint8_t, bm, 0x10) & 0x80))
+        return;
+    int32_t bw = F(int32_t, bm, 4);
+    int32_t row = (F(uint8_t, bm, 0x10) & 0x40) ? y : F(int32_t, bm, 0xc) - y - h;
+    uint8_t *p = F(uint8_t *, bm, 0x20) + (bw * row + x);
+    for (; h; h--, p += bw - w)
+        for (int i = w; i > 0; i--, p += 2)
+            *p = (uint8_t)color;
+}
+
+/* 0x100638d8: the 16-bit fill. Each pixel is stored as 32 bits, so 2 zero bytes follow
+ * the last pixel of each row. */
+void __stdcall dib_fill16(void *bm, int w, int h, int x, int y, uint32_t color)
+{
+    if (!w || !h || (F(uint8_t, bm, 0x10) & 0x80))
+        return;
+    int32_t bw = F(int32_t, bm, 4);
+    int32_t row = (F(uint8_t, bm, 0x10) & 0x40) ? y : F(int32_t, bm, 0xc) - y - h;
+    uint8_t *p = F(uint8_t *, bm, 0x20) + (bw * row + x) * 2;
+    for (; h; h--, p += (bw - w) * 2)
+        for (int i = w; i > 0; i--, p += 2)
+            *(uint32_t *)p = (uint16_t)color;
+}
+
+/* The pixel loops. key: 0 copy all, 1 skip source pixels that are 0, 2 also skip where
+ * the destination is 0 (the 16-bit version tests 32 bits of the destination). */
+static void copy_rows(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip, int key,
+                      const uint32_t *pal, int is565)
+{
+    uint8_t *s, *d;
+    int32_t rows, sgap, dgap;
+    dib_setup(src, dst, sx, sy, dx, dy, w, h, flip, &s, &d, &rows, &sgap, &dgap, pal ? 0x10 : 8);
+    for (; rows; rows--, s += sgap, d += dgap)
+        for (int i = w; i > 0; i--, s++, d += pal ? 2 : 1) {
+            if (key && !*s)
+                continue;
+            if (!pal) {
+                if (key < 2 || *d)
+                    *d = *s;
+            } else if (key < 2 || *(uint32_t *)d)
+                *(uint16_t *)d = pixel16(pal[*s], is565);
+        }
+}
+
+/* 0x100639b9 (unused) and 0x10063a78: copy to an 8-bit or a 16-bit bitmap */
+void dib_copy_c(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip, const uint32_t *pal,
+                int is565)
+{
+    if (w && h)
+        copy_rows(dst, src, w, h, dx, dy, sx, sy, flip, 0, pal, is565);
+}
+
+/* 0x10063c0e and 0x10063cfd (unused): the same skipping source pixels that are 0; only
+ * for plain sources without a flip */
+void dib_copy_key_c(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                    const uint32_t *pal, int is565)
+{
+    if (w && h && !(F(uint8_t, src, 0x10) & 0x80) && !flip)
+        copy_rows(dst, src, w, h, dx, dy, sx, sy, 0, 1, pal, is565);
+}
+
+/* 0x10063ed7 and 0x10063fc6 (unused): only where both source and destination are not 0.
+ * The original tests an uninitialized variable where it means the height; taken as set. */
+void dib_copy_both_c(void *dst, void *src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                     const uint32_t *pal, int is565)
+{
+    if (w && !(F(uint8_t, src, 0x10) & 0x80))
+        copy_rows(dst, src, w, h, dx, dy, sx, sy, flip, 2, pal, is565);
+}
+
+/* 0x10062000: copies w x h pixels from bitmap src at sx, sy (rows counted from the top)
+ * into a plain buffer with row pitch `pitch`, at dx, dy. h must not be 0. */
+void __stdcall dib_copy_out(uint8_t *dst, int32_t pitch, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx,
+                            int sy)
+{
+    int32_t step = F(int32_t, src, 8);
+    if (!(F(uint32_t, src, 0x10) & 0x40)) {
+        sy = F(int32_t, src, 0xc) - sy - 1;
+        step = -step;
+    }
+    const uint8_t *s = F(const uint8_t *, src, 0x20) + (sy * F(int32_t, src, 8) + sx);
+    uint8_t *d = dst + dy * pitch + dx;
+    for (; h; h--, d += pitch, s += step)
+        memcpy(d, s, w);
+}

@@ -48,4 +48,16 @@ void __stdcall rt_memcpy(void *d, const void *s, uint32_t n);
 void __stdcall rt_memmove(void *d, const void *s, uint32_t n);
 char *__cdecl draw_order_name(int order);
 
+void __stdcall dib_setup_c(uint32_t src, uint32_t dst, int sx, int sy, int dx, int dy, int w, int h, uint32_t flip,
+                           uint8_t **ps, uint8_t **pd, int32_t *rows, int32_t *sgap, int32_t *dgap, int bpp);
+void __stdcall dib_copy8_c(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip);
+void __stdcall dib_copy16(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip);
+void __stdcall dib_copy8_key(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip);
+void __stdcall dib_copy16_key(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip);
+void __stdcall dib_copy8_both(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip);
+void __stdcall dib_copy16_both(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                               uint32_t flip);
+int __stdcall dib_setup_coded(uint8_t *src, uint8_t *dst, int sx, int sy, int dx, int dy, int w, int h, uint32_t flip,
+                              const uint8_t **ps, uint8_t **pd, const uint8_t **table, int32_t *rows, int32_t *dgap);
+
 #endif

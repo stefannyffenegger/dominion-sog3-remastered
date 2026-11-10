@@ -110,6 +110,12 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - with two run-length bitmaps, skipping a transparent run miscounts by one pixel: each skip shortens the tested row by a pixel, and in one direction the two bitmaps end up a pixel out of step;
   - two plain bitmaps are always read bottom-up, whatever their flags say.
 * **code.** An unused function names drawing orders: "T", "T+O", "O+T", "T+S", "S+T", "O", "ARB" (tiles, overlays, sprites, arbitrary). "T+O" can never be returned: its test repeats the one for "T".
+* **code.** The 16-bit color code is half-finished:
+  - the engine calls the 16-bit fill with position and size swapped (x, y, w, h into a function that takes w, h, x, y);
+  - that fill stores each pixel as 32 bits, so two zero bytes land after every row;
+  - the two "only where both are not 0" copies test an uninitialized variable where they mean the height, and the 16-bit one tests 32 bits of the destination;
+  - an unused 8-bit fill steps two bytes per pixel.
+* **code.** The engine can read the desktop resolution from the Windows 95 registry (`Display\Settings`, "Resolution" and "BitsPerPixel"), but nothing calls that.
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

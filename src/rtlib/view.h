@@ -46,4 +46,13 @@ int __cdecl dib_section_delete(void);
 UINT __cdecl dib_section_colors(void);
 uint32_t __stdcall view_false4(uint32_t a, uint32_t b, uint32_t c, uint32_t d);
 
+void __stdcall wipe_rect(int step, int32_t *r, int steps, int sides);
+void __stdcall wipe_apply(const int32_t *r);
+void __stdcall wipe_sides(const int32_t *a, const int32_t *b);
+void __stdcall wipe_bands(const int32_t *a, const int32_t *b);
+void __stdcall wipe_reveal_run(int steps, int sides);
+void __stdcall wipe_blank_run(uint32_t steps, int sides);
+void __stdcall wipe_in(uint8_t *hsl, uint8_t *bm, uint32_t steps, int sides);
+void __stdcall wipe_out(uint8_t *hsl, uint8_t *bm, uint32_t steps, int sides);
+
 #endif

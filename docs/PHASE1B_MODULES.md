@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 542 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 564 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -305,6 +305,12 @@ The sprite engine's hand-written assembly, rewritten in portable C one routine a
 * The exported bitmap calls (`SpriteDibCopy`, `SpriteDibMerge`, `SpriteDibSet`, `SpriteDibColorMapMerge`, `SpriteDibFXMerge`, `SpriteDibDiff`) are thin wrappers around the blitters. `SpriteDibDiff` puts a source pixel back wherever the destination is 255; an unexported twin clears the destination wherever the source is non-zero.
 * The engine's own assembly memcpy and memmove are replaced too.
 * `SpriteHitDetect` / `SpriteHitDetectRect` test whether two sprites (or their parts) overlap in a non-zero pixel. Dominion never calls them. The overlap routine was 875 bytes of assembly; ours matches it on 30,000 random cases.
+
+### 16-bit screens, wipes and leftovers (`blit.c`, `draw.c` +10, `view.c` +8, `display.c` +4)
+* **16-bit screens:** a fill and copies that draw 8-bit bitmaps through the palette into 5-5-5 or 5-6-5 pixels, with keyed variants (skip source pixels that are 0; skip where the destination is 0 too). Dominion runs in 8 bits; of this group only the copy and the fill can be reached. Byte-exact against the original (20,000 cases).
+* **Wipes:** two screen transitions the script interpreter can call: reveal a new background from the middle outwards, or blank it from the edges inwards, in steps with the sprites animating in between.
+* **Leftovers nothing refers to:** a display-mode list callback, a helper that frees the DirectDraw state, and a function that reads the desktop's size and depth from the Windows 95 registry (`HKEY_CURRENT_CONFIG\Display\Settings`).
+* With this, every function of the sprite module that can still run is ours. What remains there is assembly whose callers are all rewritten (the old merge fast paths, register-passing setup helpers); it goes away with the original DLL.
 
 ### Tile map (`tiles.c` 19 functions, `tileblit.c` 9 blitters)
 The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile rows (every second row shifted by half a tile), with the layers above them.

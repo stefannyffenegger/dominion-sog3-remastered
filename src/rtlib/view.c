@@ -725,3 +725,132 @@ uint32_t __stdcall view_false4(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
     (void)a, (void)b, (void)c, (void)d;
     return 0;
 }
+
+/* ---- wipes (0x1005f760-0x1005fcec): the background appears from the middle outwards,
+ * or is blanked from the edges inwards, in steps with the sprites animating between ---- */
+
+#define HSL_NO_SEND_MSG 0x944
+#define HSL_9FC 0x9fc
+
+static struct {
+    int w, h;      /* 0x1008f840, 0x1008f848: size of the scrollable area */
+    uint8_t *src;  /* 0x1008f844: the bitmap being revealed */
+    int reveal;    /* 0x1008f84c: copy from src; otherwise fill with color 0 */
+} g_wipe;
+
+/* 0x1005fb02: the rectangle of a step: step 0 is the whole area, steps - 1 the smallest.
+ * Without `sides` it spans the full width. */
+void __stdcall wipe_rect(int step, int32_t *r, int steps, int sides)
+{
+    uint32_t div = (uint32_t)(steps * 2 - 1);
+    r[0] = sides ? (int32_t)((uint32_t)(step * g_wipe.w) / div) : 0;
+    r[2] = g_wipe.w - r[0];
+    r[1] = (int32_t)((uint32_t)(step * g_wipe.h) / div);
+    r[3] = g_wipe.h - r[1];
+}
+
+/* 0x1005f981: reveals or blanks r in the background and paints it */
+void __stdcall wipe_apply(const int32_t *r)
+{
+    uint8_t *bg = H(uint8_t *, HSL_BACKGROUND);
+    if (!g_wipe.reveal)
+        dib_fill8(bg, r[0], r[1], r[2] - r[0], r[3] - r[1], 0);
+    else
+        SpriteCopyRect(bg, g_wipe.src, (int32_t *)r);
+    RECT rc = {r[0], r[1], r[2], r[3]};
+    OffsetRect(&rc, H(int32_t, HSL_SCROLL_X), H(int32_t, HSL_SCROLL_Y));
+    SpritePaintRect(g_hsl, &rc, 1);
+}
+
+/* 0x1005fa4b: the strips left and right of b, between a's sides, as tall as b */
+void __stdcall wipe_sides(const int32_t *a, const int32_t *b)
+{
+    int32_t r[4] = {a[0], b[1], b[0], b[3]};
+    wipe_apply(r);
+    r[0] = b[2];
+    r[2] = a[2];
+    wipe_apply(r);
+}
+
+/* 0x1005faa6: the strips above and below b, as wide as a */
+void __stdcall wipe_bands(const int32_t *a, const int32_t *b)
+{
+    int32_t r[4] = {a[0], a[1], a[2], b[1]};
+    wipe_apply(r);
+    r[1] = b[3];
+    r[3] = a[3];
+    wipe_apply(r);
+}
+
+/* 0x1005f885: reveal from the smallest rectangle outwards. Every step redraws all the
+ * way in to the first rectangle. Sprite messages are held back while animating. */
+void __stdcall wipe_reveal_run(int steps, int sides)
+{
+    int32_t first[4], r[4];
+    wipe_rect(steps - 1, first, steps, sides);
+    wipe_apply(first);
+    for (int i = steps - 2; i >= 0; i--) {
+        uint32_t saved = H(uint32_t, HSL_NO_SEND_MSG);
+        H(uint32_t, HSL_NO_SEND_MSG) = 1;
+        SpriteAnimate(g_hsl);
+        H(uint32_t, HSL_NO_SEND_MSG) = saved;
+        wipe_rect(i, r, steps, sides);
+        if (sides)
+            wipe_sides(r, first);
+        wipe_bands(r, first);
+    }
+}
+
+/* 0x1005fc24: blank from the edges inwards; each step redraws from the outer edge */
+void __stdcall wipe_blank_run(uint32_t steps, int sides)
+{
+    int32_t r[4], outer[4];
+    wipe_rect((int)steps - 1, r, (int)steps, sides);
+    wipe_rect(0, outer, (int)steps, sides);
+    for (uint32_t i = 1; i < steps; i++) {
+        wipe_rect((int)i, r, (int)steps, sides);
+        wipe_bands(outer, r);
+        if (sides)
+            wipe_sides(outer, r);
+        SpriteAnimate(g_hsl);
+    }
+    wipe_apply(r);
+}
+
+static void wipe_size(void)
+{
+    g_wipe.w = H(int32_t, HSL_SCROLL_LIMITS + 8) - H(int32_t, HSL_SCROLL_LIMITS);
+    g_wipe.h = H(int32_t, HSL_SCROLL_LIMITS + 12) - H(int32_t, HSL_SCROLL_LIMITS + 4);
+}
+
+/* 0x1005f760: wipes bitmap bm in as the new background. Without a background (or in 16
+ * bits) it only repaints the screen. */
+void __stdcall wipe_in(uint8_t *hsl, uint8_t *bm, uint32_t steps, int sides)
+{
+    g_hsl = hsl;
+    if ((!H(uint32_t, HSL_9FC) && !H(uint32_t, HSL_BACKGROUND)) || H(uint32_t, 0x8bc) == 0x10) {
+        uint32_t saved = H(uint32_t, HSL_BKG_TRANSPARENT);
+        H(uint32_t, HSL_BKG_TRANSPARENT) = 0;
+        SpritePaintRect(hsl, &H(RECT, HSL_SCREEN_RECT), 0);
+        H(uint32_t, HSL_BKG_TRANSPARENT) = saved;
+    } else if (H(uint32_t, HSL_BACKGROUND)) {
+        g_wipe.src = bm;
+        wipe_size();
+        g_wipe.reveal = 1;
+        wipe_reveal_run(steps < 3 ? 2 : (int)steps, sides);
+        H(uint8_t *, HSL_BACKGROUND) = bm;
+    }
+}
+
+/* 0x1005fb80: makes bm the background and wipes it out to color 0 */
+void __stdcall wipe_out(uint8_t *hsl, uint8_t *bm, uint32_t steps, int sides)
+{
+    g_hsl = hsl;
+    if (!bm)
+        return;
+    H(uint8_t *, HSL_BACKGROUND) = bm;
+    wipe_size();
+    g_wipe.reveal = 0;
+    wipe_blank_run(steps < 3 ? 2 : steps, sides);
+    H(uint8_t *, HSL_BACKGROUND) = bm;
+}

@@ -1606,3 +1606,88 @@ void __stdcall palette_set_painting(uint8_t *hsl, int painting, int apply)
     if (painting && apply && d && d->palette)
         IDirectDrawPalette_SetEntries(d->palette, 0, 0, 256, (PALETTEENTRY *)(g_hsl + HSL_PALETTE));
 }
+
+/* ---- unreferenced leftovers (0x100620d0-0x10062320) ---- */
+
+/* 0x100620d0: a display-mode enumeration callback: adds the mode to the list unless it
+ * equals the last one (for the first mode it compares with the entry before the list) */
+uint32_t __stdcall mode_list_add(const uint8_t *desc, uint32_t unused)
+{
+    (void)unused;
+    uint32_t n = g_n_modes;
+    uint32_t w = *(const uint32_t *)(desc + 0xc), h = *(const uint32_t *)(desc + 8), bpp = *(const uint32_t *)(desc + 0x54);
+    uint32_t *last = g_modes + (int32_t)(n * 3 - 3);
+    if (last[0] != w || last[1] != h || last[2] != bpp) {
+        g_modes[n * 3] = w;
+        g_modes[n * 3 + 1] = h;
+        g_modes[n * 3 + 2] = bpp;
+        g_n_modes = n + 1;
+    }
+    return 1;
+}
+
+/* 0x1006218d: releases the interface at +0x74 of the DirectDraw state and frees the state */
+uint32_t __cdecl dd_state_free(void)
+{
+    uint8_t *d = H(uint8_t *, 0x10);
+    if (d) {
+        IUnknown *u = *(IUnknown **)(d + 0x74);
+        if (u)
+            IUnknown_Release(u);
+        winfree(d);
+        H(uint32_t, 0x10) = 0;
+    }
+    return 0;
+}
+
+static int parse_uint(const char **p, uint32_t *out)
+{
+    const char *s = *p;
+    while (*s == ' ' || *s == '\t')
+        s++;
+    if (*s < '0' || *s > '9')
+        return 0;
+    uint32_t v = 0;
+    for (; *s >= '0' && *s <= '9'; s++)
+        v = v * 10 + (uint32_t)(*s - '0');
+    *out = v;
+    *p = s;
+    return 1;
+}
+
+/* 0x100621f2: the desktop's size and depth from the Windows 95 registry
+ * (HKEY_CURRENT_CONFIG\Display\Settings: "BitsPerPixel", "Resolution" as "w,h") */
+uint32_t __stdcall desktop_mode_from_registry(uint32_t *w, uint32_t *h, uint32_t *bpp)
+{
+    HKEY display, settings;
+    char depth[32], res[32]; /* uninitialized when the values are missing, as in the original */
+    DWORD size = 0x20;
+    if (RegOpenKeyA(HKEY_CURRENT_CONFIG, "Display", &display))
+        return 0;
+    if (!RegOpenKeyA(display, "Settings", &settings)) {
+        RegQueryValueExA(settings, "BitsPerPixel", NULL, NULL, (BYTE *)depth, &size);
+        size = 0x20;
+        RegQueryValueExA(settings, "Resolution", NULL, NULL, (BYTE *)res, &size);
+        RegCloseKey(settings);
+    }
+    RegCloseKey(display);
+    const char *p = depth;
+    if (!parse_uint(&p, bpp)) {
+        *bpp = 0;
+        return 0;
+    }
+    p = res;
+    if (parse_uint(&p, w) && *p == ',' && (p++, parse_uint(&p, h)))
+        return 1;
+    *bpp = 0;
+    *h = *bpp;
+    *w = *h;
+    return 0;
+}
+
+/* 0x10062000 */
+void __stdcall dib_copy_out_asm(uint8_t *dst, int32_t pitch, uint32_t src, uint32_t w, uint32_t h, int dx, int dy,
+                                int sx, int sy)
+{
+    dib_copy_out(dst, pitch, (void *)(uintptr_t)src, w, h, dx, dy, sx, sy);
+}

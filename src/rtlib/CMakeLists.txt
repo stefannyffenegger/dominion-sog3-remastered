@@ -13,4 +13,4 @@ set_target_properties(rtlib PROPERTIES PREFIX "" OUTPUT_NAME "Rtlib32" SUFFIX ".
 target_compile_options(rtlib PRIVATE ${DOM_MODULE_FLAGS})
 # away from the original's preferred address (0x10000000)
 target_link_options(rtlib PRIVATE ${DOM_MODULE_LINK} -Wl,--image-base,0x60000000)
-target_link_libraries(rtlib PRIVATE ${ORIG_IMPLIB} kernel32 user32 gdi32 winmm ddraw dxguid gcc)
+target_link_libraries(rtlib PRIVATE ${ORIG_IMPLIB} kernel32 user32 gdi32 advapi32 winmm ddraw dxguid gcc)
