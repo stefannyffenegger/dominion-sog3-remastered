@@ -458,6 +458,96 @@ static void test_tiles(void)
     printf("tiles: done\n");
 }
 
+/* ---- the effect merge ---- */
+
+static void test_fx(void)
+{
+    static uint8_t hsl[0x1000];
+    static uint32_t cmap[256];
+    static uint8_t blend[0x10000];
+    static uint32_t table_mem[0x10000 + 2048];
+    uint32_t *table = table_mem + 1024;
+    uint32_t *shadow = (uint32_t *)(base + 0x7b7e8);
+    *(uint8_t **)(base + 0x89e24) = hsl;
+    for (int k = 0; k < 0x10000; k++)
+        blend[k] = (uint8_t)rnd(256);
+    for (int k = 0; k < 0x10000 + 2048; k++)
+        table_mem[k] = rnd(0x10000);
+    /* the helpers */
+    for (int i = 0; i < 6000; i++) {
+        uint8_t a[64], b[64], src[64];
+        for (int k = 0; k < 64; k++)
+            a[k] = b[k] = (uint8_t)rnd(256), src[k] = (uint8_t)rnd(256);
+        for (int k = 0; k < 256; k++)
+            cmap[k] = rnd(256);
+        uint32_t off = rnd(8), n = rnd(48), row = rnd(4), kind = rnd(3);
+        if (kind == 2 && n == 0) /* the original's short path has no zero check: it runs through memory */
+            n = 1;
+        uint32_t so = rnd(4);
+        if (kind == 0) {
+            ORIG(0x100653dd, U(a + off), U(src + so), n, U(blend));
+            fx_blend(b + off, src + so, n, blend);
+        } else if (kind == 1) {
+            ORIG_CDECL(0x100656a0, U(a + off), U(src + so), n, U(blend), U(cmap)); /* see fx_blend_cmap */
+            fx_blend_cmap(b + off, src + so, n, blend, cmap);
+        } else {
+            ORIG(0x10065a19, U(a + off), U(src + so), n, row);
+            fx_dither(b + off, src + so, n, row);
+        }
+        if (memcmp(a, b, 64) && failures < 6) {
+            int k = 0;
+            while (a[k] == b[k])
+                k++;
+            printf("  kind %u dst&3=%u off=%u n=%u row=%u: first diff at %d\n", kind, (unsigned)(U(a + off) & 3), off, n, row,
+                   k - (int)off);
+        }
+        check(kind == 0 ? "fx blend" : kind == 1 ? "fx blend cmap" : "fx dither", !memcmp(a, b, 64), i);
+    }
+    printf("fx helpers: done\n");
+    /* the merge */
+    *(uint32_t *)(hsl + 0xb70) = U(blend), *(uint32_t *)(hsl + 0xb6c) = U(table);
+    *(uint32_t *)(hsl + 0xb74) = 0; /* the dithered shadow gets an uninitialized row */
+    for (int i = 0; i < 20000; i++) {
+        for (int k = 0; k < 256; k++)
+            shadow[k] = rnd(256), cmap[k] = rnd(256);
+        uint32_t dither = rnd(2), fx = rnd(5), arg = rnd(4);
+        *(uint32_t *)(hsl + 0xb78) = dither;
+        *(uint32_t *)(hsl + 0x8a4) = rnd(2) ? 640 : 800;
+        FxEnv e = {{shadow, 0, 0}, blend, table, (int)dither, 0, 0};
+        int sw = 1 + rnd(60), sh = 1 + rnd(40);
+        uint8_t *src = seg_dib(sw, sh);
+        int full = rnd(3) == 0 && !(dither && fx == 1); /* unclipped: uninitialized screen-door row */
+        int w = full ? sw : 1 + rnd(sw), h = full ? sh : 1 + rnd(sh);
+        int sx = full ? 0 : rnd(sw - w + 1), sy = full ? 0 : rnd(sh - h + 1);
+        if (!full && dither && fx == 1 && sx == 0 && sy == 0 && w == sw && h == sh) {
+            free(src);
+            continue;
+        }
+        int dw = sw + rnd(40), dh = sh + rnd(40);
+        uint32_t size;
+        uint8_t *ga = gdib(dw, dh, rnd(2) ? 0x40 : 0, &size), *gb = malloc(size);
+        memcpy(gb, ga, size), *(uint8_t **)(gb + GUARD + 0x20) = gb + GUARD + 0x24;
+        uint8_t *a = ga + GUARD, *b = gb + GUARD;
+        int dx = rnd(dw - w + 1), dy = rnd(dh - h + 1);
+        uint32_t flip = rnd(4), fl = (flip & 1) | (flip & 2 ? 0x100 : 0);
+        uint32_t *cm = rnd(2) ? cmap : NULL;
+        ORIG_CDECL(0x1005adb3, U(a), U(src), w, h, dx, dy, sx, sy, fl, fx, arg, U(cm));
+        dib_merge_fx_rle(&e, b, src, w, h, dx, dy, sx, sy, fl, fx, arg, cm);
+        *(uint8_t **)(b + 0x20) = *(uint8_t **)(a + 0x20);
+        int same = !memcmp(ga, gb, size);
+        if (!same && failures < 8) {
+            uint32_t k = 0;
+            while (ga[k] == gb[k])
+                k++;
+            printf("  sw=%d sh=%d w=%d h=%d sx=%d sy=%d flip=%x fx=%u arg=%u dither=%u cmap=%d first diff at %d\n", sw,
+                   sh, w, h, sx, sy, fl, fx, arg, dither, cm != NULL, (int)k - GUARD - 0x24);
+        }
+        check(full ? "fx merge full" : "fx merge clipped", same, i);
+        free(ga), free(gb), free(src);
+    }
+    printf("fx merge: done\n");
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -472,6 +562,7 @@ int main(int argc, char **argv)
     test_merge();
     test_plain();
     test_tiles();
+    test_fx();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }

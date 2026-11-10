@@ -92,10 +92,6 @@ typedef void(__stdcall *DrawProc)(uint8_t *, uint8_t *, uint32_t, RECT *);
 typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 
 /* blitters, still original: dst, src, w, h, dst x, y, src x, y, flip, ... */
-#define dib_fx_merge                                                                               \
-    ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t, uint32_t,  \
-                         uint32_t),                                                                \
-         0x1005adb3)
 #define dib_fill16 ORIG(void(__stdcall *)(uint32_t, int, int, int, int, uint32_t), 0x100638d8)
 #define dib_copy16 ORIG(void(__stdcall *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t), 0x10063a78)
 #define SpriteDibCopy ORIG(void(__stdcall *)(uint8_t *, uint32_t, uint32_t, uint32_t, int, int, int, int), 0x100537b1)
@@ -121,6 +117,87 @@ uint32_t __cdecl dib_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int
                   H(uint32_t, 0xb74) && H(uint32_t, HSL_IFACE_ON)};
     dib_merge_rle(&e, (void *)(uintptr_t)dst, s, w, h, dx, dy, sx, sy, flip, (const uint32_t *)(uintptr_t)cmap);
     return 0;
+}
+
+#define HSL_FX_TABLE 0xb6c
+#define HSL_FX_BLEND 0xb70
+#define HSL_FX_DITHER 0xb78
+
+static FxEnv fx_env(void)
+{
+    FxEnv e = {{(const uint32_t *)ORIG_PTR(0x1007b7e8), H(uint32_t, 0xb74) && H(uint32_t, HSL_WIDTH) > 0x280, 0},
+               H(const uint8_t *, HSL_FX_BLEND), H(const uint32_t *, HSL_FX_TABLE), H(uint32_t, HSL_FX_DITHER) != 0,
+               0, 0};
+    return e;
+}
+
+/* 0x1005adb3: dib_merge with a blit effect (SpriteSetBlitFX). Plain bitmaps get no effect
+ * and lose their color map. */
+void __cdecl dib_fx_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                          uint32_t fx, uint32_t arg, uint32_t cmap)
+{
+    uint8_t *s = (uint8_t *)(uintptr_t)src;
+    if (sx < 0 || sy < 0 || S(uint32_t, s, 4) - 1 < (uint32_t)sx || S(uint32_t, s, 0xc) - 1 < (uint32_t)sy || w < 1 ||
+        h < 1 || dx < 0 || dy < 0) {
+        DebugBreak(); /* original */
+        return;
+    }
+    if (!(S(uint8_t, s, 0x10) & 0x80)) {
+        dib_merge_plain_cm(dst, src, w, h, dx, dy, sx, sy, flip, 0);
+        return;
+    }
+    FxEnv e = fx_env();
+    dib_merge_fx_rle(&e, (void *)(uintptr_t)dst, s, w, h, dx, dy, sx, sy, flip, fx, (int32_t)arg,
+                     (const uint32_t *)(uintptr_t)cmap);
+}
+
+/* 0x10059b6e and 0x10059cda: an effect run, forward or mirrored */
+void __cdecl fx_run(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg, uint32_t row,
+                    const uint32_t *cmap)
+{
+    FxEnv e = fx_env();
+    dib_fx_run(&e, d, s, n, fx, arg, row, cmap);
+}
+
+void __cdecl fx_run_mirrored(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg, const uint32_t *cmap)
+{
+    FxEnv e = fx_env();
+    dib_fx_run_mirrored(&e, d, s, n, fx, arg, cmap);
+}
+
+/* 0x100653dd, 0x100656a0, 0x10065a19: the effect's assembly routines */
+void __stdcall fx_blend_asm(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend)
+{
+    fx_blend(d, s, n, blend);
+}
+
+void __stdcall fx_blend_cmap_asm(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend, const uint32_t *cmap)
+{
+    G(const uint32_t *, 0x1007bd38) = cmap; /* the original keeps it there */
+    fx_blend_cmap(d, s, n, blend, cmap);
+}
+
+void __stdcall fx_dither_asm(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t row)
+{
+    fx_dither(d, s, n, row);
+}
+
+/* 0x1005bc90: copies n bytes, writing leftwards */
+void __cdecl copy_mirrored(uint8_t *d, const uint8_t *s, uint32_t n)
+{
+    for (uint32_t i = 0; i < n; i++)
+        *d-- = *s++;
+}
+
+/* 0x1005bce0: the slow paths' shadow (type 1); type 2 does nothing */
+void __cdecl shadow_run(int type, uint8_t *p, uint32_t n, uint32_t row)
+{
+    if (type != 0)
+        return;
+    if (!H(uint32_t, 0xb74) || H(uint32_t, HSL_WIDTH) < 0x281)
+        dib_shadow(p, n, (const uint32_t *)ORIG_PTR(0x1007b7e8));
+    else
+        dib_shadow_dither(p, n, row);
 }
 
 static PlainEnv plain_env(void)

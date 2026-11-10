@@ -95,6 +95,13 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - the two masked overlays are crossed: the flag that enables the first mask array makes the code test the second array, and the other way round;
   - drawing the layers above the sprites puts the quality setting back only when something was drawn;
   - at the bottom of the view, tiles are drawn one pixel row further when the map has overlays than when it has none.
+* **code.** The blit effects (`SpriteSetBlitFX`) have slips of their own:
+  - the blend's code for a single leftover pixel (after the 4-at-a-time part) takes the sprite pixel two further on, in both blend routines;
+  - the color-mapped blend, on an aligned destination, finishes in the plain blend's code: the last 1-3 pixels skip the color map, and it removes one argument too few from the stack (its caller hides it);
+  - the screen door's short path has no check for zero pixels and would run through memory;
+  - the shadow dither and the screen door of unclipped sprites get an uninitialized row number, so their pattern is stripes in a random phase rather than a checkerboard;
+  - mirrored, effect 3 recolors the screen's pixel instead of the sprite's, and effect 1 never uses the screen door;
+  - plain (not run-length) bitmaps are drawn without the effect and lose their color map.
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

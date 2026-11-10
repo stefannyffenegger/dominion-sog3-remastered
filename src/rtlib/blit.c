@@ -269,6 +269,9 @@ static void lit_copy(uint8_t *d, const uint8_t *s, uint32_t n, int dir)
         *d-- = *s++; /* 0x1005bc90 */
 }
 
+void dib_shadow(uint8_t *p, uint32_t n, const uint32_t *table) { shadow_plain(p, n, table); }
+void dib_shadow_dither(uint8_t *p, uint32_t n, uint32_t row) { shadow_dither(p, n, row); }
+
 static const uint8_t *align2(const uint8_t *p) { return p + ((uintptr_t)p & 1); }
 
 /* 0x1005bce0, type 1: the slow paths' shadow */
@@ -695,6 +698,212 @@ void dib_merge_plain(const PlainEnv *e, void *dst, void *src, uint32_t w, uint32
         if (rclip) {
             tbl -= 2;
             s = base + *(const uint16_t *)tbl;
+        }
+    }
+}
+
+/* ---- the effect merge (0x1005adb3): run-length sprites drawn with a blit effect ----
+ *
+ * The same walk as dib_merge_rle without its fast path; literal pixels go through the
+ * effect instead of being copied. Effect 1 blends (or screen-doors) with the screen,
+ * 2 and 3 look pixels up in the effect table. */
+
+/* The blends work 4 pixels at a time once the destination is aligned (or right away when
+ * it already is) and finish the last 1-3 in separate code; short unaligned runs go pixel
+ * by pixel. The code for a single last pixel takes the source pixel 2 further on. */
+static uint32_t blend_tail(const uint8_t *d, uint32_t n)
+{
+    if (!((uintptr_t)d & 3))
+        return n & 3;
+    if (n <= 12)
+        return 0;
+    return (n - ((0u - (uint32_t)(uintptr_t)d) & 3)) & 3;
+}
+
+/* 0x100653dd: blend, d = blend[s][d] */
+void fx_blend(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend)
+{
+    uint32_t tail = blend_tail(d, n);
+    for (n -= tail; n; n--, d++, s++)
+        *d = blend[((uint32_t)*s << 8) + *d];
+    if (tail == 1)
+        s += 2;
+    for (; tail; tail--, d++, s++)
+        *d = blend[((uint32_t)*s << 8) + *d];
+}
+
+/* 0x100656a0: blend through a color map, d = blend[cmap[s]][d]. When d is 4-byte
+ * aligned, the original finishes in 0x100653dd's code (it jumps through that function's
+ * table): the last 1-3 pixels are blended without the color map, and it returns
+ * removing 16 bytes of arguments instead of 20. */
+void fx_blend_cmap(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend, const uint32_t *cmap)
+{
+    int aligned = !((uintptr_t)d & 3);
+    uint32_t tail = blend_tail(d, n);
+    for (n -= tail; n; n--, d++, s++)
+        *d = blend[(cmap[*s] << 8) + *d];
+    if (aligned) {
+        fx_blend(d, s, tail, blend); /* aligned too, so the same last-pixel slip */
+        return;
+    }
+    if (tail == 1)
+        s += 2;
+    for (; tail; tail--, d++, s++)
+        *d = blend[(cmap[*s] << 8) + *d];
+}
+
+/* 0x10065a19: screen door, the source pixels at odd addresses on even rows and at even
+ * addresses on odd rows */
+void fx_dither(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t row)
+{
+    for (; n; n--, d++, s++)
+        if (((uintptr_t)d ^ row) & 1)
+            *d = *s;
+}
+
+/* 0x10059b6e: an effect run, left to right */
+void dib_fx_run(const FxEnv *e, uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg, uint32_t row,
+                   const uint32_t *cmap)
+{
+    if (fx == 1) {
+        if (e->dither)
+            fx_dither(d, s, n, row);
+        else if (!cmap)
+            fx_blend(d, s, n, e->blend);
+        else
+            fx_blend_cmap(d, s, n, e->blend, cmap);
+    } else if (fx == 2) {
+        for (; n; n--, d++, s++)
+            *d = (uint8_t)e->table[(*s - 2) * 0x100 + *d];
+    } else if (fx == 3) {
+        for (; n; n--, d++, s++)
+            *d = (uint8_t)e->table[*s + arg * 0x100];
+    }
+}
+
+/* 0x10059cda: an effect run, mirrored (right to left). No screen door; effect 3 looks
+ * up the screen's pixel instead of the sprite's. */
+void dib_fx_run_mirrored(const FxEnv *e, uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg,
+                            const uint32_t *cmap)
+{
+    if (fx == 1) {
+        for (; n; n--, d--, s++)
+            *d = e->blend[((cmap ? cmap[*s] : *s) << 8) + *d];
+    } else if (fx == 2) {
+        for (; n; n--, d--, s++)
+            *d = (uint8_t)e->table[(*s - 2) * 0x100 + *d];
+    } else if (fx == 3) {
+        for (; n; n--, d--)
+            *d = (uint8_t)e->table[*d + arg * 0x100];
+    }
+}
+
+/* The shadow of the effect merge: the original passes an uninitialized row (shadow_row) */
+static void fx_shadow(const FxEnv *e, uint8_t *p, uint32_t n)
+{
+    if (e->m.dither_slow)
+        shadow_dither(p, n, e->shadow_row);
+    else
+        shadow_plain(p, n, e->m.shadow);
+}
+
+void dib_merge_fx_rle(const FxEnv *e, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, uint32_t sx,
+                      uint32_t sy, uint32_t flip, uint32_t fx, int32_t arg, const uint32_t *cmap)
+{
+    int mir = (flip & 0xff) != 0;
+    uint32_t sw1 = F(uint32_t, src, 4) - 1, sh1 = F(uint32_t, src, 0xc) - 1;
+    uint32_t x0, x1, ylast = h + sy - 1;
+    int hclip;
+    if (!mir) {
+        x0 = sx;
+        x1 = w + sx - 1;
+        hclip = !(sx == 0 && sw1 <= x1);
+    } else {
+        x0 = sw1 - (w + sx - 1);
+        x1 = sw1 - sx;
+        hclip = !(x0 == 0 && sw1 <= x1);
+    }
+    int vclip = ylast < sh1;
+    uint32_t pitch = F(uint32_t, dst, 8);
+    int32_t stride;
+    if (!(F(uint8_t, dst, 0x10) & 0x40)) {
+        dy = (int)(F(uint32_t, dst, 0xc) - dy - h);
+        stride = (int32_t)pitch;
+    } else if (!(flip & 0xff00)) {
+        dy = dy + (int)h - 1;
+        stride = -(int32_t)pitch;
+    } else {
+        stride = (int32_t)pitch;
+    }
+    const uint8_t *p = F(uint8_t *, src, 0x20);
+    uint8_t *bits = F(uint8_t *, dst, 0x20);
+
+    if (hclip || sy || vclip) {
+        uint8_t *row = bits + pitch * (uint32_t)dy + dx + (mir ? w - 1 : 0);
+        uint32_t skip = sh1 - ylast;
+        uint8_t *d = NULL;
+        uint32_t lskip = 0, rskip = 0;
+        for (uint32_t r = 0; r <= sh1 - sy; r++) {
+            uint32_t xpos = 0xffffffff;
+            int shown = skip <= r;
+            if (shown) {
+                d = row;
+                row += stride;
+            }
+            uint32_t nseg = p[0];
+            p += 2;
+            for (; nseg; nseg--) {
+                uint16_t v = *(const uint16_t *)p;
+                p += 2;
+                uint32_t type = v >> 11, len = v & 0x7ff;
+                int vis = 1;
+                if (hclip) {
+                    uint32_t s0 = xpos + 1;
+                    xpos = s0 + len - 1;
+                    if (xpos < x0 || x1 < s0) {
+                        vis = 0;
+                    } else if (s0 < x0 || x1 < xpos) {
+                        vis = 2;
+                        lskip = s0 < x0 ? x0 - s0 : 0;
+                        rskip = x1 < xpos ? xpos - x1 : 0;
+                    }
+                }
+                uint32_t off = vis == 2 ? lskip : 0, n = vis == 2 ? len - lskip - rskip : len;
+                if (shown && vis) {
+                    if (type == 3) {
+                        if (!mir)
+                            dib_fx_run(e, d, p + off, n, fx, arg, r, cmap);
+                        else
+                            dib_fx_run_mirrored(e, d, p + off, n, fx, arg, cmap);
+                    } else if (type == 1)
+                        fx_shadow(e, mir ? d + 1 - n : d, n);
+                    d += mir ? -(int32_t)n : (int32_t)n;
+                }
+                if (type == 3)
+                    p = align2(p + len);
+            }
+        }
+        return;
+    }
+    uint8_t *row = bits + pitch * (uint32_t)dy + dx + (mir ? F(uint32_t, src, 4) - 1 : 0);
+    for (; h; h--) {
+        uint8_t *d = row;
+        row += stride;
+        uint32_t nseg = p[0];
+        p += 2;
+        for (; nseg; nseg--) {
+            uint16_t v = *(const uint16_t *)p;
+            p += 2;
+            uint32_t type = v >> 11, len = v & 0x7ff;
+            if (type == 3) {
+                if (!mir)
+                    dib_fx_run(e, d, p, len, fx, arg, e->fast_row, cmap);
+                else
+                    dib_fx_run_mirrored(e, d, p, len, fx, arg, cmap);
+                p = align2(p + len);
+            } else if (type == 1)
+                fx_shadow(e, mir ? d + 1 - len : d, len);
+            d += mir ? -(int32_t)len : (int32_t)len;
         }
     }
 }

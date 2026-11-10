@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 504 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 512 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -292,7 +292,8 @@ The sprite engine's hand-written assembly, rewritten in portable C one routine a
 * The game screenshots drift by an animation frame sometimes (the briefing background and idle units animate); a dense series of screenshots of the unmodified game contains our briefing frame exactly.
 * **The plain merge** (0x1005fcec, and 0x10060c14 with a color map; 9 KB of assembly) is C too: plain bitmaps, and a second run-length format (the copy routine's, with special values 0 transparent, 1 shadow, 2 highlight, 3 spot color, and "effect pixel" runs). Byte-exact on 30,000 random cases with all clip variants, flips and color maps.
 * Its quirks are kept: plain bitmaps are drawn in pixel pairs where a right pixel that transforms to 0 is sometimes written and sometimes not; mirrored, the odd last pixel takes its shadow from the pixel to its right; 8-bit loop counters make some zero counts mean 256.
-* Next: the effect blitter (0x1005adb3).
+* **The effect merge** (0x1005adb3, from `SpriteSetBlitFX`) is C too, with its helpers: effect 1 blends the sprite with the screen through a 256 x 256 table (or, with the screen-door setting, copies every second pixel); effects 2 and 3 look pixels up in an effect table. Its three assembly routines (blend, blend through a color map, screen door) are C as well. Byte-exact on 20,000 random merges and 6,000 helper runs.
+* Two values the original passes are uninitialized stack memory: the shadow-dither row and the screen-door row of unclipped sprites. Each stays constant for the whole sprite; we use 0. Those cases are left out of the comparison.
 
 ### Tile map (`tiles.c` 19 functions, `tileblit.c` 9 blitters)
 The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile rows (every second row shifted by half a tile), with the layers above them.

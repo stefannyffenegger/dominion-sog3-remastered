@@ -20,5 +20,15 @@ uint32_t __stdcall dib_merge_plain_cm(uint32_t dst, uint32_t src, int w, int h, 
                                       uint32_t flip, uint32_t cmap);
 uint32_t __stdcall dib_merge_plain9(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
                                     uint32_t flip);
+void __cdecl dib_fx_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                          uint32_t fx, uint32_t arg, uint32_t cmap);
+void __cdecl fx_run(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg, uint32_t row,
+                    const uint32_t *cmap);
+void __cdecl fx_run_mirrored(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t fx, int32_t arg, const uint32_t *cmap);
+void __stdcall fx_blend_asm(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend);
+void __stdcall fx_blend_cmap_asm(uint8_t *d, const uint8_t *s, uint32_t n, const uint8_t *blend, const uint32_t *cmap);
+void __stdcall fx_dither_asm(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t row);
+void __cdecl copy_mirrored(uint8_t *d, const uint8_t *s, uint32_t n);
+void __cdecl shadow_run(int type, uint8_t *p, uint32_t n, uint32_t row);
 
 #endif
