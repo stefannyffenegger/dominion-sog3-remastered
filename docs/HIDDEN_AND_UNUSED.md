@@ -1,0 +1,77 @@
+# Hidden, unused and unfinished things in Dominion: Storm Over Gift 3
+
+Found while rewriting the game's modules (see `PHASE1B_MODULES.md`). Each entry says how sure we are:
+* **code**: seen in the code, not tried in the game;
+* **traced**: measured in the running game (`DOMINION_TRACE`, logging stand-ins);
+* **tested**: tried in the game.
+
+Addresses refer to the original files (`Rtlib32.dll`, `ISO.R32`, `NETPLAY.R32`, ...) of the English v1.1 release.
+
+## How much of the engine the game uses
+**traced.** The engine (`Rtlib32.dll`) has about 1,450 functions of its own. During the menus and Human mission 1, only about 640 of them ran: the 231 already rewritten, plus 411 of the remaining 1,286. Much of the rest is probably the script compiler, editor support and the unused sound system below. Screens the trace didn't visit (multiplayer, save/load, options, cinematics) will add some.
+
+## Cheat codes
+**code**, `ISO.R32` `IsoCheckCheatCodes` (0x10052df4). The game compares a text against a table of 30 codes (case does not matter). The text comes from a script variable; how a player enters it is not tested yet.
+
+Only some codes are switched on in the shipped game:
+
+| Allowed | Codes |
+|---|---|
+| Single player | `ZIPPER`, `INFRARED`, `COMBUSTION`, `SETI`, `CAMERON`, `LUSHEE` |
+| Multiplayer | `GREEN`, `BLUE`, `RED`, `YELLOW`, `BLACK`, `TURQ`, `PURPLE`, `ORANGE` (the eight player colors) |
+| **Disabled** | `OMNIPOTENT`, `OMNIPOTENT OFF`, `SOLAR`, `MAXTECH`, `TILT`, `I'LL BE BACK`, `HARIKARI`, `HIGH VOLTAGE`, `CRASH AND BURN`, `QUIT`, `GENERATE AI FOOTPRINTS`, `BANKRUPT`, `HARMLESS`, `WIN`, `LOSE`, `GHOST IN THE MACHINE` |
+
+What a few of them do, from the code: `MAXTECH` sets every player's tech level to 13; `TILT` gives 9,999 men and 99,999 materials; `SOLAR` and `ZIPPER` toggle game-wide switches; `CAMERON` is logged as "GOD MODE". The others are not traced yet.
+
+Multiplayer has an anti-cheat: a player caught using a code is removed from the game ("Booting player %s : CHEATING DETECTED!").
+
+## Debug features left in
+* **code.** `Rtlib32.dll` is a debug build: debug assertions of the C runtime are still in, and many functions write `DebugStr` messages ("setres: 640 x 480", "CREATE FLIP CHAIN", ...). Under Wine they appear with `WINEDEBUG=+debugstr`.
+* **code.** A debug window: `UtilsInitDebug` takes a window that receives every `DebugStr` line (message 0x41a).
+* **code.** The engine's error messages can add "Executing Script %s File %s" when a script debugging mode is on (0x100260f6). How to turn it on is not known yet.
+* **code.** The game logic has debug files and modes: `IsoOpenDebugFiles`, `IsoDebugFile`, `IsoSetDebugMode`, `IsoSetDebugSprite`, `IsoDebugScriptMessageProc`, a profiler (`IsoGetProfilerValue`), and AI debug logs.
+* **code.** A map editor is built into the game logic: `IsoMapEditDisplayLoop`, the `EDITPATH_*` path editor and `IsoInitMapEditAITempFiles`. Whether the shipped menus can reach it is not tested yet. Single Player → Mission lists custom missions (`.wxp`) from that editor; the shipped campaign maps don't appear there (**tested**).
+* **code.** The script compiler's name, "Dominion Compiler", is in the engine's error messages, and the resource library has everything needed to *write* resource files (`ResCreateFile`, `ResWriteScriptBuf`, ...). The engine contains the tools side of Ion Storm's script system.
+
+## The engine's own sound system, unused
+**traced.** The engine has a complete sound system of about 200 functions: a software wave mixer on `waveOut` (with priorities, loops, fades and resampling), a MIDI sequencer (with a `RemapMidiDrums` option) and CD audio over MCI. Dominion never opens any of these devices. All its sound and music go through `WAVEPLAY.R32` (DirectSound and MCI CD audio), which only uses the engine's audio for a per-frame hook. Only 11 of the 200 functions ran.
+
+## Multiplayer
+* **tested.** The menu has its own **"Enter host address"** box, under SEARCH on the session screen, that players never saw. The original multiplayer module asked DirectPlay what kind of address its TCP/IP connection used. With the DirectPlay 6 files shipped on the disc the answer was "other", so the menu left addressing to DirectPlay's "Locate Session" dialog. With our module the box appears and works, and the screen also shows your own address.
+* **code.** Connection types that no longer exist: modem and serial cable (`DPInitPhoneAddress`, `DPInitSerialAddress`), IPX, and MPlayer.com lobby support (`DPCheckForConnect`, `NetTallyMPlayerScores`, `MPLAYER.DLL`, `Mprdvous.dll`). DirectPlay lobby launching was supported too.
+* **code.** Custom maps are sent to players who don't have them, in chunks (`DPSendFile`, message type 1). Not tested yet.
+* **code.** Latency measurement (`DPSyncPlayer`): ping rounds to every player, used to time the lockstep.
+* **code.** `DPEnumPlayersInSession`, listing the players of a session before joining, is never called.
+* **tested.** When the host leaves a match, the others keep playing (the host is reported defeated): DirectPlay's peer-to-peer model. The module even picks a new "host slot", but nobody can join any more.
+* **code.** `ISO.R32` has `IsoInitReconnectAndPauseWindow` (a reconnect/pause window) and `IsoInitCRCCheck` (a checksum check for staying in sync). Not traced yet.
+
+## Settings that the shipped Dominion.ini doesn't list
+**code.** Read by the engine or the modules, with their defaults. None of these are in the `Dominion.ini` the installer writes.
+
+| Section, key | Default | Meaning |
+|---|---|---|
+| `[Dominion] UseDDraw1` | 0 | use the DirectDraw 1 interface for the display mode |
+| `[Dominion] DisableISOCheck` | 0 | multiplayer: allow joining a host with a different game version |
+| `[Dominion] NumStartUnits` | 10 | multiplayer starting units (`MultiMen` and `MultiMat` next to it are listed) |
+| `[Dominion] CinePlaybackMethod` | 2 | cutscene scaling (0 original, 1 doubled, 2 smoothed, 3 interlaced) |
+| `[Dominion] SoundBuffers` | | number of sound channels (8-20) |
+| `[audio] CdVolume`, `MidiVolume`, `WaveVolume` | 0x7fff | the engine's own volumes |
+| `[audio] WaveFormatMask`, `MaxWaveBuffers`, `DisableWaveVolume`, `RemapMidiDrums`, `ProfileCD` | | the unused sound system |
+| `[utils] Pentium` | 1 | treat a Pentium as a Pentium (processor detection) |
+| `[resource]` | | data files copied to the hard disk, deleted at the next start (see below) |
+
+## Leftovers from earlier versions
+* **code.** Resource files: the engine still reads an older, shorter header format (version 2), converting it on load.
+* **code.** Playing from CD: the resource library can copy data files to the hard disk while playing, and list them in `[resource]` so leftovers are deleted at the next start. Dominion doesn't use it.
+* **code.** `SpritePaintDirectDrawSurfacesBlack1`, an older version of the function that clears the screen, kept alongside the new one. `ClearVideoMem` (clear all video memory) is never called.
+* **code.** The display can blit the frame instead of flipping pages; the game always flips.
+
+## Unfinished or broken in the original
+These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.
+* **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.
+* **code.** `ResExtractFile` reads a file's 6-byte head through the main resource file instead of the data file.
+* **code.** `Tangent` reads one entry past its table for exactly 180 degrees.
+* **code.** The sine table differs from a correctly rounded one in 93 of 901 entries (computed with low precision). Unit movement uses it as it is.
+* **code.** Multiplayer: lowering the maximum number of players drops the wrong player (a 0-based index where a slot number is expected); the event that signals network messages has a fixed name, so two games on one Windows PC share it.
+* **code.** The original IMA sound functions and the sprite run-length expander are hand-written assembly that doesn't keep a register (EBX) that compiled code relies on.
+* More per module: `PHASE1B_MODULES.md` (fonts, cutscenes, sound, multiplayer, engine).

@@ -15,6 +15,8 @@ Order (smallest and most self-contained first):
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 231 of ~1,450 engine functions rewritten |
 
+Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
+
 ## Building
 Needs `cmake` and the 32-bit MinGW compiler (`dnf install mingw32-gcc`).
 ```sh
