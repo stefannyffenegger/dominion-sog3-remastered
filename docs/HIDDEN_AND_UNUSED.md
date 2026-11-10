@@ -32,6 +32,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** The game logic has debug files and modes: `IsoOpenDebugFiles`, `IsoDebugFile`, `IsoSetDebugMode`, `IsoSetDebugSprite`, `IsoDebugScriptMessageProc`, a profiler (`IsoGetProfilerValue`), and AI debug logs.
 * **code.** A map editor is built into the game logic: `IsoMapEditDisplayLoop`, the `EDITPATH_*` path editor and `IsoInitMapEditAITempFiles`. Whether the shipped menus can reach it is not tested yet. Single Player → Mission lists custom missions (`.wxp`) from that editor; the shipped campaign maps don't appear there (**tested**).
 * **code.** The script compiler's name, "Dominion Compiler", is in the engine's error messages, and the resource library has everything needed to *write* resource files (`ResCreateFile`, `ResWriteScriptBuf`, ...). The engine contains the tools side of Ion Storm's script system.
+* **code.** Tile debugging leftovers: the tile engine can build a tile-shaped test pattern (edges in color 10, the upper half filled with 125, the lower with 115, the middle rows 225 and 230; 0x1005c010), draw any rectangle of a tile (0x1005c99a) and draw a frame in color 9 (0x1005df6e). Nothing calls them.
 
 ## The engine's own sound system, unused
 **traced.** The engine has a complete sound system of about 200 functions: a software wave mixer on `waveOut` (with priorities, loops, fades and resampling), a MIDI sequencer (with a `RemapMidiDrums` option) and CD audio over MCI. Dominion never opens any of these devices. All its sound and music go through `WAVEPLAY.R32` (DirectSound and MCI CD audio), which only uses the engine's audio for a per-frame hook. Only 11 of the 200 functions ran.
@@ -88,6 +89,12 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - the plain shadow aligns to 4 bytes using the wrong register;
   - effect type 2 in the sprite format is never drawn (an unfinished effect);
   - the plain-bitmap merge with a color map adds the color map's *address* to the source pointer after each row, so only the first row of such a bitmap can be right. The game never draws a plain bitmap with a color map.
+* **code.** The tile map has small slips that rarely or never show:
+  - a tile cut off at the bottom right of the view draws its lower rows to the view's edge even where the diamond is narrower, with pixels from the tile's next rows; the next row of tiles covers them;
+  - a tile cut off on the right with an odd visible width loses its last column in the diamond's upper and lower parts;
+  - the two masked overlays are crossed: the flag that enables the first mask array makes the code test the second array, and the other way round;
+  - drawing the layers above the sprites puts the quality setting back only when something was drawn;
+  - at the bottom of the view, tiles are drawn one pixel row further when the map has overlays than when it has none.
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

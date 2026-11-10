@@ -12,4 +12,6 @@
 #include "spritelib.h"
 #include "draw.h"
 #include "blit.h"
+#include "tileblit.h"
+#include "tiles.h"
 #endif

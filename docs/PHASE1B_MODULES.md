@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 476 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 504 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -292,7 +292,17 @@ The sprite engine's hand-written assembly, rewritten in portable C one routine a
 * The game screenshots drift by an animation frame sometimes (the briefing background and idle units animate); a dense series of screenshots of the unmodified game contains our briefing frame exactly.
 * **The plain merge** (0x1005fcec, and 0x10060c14 with a color map; 9 KB of assembly) is C too: plain bitmaps, and a second run-length format (the copy routine's, with special values 0 transparent, 1 shadow, 2 highlight, 3 spot color, and "effect pixel" runs). Byte-exact on 30,000 random cases with all clip variants, flips and color maps.
 * Its quirks are kept: plain bitmaps are drawn in pixel pairs where a right pixel that transforms to 0 is sometimes written and sometimes not; mirrored, the odd last pixel takes its shadow from the pixel to its right; 8-bit loop counters make some zero counts mean 256.
-* Next: the effect blitter (0x1005adb3) and the tile routines.
+* Next: the effect blitter (0x1005adb3).
+
+### Tile map (`tiles.c` 19 functions, `tileblit.c` 9 blitters)
+The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile rows (every second row shifted by half a tile), with the layers above them.
+* Tile format: a 4-byte header, then the diamond's 32 rows without the transparent corners (2, 6, ..., 58, 64, 64, 58, ..., 2 pixels, each narrow row followed by 2 unused bytes).
+* One blitter draws a whole tile; eight more draw tiles cut off by the screen edge (bottom, top, left, right and the four corners). Lookup tables built once per screen pitch tell them where each clipped row starts in the tile.
+* A map cell has a tile number, an overlay number and two bit masks. The tile pass draws tiles, overlays numbered 0x37 and up (trees and other ground objects) and two masked overlays; the pass after the sprites draws overlays 2-0x36 and the shroud (overlay 1, filled with color 10 for whole tiles).
+* Non-isometric maps are a plain grid of bitmaps drawn with the plain merge.
+* The blitters are portable C, checked byte for byte with `tests/blit_compare.sh` (6,000 random cases, the tables for four pitches, and two deliberately broken versions caught).
+* The DirectDraw full-tile blitter (0x10066470) is hand-written assembly that writes a few bytes more than the C one, so it stays original until the remaining assembly is done.
+* Checked: Human mission 1 matches the all-original runs (the scrolled view now pixel for pixel).
 
 ### What's left
 | Part | Functions | Decompiled lines |

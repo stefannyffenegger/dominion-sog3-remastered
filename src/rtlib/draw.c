@@ -14,6 +14,7 @@
 #include "display.h"
 #include "spritelib.h"
 #include "view.h"
+#include "tiles.h"
 #include "utils.h"
 
 #define g_hsl G(uint8_t *, 0x10089e24)
@@ -97,8 +98,6 @@ typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
          0x1005adb3)
 #define dib_fill16 ORIG(void(__stdcall *)(uint32_t, int, int, int, int, uint32_t), 0x100638d8)
 #define dib_copy16 ORIG(void(__stdcall *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t), 0x10063a78)
-#define tiles_overlay ORIG(void(__stdcall *)(RECT *, uint32_t), 0x1005f4fc)
-#define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
 #define SpriteDibCopy ORIG(void(__stdcall *)(uint8_t *, uint32_t, uint32_t, uint32_t, int, int, int, int), 0x100537b1)
 
 

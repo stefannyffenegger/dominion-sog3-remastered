@@ -7,6 +7,7 @@
 #include <string.h>
 #include <windows.h>
 #include "../src/rtlib/blit.h"
+#include "../src/rtlib/tileblit.h"
 
 static uint8_t *base;
 static uint32_t seed = 12345;
@@ -345,6 +346,118 @@ static void test_plain(void)
     printf("plain merge: done\n");
 }
 
+/* ---- isometric tiles ---- */
+
+typedef void (*TileFn)(const TileTables *, void *, const void *, uint32_t, uint32_t, int, int, uint32_t, uint32_t);
+
+static void test_tiles(void)
+{
+    static uint8_t hsl[0x1000];
+    static TileTables t;
+    static const struct { uint32_t addr; TileFn fn; const char *name; } v[] = {
+        {0x1005ccf1, tile_clip_top, "tile top"},           {0x1005ce78, tile_clip_right, "tile right"},
+        {0x1005d1b7, tile_clip_left, "tile left"},         {0x1005d550, tile_clip_left_top, "tile left+top"},
+        {0x1005d7dc, tile_clip_right_top, "tile right+top"}, {0x1005da50, tile_clip_left_bottom, "tile left+bottom"},
+        {0x1005dcec, tile_clip_right_bottom, "tile right+bottom"},
+    };
+    *(uint8_t **)(base + 0x89e24) = hsl;
+    for (int i = 0; i < 6000; i++) {
+        int pitch = (int[]){640, 800, 1024, 128}[rnd(4)];
+        if (i % 500 == 0) {
+            *(uint32_t *)(hsl + 0x8a4) = pitch;
+            ORIG_CDECL(0x1005c569, pitch);
+            tile_tables_build(&t, pitch);
+            int same = !memcmp(t.adv, base + 0x8a6d0, sizeof t.adv) && !memcmp(t.adv_r, base + 0x8d838, sizeof t.adv_r) &&
+                       !memcmp(t.start, base + 0x8d738, sizeof t.start) && !memcmp(t.mirror, base + 0x8d6f8, sizeof t.mirror);
+            if (!same && i == 0) {
+                const int32_t *o[4] = {(int32_t *)(base + 0x8a6d0), (int32_t *)(base + 0x8d838), (int32_t *)(base + 0x8d738), (int32_t *)(base + 0x8d6f8)};
+                const int32_t *m[4] = {&t.adv[0][0], &t.adv_r[0][0], t.start, t.mirror};
+                int n[4] = {2048, 2048, 64, 15};
+                for (int q = 0; q < 4; q++)
+                    for (int k = 0; k < n[q]; k++)
+                        if (o[q][k] != m[q][k]) {
+                            printf("  table %d [%d][%d]: orig %d ours %d\n", q, k / 64, k % 64, o[q][k], m[q][k]);
+                            break;
+                        }
+            }
+            check("tile tables", same, i);
+        }
+        pitch = *(uint32_t *)(hsl + 0x8a4);
+        int dh = 80;
+        uint32_t size;
+        uint8_t *ga = gdib(pitch, dh, 0, &size), *gb = malloc(size);
+        memcpy(gb, ga, size), *(uint8_t **)(gb + GUARD + 0x20) = gb + GUARD + 0x24;
+        uint8_t *a = ga + GUARD, *b = gb + GUARD;
+        uint8_t *tile = dib(64, 24, 0); /* 1536 bytes: the tile and what follows it */
+        int ox = rnd(pitch - 64 + 1), oy = rnd(dh - 32 + 1);
+        uint32_t kind = rnd(13), w = 64, h = 32, cx = 0, cy = 0;
+        const char *name;
+        switch (kind) {
+        case 0:
+            name = "tile full";
+            ORIG_CDECL(0x1005c5d6, U(a), U(tile), ox, oy);
+            tile_full(&t, b, tile, ox, oy);
+            break;
+        case 1:
+            name = "tile bottom";
+            h = 1 + rnd(31);
+            ORIG_CDECL(0x1005cb5c, U(a), U(tile), w, h, ox, oy);
+            tile_clip_bottom(&t, b, tile, w, h, ox, oy);
+            break;
+        case 2: {
+            name = "tile rect";
+            uint32_t x0 = rnd(64), x1 = x0 + rnd(64 - x0), y0 = rnd(32), y1 = y0 + rnd(32 - y0);
+            ORIG_CDECL(0x1005c99a, U(a), U(tile), ox, oy, x0, x1, y0, y1);
+            tile_rect(b, tile, ox, oy, x0, x1, y0, y1);
+            break;
+        }
+        case 3:
+            name = "tile fill";
+            ORIG_CDECL(0x1005e4be, U(a), ox, oy);
+            tile_fill(b, ox, oy);
+            break;
+        case 4: {
+            name = "tile frame";
+            uint32_t fw = 1 + rnd(64), fh = 2 + rnd(31);
+            ORIG_CDECL(0x1005df6e, U(a), ox, oy, fw, fh);
+            tile_frame(b, ox, oy, fw, fh);
+            break;
+        }
+        default: {
+            int k = (kind - 5) % 7;
+            int left = k == 2 || k == 3 || k == 5, top = k == 0 || k == 3 || k == 4;
+            int right = k == 1 || k == 4 || k == 6, bottom = k == 5 || k == 6;
+            if (left)
+                cx = 1 + rnd(63), w = 64 - cx;
+            if (right)
+                w = 1 + rnd(63);
+            if (top)
+                cy = 1 + rnd(31), h = 32 - cy;
+            if (bottom)
+                h = 1 + rnd(31);
+            if (k == 2 && rnd(2)) /* DirectDraw: even cx */
+                cx &= ~1u, cx += cx ? 0 : 2, w = 64 - cx;
+            name = v[k].name;
+            ORIG_CDECL(v[k].addr, U(a), U(tile), w, h, ox + cx, oy + cy, cx, cy);
+            v[k].fn(&t, b, tile, w, h, ox + cx, oy + cy, cx, cy);
+        }
+        }
+        *(uint8_t **)(b + 0x20) = *(uint8_t **)(a + 0x20);
+        int same = !memcmp(ga, gb, size);
+        if (!same && failures < 8) {
+            uint32_t q = 0;
+            while (ga[q] == gb[q])
+                q++;
+            int off = (int)q - GUARD - 0x24;
+            printf("  %s pitch=%d w=%u h=%u cx=%u cy=%u at %d,%d: first diff at %d,%d orig=%d ours=%d\n", name, pitch, w,
+                   h, cx, cy, ox, oy, off % pitch - ox, off / pitch - oy, ga[q], gb[q]);
+        }
+        check(name, same, i);
+        free(ga), free(gb), free(tile);
+    }
+    printf("tiles: done\n");
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -358,6 +471,7 @@ int main(int argc, char **argv)
     test_copy();
     test_merge();
     test_plain();
+    test_tiles();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }

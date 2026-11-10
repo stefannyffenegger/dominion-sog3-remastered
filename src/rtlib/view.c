@@ -12,6 +12,7 @@
 #include "draw.h"
 #include "spritelib.h"
 #include "view.h"
+#include "tiles.h"
 #include "display.h"
 #include "sprite.h"
 #include "queue.h"
@@ -67,8 +68,6 @@
 
 /* original functions not rewritten yet */
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
-#define tiles_create ORIG(uint8_t *(__stdcall *)(uint32_t), 0x1005e5bf)
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
 
 
@@ -305,7 +304,7 @@ int __stdcall SpriteSetTileBackground(uint8_t *hsl, uint32_t map, RECT *out)
 {
     uint8_t *tiles;
     g_hsl = hsl;
-    if (!map || !(tiles = tiles_create(map)))
+    if (!map || !(tiles = tiles_create((uint8_t *)(uintptr_t)map)))
         return SpriteSetBackground(hsl, NULL, out);
     H(uint32_t, HSL_FILL) = 0;
     H(uint32_t, HSL_TILE_MAP) = map;
