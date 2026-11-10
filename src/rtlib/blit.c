@@ -422,3 +422,279 @@ void dib_merge_rle(const MergeEnv *e, void *dst, void *src, uint32_t w, uint32_t
         }
     }
 }
+
+/* ---- the plain merge (0x1005fcec, and 0x10060c14 with a color map) ----
+ *
+ * Its run-length format is the copy routine's, with special values: codes 0 end a row,
+ * 1-0x7f are a run (count, value), 0x80-0xfe a literal of ~code raw pixels, 0xff a count
+ * followed by that many effect pixels. Run and effect values: 0 transparent, 1 shadow,
+ * 2 highlight (a byte table), 3 the spot color, others drawn. With a color map every
+ * source value is mapped first (the special values are checked after mapping).
+ * Loops over shadow, highlight and effect pixels count in 8 bits, so 0 means 256. */
+
+typedef struct PlainCtx {
+    const PlainEnv *e;
+    const uint32_t *cmap;
+    int dir;
+} PlainCtx;
+
+static uint8_t pmap(const PlainCtx *c, uint8_t v) { return c->cmap ? (uint8_t)c->cmap[v] : v; }
+
+static void peffect(const PlainCtx *c, uint8_t *d, uint8_t v)
+{
+    if (v == 0)
+        return;
+    if (v == 1)
+        *d = (uint8_t)c->e->shadow[*d];
+    else if (v == 2)
+        *d = c->e->hilite[*d];
+    else
+        *d = v == 3 ? c->e->spot : v;
+}
+
+/* the three item kinds; n as the original's count register */
+static uint8_t *p_lit(const PlainCtx *c, uint8_t *d, const uint8_t **s, uint32_t n)
+{
+    for (; n; n--, d += c->dir)
+        *d = pmap(c, *(*s)++);
+    return d;
+}
+
+static uint8_t *p_fx(const PlainCtx *c, uint8_t *d, const uint8_t **s, uint8_t n)
+{
+    do {
+        peffect(c, d, pmap(c, *(*s)++));
+        d += c->dir;
+    } while (--n);
+    return d;
+}
+
+static uint8_t *p_run(const PlainCtx *c, uint8_t *d, const uint8_t **s, uint32_t n)
+{
+    uint8_t v = pmap(c, *(*s)++);
+    if (v >= 3) {
+        if (v == 3)
+            v = c->e->spot;
+        for (uint32_t i = 0; i < n; i++, d += c->dir)
+            *d = v;
+    } else if (v == 0) {
+        d += c->dir * (int32_t)n;
+    } else {
+        uint8_t k = (uint8_t)n;
+        do {
+            peffect(c, d, v);
+            d += c->dir;
+        } while (--k);
+    }
+    return d;
+}
+
+static uint8_t ptrans(const PlainCtx *c, uint8_t v, uint8_t under)
+{
+    if (v == 1)
+        return (uint8_t)c->e->shadow[under];
+    if (v == 2)
+        return c->e->hilite[under];
+    return v == 3 ? c->e->spot : v;
+}
+
+/* Two pixels a -> *x and b -> *y, shadows looked up under tx and ty (see plain_raw) */
+static void ppair(const PlainCtx *c, uint8_t a, uint8_t b, uint8_t *x, uint8_t *y, const uint8_t *tx, const uint8_t *ty)
+{
+    a = pmap(c, a), b = pmap(c, b);
+    if (!a && !b)
+        return;
+    uint8_t ta = ptrans(c, a, *tx), tb = ptrans(c, b, *ty);
+    if (ta) {
+        *x = ta;
+        if (tb)
+            *y = tb;
+    } else {
+        *y = tb;
+    }
+}
+
+static void psingle(const PlainCtx *c, uint8_t a, uint8_t *x, const uint8_t *t)
+{
+    a = pmap(c, a);
+    if (a)
+        *x = ptrans(c, a, *t);
+}
+
+/* plain bitmaps: pixel pairs. Quirks kept: a pair whose left pixel transforms to 0
+ * writes the right one even if it is 0 too, but a right pixel transforming to 0 after a
+ * drawn left one is skipped; mirrored, the odd last pixel looks its shadow up one pixel
+ * to the right; with a color map, each row moves the source on by the map's address
+ * instead of the row gap (so only the first row is right). */
+static void plain_raw(const PlainCtx *c, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                      int fx, int fy)
+{
+    uint32_t spitch = F(uint32_t, src, 8), dpitch = F(uint32_t, dst, 8);
+    int32_t sgap = (int32_t)spitch, dgap = (int32_t)dpitch;
+    uint32_t srow, drow;
+    if (!fy) {
+        srow = F(uint32_t, src, 0xc) - sy - h;
+    } else {
+        sgap = -sgap;
+        srow = sy + h - 1;
+    }
+    const uint8_t *s = F(uint8_t *, src, 0x20) + (srow * spitch + (fx ? F(uint32_t, src, 4) - sx : (uint32_t)sx));
+    if (!(F(uint32_t, dst, 0x10) & 0x40)) {
+        drow = F(uint32_t, dst, 0xc) - dy - h;
+    } else {
+        dgap = -dgap;
+        drow = dy + h - 1;
+    }
+    uint8_t *d = F(uint8_t *, dst, 0x20) + (drow * dpitch + dx);
+    sgap = fx ? sgap + (int32_t)w : sgap - (int32_t)w;
+    dgap -= (int32_t)w;
+    if (c->cmap)
+        sgap = (int32_t)(uintptr_t)c->cmap;
+    uint32_t quads = w >> 2, rem = w & 3;
+    for (; h; h--) {
+        if (!fx) {
+            for (uint32_t k = 0; k < quads; k++, s += 4, d += 4) {
+                ppair(c, s[0], s[1], d, d + 1, d, d + 1);
+                ppair(c, s[2], s[3], d + 2, d + 3, d + 2, d + 3);
+            }
+            if (rem >= 2) {
+                ppair(c, s[0], s[1], d, d + 1, d, d + 1);
+                s += 2, d += 2;
+            }
+            if (rem & 1) {
+                psingle(c, s[0], d, d);
+                s++, d++;
+            }
+        } else {
+            for (uint32_t k = 0; k < quads; k++, d += 4) {
+                s -= 4;
+                ppair(c, s[0], s[1], d + 3, d + 2, d + 3, d + 2);
+                ppair(c, s[2], s[3], d + 1, d, d + 1, d);
+            }
+            if (rem >= 2) {
+                s -= 2;
+                ppair(c, s[0], s[1], d + 1, d, d + 1, d);
+                d += 2;
+            }
+            if (rem & 1) {
+                s--;
+                psingle(c, s[0], d, d + 1);
+                d++;
+            }
+        }
+        d += dgap;
+        s += sgap;
+    }
+}
+
+void dib_merge_plain(const PlainEnv *e, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                     uint32_t flip, const uint32_t *cmap)
+{
+    if (!w || !h)
+        return;
+    int fx = (flip & 0xff) != 0, fy = (flip & 0xff00) != 0;
+    PlainCtx c = {e, cmap, fx ? -1 : 1};
+    if (!(F(uint8_t, src, 0x10) & 0x80)) {
+        plain_raw(&c, dst, src, w, h, dx, dy, sx, sy, fx, fy);
+        return;
+    }
+    uint32_t dpitch = F(uint32_t, dst, 8), dh = F(uint32_t, dst, 0xc);
+    int32_t dgap = (int32_t)dpitch;
+    uint32_t drow;
+    /* run-length coded source (same setup as dib_copy) */
+    if (fx)
+        sx = F(int32_t, src, 4) - (int32_t)w - sx;
+    int lclip = sx != 0, rclip = sx + w != F(uint32_t, src, 4);
+    uint32_t row = fy ? F(uint32_t, src, 0xc) - h - sy : (uint32_t)sy;
+    const uint8_t *base = F(uint8_t *, src, 0x20);
+    const uint8_t *tbl = base + (row + h - 1) * 2;
+    const uint8_t *s = base + *(const uint16_t *)tbl;
+    if (!(F(uint32_t, dst, 0x10) & 0x40)) {
+        drow = dh - dy;
+        if (!fy)
+            drow -= h;
+        else
+            dgap = -dgap, drow--;
+    } else {
+        drow = dy;
+        if (!fy)
+            dgap = -dgap, drow += h - 1;
+    }
+    uint8_t *d = F(uint8_t *, dst, 0x20) + (drow * dpitch + dx);
+    dgap -= (int32_t)w;
+    if (fx)
+        d += w - 1, dgap += 2 * (int32_t)w;
+    for (;;) {
+        int32_t rem = (int32_t)w;
+        int kind = -1; /* item left over from the skip: 0 run, 1 literal, 2 effects */
+        int32_t n = 0;
+        if (lclip) {
+            n = sx;
+            for (;;) {
+                uint32_t a = *s++;
+                if (a <= 0x7f) {
+                    s++;
+                    n -= (int32_t)a;
+                    if (n >= 0)
+                        continue;
+                    s--;
+                    kind = 0;
+                } else if ((a ^= 0xff) != 0) {
+                    s += a;
+                    n -= (int32_t)a;
+                    if (n >= 0)
+                        continue;
+                    s += n;
+                    kind = 1;
+                } else {
+                    a = *s++;
+                    s += a;
+                    n -= (int32_t)a;
+                    if (n >= 0)
+                        continue;
+                    s += n;
+                    kind = 2;
+                }
+                n = -n;
+                break;
+            }
+        }
+        for (;;) {
+            if (kind < 0) {
+                if (rclip) {
+                    if (rem <= 0)
+                        break;
+                } 
+                uint32_t code = *s++;
+                if (!rclip && code == 0)
+                    break;
+                if (code <= 0x7f) {
+                    kind = 0, n = (int32_t)code;
+                } else if ((code ^= 0xff) != 0) {
+                    kind = 1, n = (int32_t)code;
+                } else {
+                    kind = 2, n = *s++;
+                }
+            }
+            if (rclip) {
+                rem -= n;
+                if (rem < 0)
+                    n += rem;
+            }
+            if (kind == 0)
+                d = p_run(&c, d, &s, (uint32_t)n);
+            else if (kind == 1)
+                d = p_lit(&c, d, &s, (uint32_t)n);
+            else
+                d = p_fx(&c, d, &s, (uint8_t)n);
+            kind = -1;
+        }
+        d += dgap;
+        if (!--h)
+            return;
+        if (rclip) {
+            tbl -= 2;
+            s = base + *(const uint16_t *)tbl;
+        }
+    }
+}

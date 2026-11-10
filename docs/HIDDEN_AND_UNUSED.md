@@ -86,7 +86,8 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - with no color map, the plain-bitmap blitter jumps into a routine that removes one argument too few from the stack;
   - the fast path places the first row with the bitmap's width instead of its row pitch, so it writes outside the bitmap when the two differ (the 640-wide screen hides it);
   - the plain shadow aligns to 4 bytes using the wrong register;
-  - effect type 2 in the sprite format is never drawn (an unfinished effect).
+  - effect type 2 in the sprite format is never drawn (an unfinished effect);
+  - the plain-bitmap merge with a color map adds the color map's *address* to the source pointer after each row, so only the first row of such a bitmap can be right. The game never draws a plain bitmap with a color map.
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

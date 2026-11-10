@@ -266,6 +266,85 @@ static void test_merge(void)
     printf("merge (run-length): done\n");
 }
 
+/* a run-length bitmap in the plain merge's format: 16-bit row table, rows stored from the
+ * last to the first, each a list of runs, literals and effect pixels ended by a 0 */
+static uint8_t *plain_dib(int w, int h)
+{
+    uint8_t *p = calloc(1, 0x24 + 2 * h + h * (w * 3 + 8) + 64);
+    *(int32_t *)(p + 4) = w, *(uint32_t *)(p + 8) = w, *(int32_t *)(p + 0xc) = h;
+    *(uint32_t *)(p + 0x10) = 0x80, *(uint8_t **)(p + 0x20) = p + 0x24;
+    uint8_t *bits = p + 0x24, *q = bits + 2 * h;
+    for (int y = h - 1; y >= 0; y--) {
+        ((uint16_t *)bits)[y] = (uint16_t)(q - bits);
+        for (int left = w; left > 0;) {
+            int n = 1 + rnd(left < 100 ? left : 100), kind = rnd(3);
+            if (kind == 0) {
+                int v = rnd(3) ? (int)rnd(4) : (int)rnd(256);
+                *q++ = (uint8_t)(n > 0x7f ? 0x7f : n), *q++ = (uint8_t)v;
+                n = n > 0x7f ? 0x7f : n;
+            } else if (kind == 1) {
+                n = n > 0x7f ? 0x7f : n;
+                *q++ = (uint8_t)(0xff - n);
+                for (int k = 0; k < n; k++)
+                    *q++ = (uint8_t)rnd(256);
+            } else {
+                *q++ = 0xff, *q++ = (uint8_t)n;
+                for (int k = 0; k < n; k++)
+                    *q++ = rnd(2) ? (uint8_t)rnd(4) : (uint8_t)rnd(256);
+            }
+            left -= n;
+        }
+        *q++ = 0;
+    }
+    return p;
+}
+
+static void test_plain(void)
+{
+    static uint32_t cmap[256];
+    uint32_t *shadow = (uint32_t *)(base + 0x7b7e8);
+    uint8_t *hilite = base + 0x7bbe8, *spot = base + 0x89e1c;
+    for (int i = 0; i < 30000; i++) {
+        for (int k = 0; k < 256; k++)
+            shadow[k] = rnd(256), hilite[k] = (uint8_t)rnd(256), cmap[k] = rnd(256);
+        *spot = (uint8_t)rnd(256);
+        PlainEnv e = {shadow, hilite, *spot};
+        int raw = rnd(2), sw = 1 + rnd(60), sh = 1 + rnd(40);
+        uint8_t *src = raw ? dib(sw, sh, 0) : plain_dib(sw, sh);
+        if (raw) /* plenty of the special values 0-3 */
+            for (uint32_t k = 0; k < (uint32_t)((sw + 3) & ~3) * sh; k++)
+                if (rnd(2))
+                    src[0x24 + k] = (uint8_t)rnd(4);
+        int full = rnd(3) == 0;
+        int w = full ? sw : 1 + rnd(sw), h = full ? sh : 1 + rnd(sh);
+        int sx = full ? 0 : rnd(sw - w + 1), sy = full ? 0 : rnd(sh - h + 1);
+        int dw = sw + rnd(40), dh = sh + rnd(40);
+        uint32_t size;
+        uint8_t *ga = gdib(dw, dh, rnd(2) ? 0x40 : 0, &size), *gb = malloc(size);
+        memcpy(gb, ga, size), *(uint8_t **)(gb + GUARD + 0x20) = gb + GUARD + 0x24;
+        uint8_t *a = ga + GUARD, *b = gb + GUARD;
+        int dx = rnd(dw - w + 1), dy = rnd(dh - h + 1);
+        uint32_t flip = rnd(4), fl = (flip & 1) | (flip & 2 ? 0x100 : 0);
+        uint32_t *cm = rnd(2) ? cmap : NULL;
+        if (raw && cm) /* only the first row is right with a color map (original bug) */
+            h = 1, sy = full ? sh - 1 : sy, full = 0;
+        ORIG_CDECL(0x10060c14, U(a), U(src), w, h, dx, dy, sx, sy, fl, U(cm));
+        dib_merge_plain(&e, b, src, w, h, dx, dy, sx, sy, fl, cm);
+        *(uint8_t **)(b + 0x20) = *(uint8_t **)(a + 0x20);
+        int same = !memcmp(ga, gb, size);
+        if (!same && failures < 8) {
+            uint32_t k = 0;
+            while (ga[k] == gb[k])
+                k++;
+            printf("  sw=%d sh=%d w=%d h=%d sx=%d sy=%d dw=%d dh=%d dx=%d dy=%d flip=%x cmap=%d first diff at %d orig=%d ours=%d\n",
+                   sw, sh, w, h, sx, sy, dw, dh, dx, dy, fl, cm != NULL, (int)k - GUARD - 0x24, ga[k], gb[k]);
+        }
+        check(raw ? "plain raw" : full ? "plain rle full" : "plain rle clipped", same, i);
+        free(ga), free(gb), free(src);
+    }
+    printf("plain merge: done\n");
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -278,6 +357,7 @@ int main(int argc, char **argv)
     test_fill();
     test_copy();
     test_merge();
+    test_plain();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }

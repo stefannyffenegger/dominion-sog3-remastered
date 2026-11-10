@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 442 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 444 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -288,7 +288,9 @@ The sprite engine's hand-written assembly, rewritten in portable C one routine a
 * The shadow and color-map routines look up 32-bit table entries and combine four at a time; that equals a per-pixel lookup because the game's tables only hold values below 256 (checked in `ISO.R32`), which our C relies on.
 * Found while wiring it in: with no color map, the 5 KB routine jumps into a routine that removes 9 arguments instead of 10. The original only survives because its caller resets the stack from its frame. Our register-safe call wrapper now does the same.
 * The game screenshots drift by an animation frame sometimes (the briefing background and idle units animate); a dense series of screenshots of the unmodified game contains our briefing frame exactly.
-* Next: the plain-bitmap merge (0x10060c14 and 0x1005fcec), the effect blitter (0x1005adb3) and the tile routines.
+* **The plain merge** (0x1005fcec, and 0x10060c14 with a color map; 9 KB of assembly) is C too: plain bitmaps, and a second run-length format (the copy routine's, with special values 0 transparent, 1 shadow, 2 highlight, 3 spot color, and "effect pixel" runs). Byte-exact on 30,000 random cases with all clip variants, flips and color maps.
+* Its quirks are kept: plain bitmaps are drawn in pixel pairs where a right pixel that transforms to 0 is sometimes written and sometimes not; mirrored, the odd last pixel takes its shadow from the pixel to its right; 8-bit loop counters make some zero counts mean 256.
+* Next: the effect blitter (0x1005adb3) and the tile routines.
 
 ### What's left
 | Part | Functions | Decompiled lines |

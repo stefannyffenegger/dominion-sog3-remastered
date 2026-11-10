@@ -16,4 +16,9 @@ void __cdecl draw_sprite_into(uint8_t *s, uint32_t dst);
 uint32_t __cdecl dib_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
                            uint32_t cmap);
 
+uint32_t __stdcall dib_merge_plain_cm(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                      uint32_t flip, uint32_t cmap);
+uint32_t __stdcall dib_merge_plain9(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                    uint32_t flip);
+
 #endif

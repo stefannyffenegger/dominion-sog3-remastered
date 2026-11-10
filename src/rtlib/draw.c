@@ -116,13 +116,37 @@ uint32_t __cdecl dib_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int
         DebugBreak(); /* original */
         return 0;
     }
-    if (!(S(uint8_t, s, 0x10) & 0x80)) {
-        uint32_t a[10] = {dst, src, (uint32_t)w, (uint32_t)h, (uint32_t)dx, (uint32_t)dy, (uint32_t)sx, (uint32_t)sy, flip, cmap};
-        return orig_stdcall_unsafe(ORIG_PTR(0x10060c14), 10, a);
-    }
+    if (!(S(uint8_t, s, 0x10) & 0x80))
+        return dib_merge_plain_cm(dst, src, w, h, dx, dy, sx, sy, flip, cmap);
     MergeEnv e = {(const uint32_t *)ORIG_PTR(0x1007b7e8), H(uint32_t, 0xb74) && H(uint32_t, HSL_WIDTH) > 0x280,
                   H(uint32_t, 0xb74) && H(uint32_t, HSL_IFACE_ON)};
     dib_merge_rle(&e, (void *)(uintptr_t)dst, s, w, h, dx, dy, sx, sy, flip, (const uint32_t *)(uintptr_t)cmap);
+    return 0;
+}
+
+static PlainEnv plain_env(void)
+{
+    PlainEnv e = {(const uint32_t *)ORIG_PTR(0x1007b7e8), (const uint8_t *)ORIG_PTR(0x1007bbe8), G(uint8_t, 0x10089e1c)};
+    return e;
+}
+
+/* 0x10060c14: the plain merge with a color map (the original jumps to 0x1005fcec without
+ * one; that removes 9 arguments instead of 10, which its callers' frames hid) */
+uint32_t __stdcall dib_merge_plain_cm(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                      uint32_t flip, uint32_t cmap)
+{
+    PlainEnv e = plain_env();
+    dib_merge_plain(&e, (void *)(uintptr_t)dst, (void *)(uintptr_t)src, w, h, dx, dy, sx, sy, flip,
+                    (const uint32_t *)(uintptr_t)cmap);
+    return 0;
+}
+
+/* 0x1005fcec: the plain merge without a color map */
+uint32_t __stdcall dib_merge_plain9(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                    uint32_t flip)
+{
+    PlainEnv e = plain_env();
+    dib_merge_plain(&e, (void *)(uintptr_t)dst, (void *)(uintptr_t)src, w, h, dx, dy, sx, sy, flip, NULL);
     return 0;
 }
 

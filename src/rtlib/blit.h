@@ -15,6 +15,14 @@ typedef struct MergeEnv {
 void dib_merge_rle(const MergeEnv *e, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, uint32_t sx,
                    uint32_t sy, uint32_t flip, const uint32_t *cmap);
 
+typedef struct PlainEnv {
+    const uint32_t *shadow; /* 256-entry shadow table */
+    const uint8_t *hilite;  /* 256-byte highlight table */
+    uint8_t spot;           /* spot color (SpriteSetSpotColor) */
+} PlainEnv;
+void dib_merge_plain(const PlainEnv *e, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                     uint32_t flip, const uint32_t *cmap);
+
 #endif
 
 int __stdcall rect_intersect(int32_t *out, const int32_t *a, const int32_t *b);
@@ -31,5 +39,13 @@ typedef struct MergeEnv {
 } MergeEnv;
 void dib_merge_rle(const MergeEnv *e, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, uint32_t sx,
                    uint32_t sy, uint32_t flip, const uint32_t *cmap);
+
+typedef struct PlainEnv {
+    const uint32_t *shadow; /* 256-entry shadow table */
+    const uint8_t *hilite;  /* 256-byte highlight table */
+    uint8_t spot;           /* spot color (SpriteSetSpotColor) */
+} PlainEnv;
+void dib_merge_plain(const PlainEnv *e, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                     uint32_t flip, const uint32_t *cmap);
 
 #endif
