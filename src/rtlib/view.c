@@ -70,9 +70,6 @@
 #define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
 #define tiles_create ORIG(uint8_t *(__stdcall *)(uint32_t), 0x1005e5bf)
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
-/* merges a bitmap into another: dst, src, w, h, dst x, y, src x, y, flip, color map */
-#define dib_merge                                                                                  \
-    ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t), 0x10059e74)
 
 
 

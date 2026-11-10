@@ -91,8 +91,6 @@ typedef void(__stdcall *DrawProc)(uint8_t *, uint8_t *, uint32_t, RECT *);
 typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 
 /* blitters, still original: dst, src, w, h, dst x, y, src x, y, flip, ... */
-#define dib_merge                                                                                  \
-    ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t), 0x10059e74)
 #define dib_fx_merge                                                                               \
     ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t, uint32_t,  \
                          uint32_t),                                                                \
@@ -105,6 +103,28 @@ typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 
 
 
+
+/* 0x10059e74: draws bitmap src (w x h from sx, sy) into dst at dx, dy, with transparency,
+ * shadows, flips and an optional color map. Run-length coded sprites are drawn by our C
+ * (blit.c); plain bitmaps still by the original assembly (0x10060c14). */
+uint32_t __cdecl dib_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                           uint32_t cmap)
+{
+    uint8_t *s = (uint8_t *)(uintptr_t)src;
+    if (sx < 0 || sy < 0 || S(uint32_t, s, 4) - 1 < (uint32_t)sx || S(uint32_t, s, 0xc) - 1 < (uint32_t)sy || w < 1 ||
+        h < 1 || dx < 0 || dy < 0) {
+        DebugBreak(); /* original */
+        return 0;
+    }
+    if (!(S(uint8_t, s, 0x10) & 0x80)) {
+        uint32_t a[10] = {dst, src, (uint32_t)w, (uint32_t)h, (uint32_t)dx, (uint32_t)dy, (uint32_t)sx, (uint32_t)sy, flip, cmap};
+        return orig_stdcall_unsafe(ORIG_PTR(0x10060c14), 10, a);
+    }
+    MergeEnv e = {(const uint32_t *)ORIG_PTR(0x1007b7e8), H(uint32_t, 0xb74) && H(uint32_t, HSL_WIDTH) > 0x280,
+                  H(uint32_t, 0xb74) && H(uint32_t, HSL_IFACE_ON)};
+    dib_merge_rle(&e, (void *)(uintptr_t)dst, s, w, h, dx, dy, sx, sy, flip, (const uint32_t *)(uintptr_t)cmap);
+    return 0;
+}
 
 /* Draws one bitmap of s, with its effect if it has one */
 static void blit(uint8_t *s, uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy)

@@ -13,4 +13,7 @@ void __stdcall draw_background(uint32_t w, uint32_t h);
 void __stdcall screen_blit(uint8_t *bm);
 void __cdecl draw_sprite_into(uint8_t *s, uint32_t dst);
 
+uint32_t __cdecl dib_merge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy, uint32_t flip,
+                           uint32_t cmap);
+
 #endif

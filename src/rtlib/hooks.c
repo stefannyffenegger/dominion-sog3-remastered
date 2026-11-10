@@ -54,15 +54,17 @@ __attribute__((naked)) uint32_t __cdecl orig_stdcall_unsafe(void *fn, uint32_t n
                      "pushl %esi\n\t"
                      "pushl %edi\n\t"
                      "pushl %ebp\n\t"
-                     "movl 20(%esp), %eax\n\t" /* fn */
-                     "movl 24(%esp), %ecx\n\t" /* n */
-                     "movl 28(%esp), %edx\n\t" /* args */
+                     "movl %esp, %ebp\n\t"   /* the stack is restored from here: some */
+                     "movl 20(%ebp), %eax\n\t" /* routines remove the wrong number of */
+                     "movl 24(%ebp), %ecx\n\t" /* arguments (0x10060c14 -> 0x1005fcec) */
+                     "movl 28(%ebp), %edx\n\t"
                      "1: testl %ecx, %ecx\n\t"
                      "jz 2f\n\t"
                      "decl %ecx\n\t"
                      "pushl (%edx,%ecx,4)\n\t"
                      "jmp 1b\n\t"
                      "2: call *%eax\n\t"
+                     "movl %ebp, %esp\n\t"
                      "popl %ebp\n\t"
                      "popl %edi\n\t"
                      "popl %esi\n\t"

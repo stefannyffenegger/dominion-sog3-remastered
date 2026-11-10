@@ -82,6 +82,11 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
 * **code.** `SpriteInitLibrary`, on a display without a palette, fills both halves of its copy of Windows' 20 static colors with the first 10.
 * **code.** Switching the screen mode (0x10055c7e) frees the drawing bitmap but keeps the pointer to it.
 * **code.** The bitmap copy routine (0x100629f4) can't copy more than one row of a run-length coded bitmap: it reads the next row's offset as 32 bits from a table of 16-bit offsets. With a horizontal flip on a plain bitmap it doesn't mirror; it reads from the wrong place instead. The game's backgrounds avoid both (run-length backgrounds go through the merge blitter).
+* **code.** The sprite blitters, all hand-written assembly, have several latent bugs that the game never triggers:
+  - with no color map, the plain-bitmap blitter jumps into a routine that removes one argument too few from the stack;
+  - the fast path places the first row with the bitmap's width instead of its row pitch, so it writes outside the bitmap when the two differ (the 640-wide screen hides it);
+  - the plain shadow aligns to 4 bytes using the wrong register;
+  - effect type 2 in the sprite format is never drawn (an unfinished effect).
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

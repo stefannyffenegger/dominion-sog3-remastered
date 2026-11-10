@@ -22,6 +22,20 @@ __attribute__((naked)) static uint32_t __cdecl call_orig(void *fn, uint32_t n, c
                      "1: testl %ecx, %ecx\n\tjz 2f\n\tdecl %ecx\n\tpushl (%edx,%ecx,4)\n\tjmp 1b\n\t"
                      "2: call *%eax\n\tpopl %ebp\n\tpopl %edi\n\tpopl %esi\n\tpopl %ebx\n\tret");
 }
+/* the same for cdecl routines: the caller removes the arguments */
+__attribute__((naked)) static uint32_t __cdecl call_orig_cdecl(void *fn, uint32_t n, const uint32_t *args)
+{
+    (void)fn, (void)n, (void)args;
+    __asm__ volatile("pushl %ebx\n\tpushl %esi\n\tpushl %edi\n\tpushl %ebp\n\tmovl %esp, %ebp\n\t"
+                     "movl 20(%ebp), %eax\n\tmovl 24(%ebp), %ecx\n\tmovl 28(%ebp), %edx\n\t"
+                     "1: testl %ecx, %ecx\n\tjz 2f\n\tdecl %ecx\n\tpushl (%edx,%ecx,4)\n\tjmp 1b\n\t"
+                     "2: call *%eax\n\tmovl %ebp, %esp\n\tpopl %ebp\n\tpopl %edi\n\tpopl %esi\n\tpopl %ebx\n\tret");
+}
+#define ORIG_CDECL(addr, ...)                                                                      \
+    ({                                                                                             \
+        uint32_t a_[] = {__VA_ARGS__};                                                             \
+        call_orig_cdecl(base + ((addr) - 0x10000000), sizeof a_ / 4, a_);                          \
+    })
 #define ORIG(addr, ...)                                                                            \
     ({                                                                                             \
         uint32_t a_[] = {__VA_ARGS__};                                                             \
@@ -165,8 +179,96 @@ static void test_copy(void)
     printf("copy: done\n");
 }
 
+/* a run-length coded sprite in the engine's segment format (rows bottom first) */
+static uint8_t *seg_dib(int w, int h)
+{
+    uint8_t *p = calloc(1, 0x24 + h * (4 + w * 6) + 64);
+    *(int32_t *)(p + 4) = w, *(uint32_t *)(p + 8) = w, *(int32_t *)(p + 0xc) = h;
+    *(uint32_t *)(p + 0x10) = 0x80, *(uint8_t **)(p + 0x20) = p + 0x24;
+    uint8_t *q = p + 0x24;
+    for (int y = 0; y < h; y++) {
+        uint8_t *count = q;
+        q += 2;
+        int nseg = 0;
+        for (int left = w; left > 0; nseg++) {
+            int n = 1 + rnd(left < 40 ? left : 40), type = rnd(4);
+            *(uint16_t *)q = (uint16_t)(type << 11 | n);
+            q += 2;
+            if (type == 3) {
+                for (int k = 0; k < n; k++)
+                    *q++ = (uint8_t)rnd(256);
+                if ((uintptr_t)q & 1)
+                    *q++ = (uint8_t)rnd(256);
+            }
+            left -= n;
+        }
+        count[0] = (uint8_t)nseg, count[1] = (uint8_t)rnd(256);
+    }
+    return p;
+}
+
+/* destination bitmaps with a guard area in front, compared as a whole */
+#define GUARD 8192
+static uint8_t *gdib(int w, int h, uint32_t flags, uint32_t *size)
+{
+    uint32_t pitch = (w + 3) & ~3u;
+    *size = GUARD + 0x24 + pitch * h + 64;
+    uint8_t *blk = malloc(*size);
+    for (uint32_t k = 0; k < *size; k++)
+        blk[k] = (uint8_t)rnd(256);
+    uint8_t *p = blk + GUARD;
+    *(uint32_t *)p = 0x24, *(int32_t *)(p + 4) = w, *(uint32_t *)(p + 8) = pitch, *(int32_t *)(p + 0xc) = h;
+    *(uint32_t *)(p + 0x10) = flags, *(uint8_t **)(p + 0x20) = p + 0x24;
+    return blk;
+}
+
+static void test_merge(void)
+{
+    static uint8_t hsl[0x1000];
+    static uint32_t cmap[256];
+    uint32_t *shadow = (uint32_t *)(base + 0x7b7e8);
+    *(uint8_t **)(base + 0x89e24) = hsl;
+    for (int i = 0; i < 30000; i++) {
+        for (int k = 0; k < 256; k++)
+            shadow[k] = rnd(256), cmap[k] = rnd(256);
+        *(uint32_t *)(hsl + 0xb74) = rnd(2), *(uint32_t *)(hsl + 0xb68) = rnd(2);
+        *(uint32_t *)(hsl + 0x8a4) = rnd(2) ? 640 : 800;
+        MergeEnv e = {shadow, *(uint32_t *)(hsl + 0xb74) && *(uint32_t *)(hsl + 0x8a4) > 0x280,
+                      *(uint32_t *)(hsl + 0xb74) && *(uint32_t *)(hsl + 0xb68)};
+        int sw = 1 + rnd(60), sh = 1 + rnd(40);
+        uint8_t *src = seg_dib(sw, sh);
+        int full = rnd(3) == 0;
+        int w = full ? sw : 1 + rnd(sw), h = full ? sh : 1 + rnd(sh);
+        int sx = full ? 0 : rnd(sw - w + 1), sy = full ? 0 : rnd(sh - h + 1);
+        int dw = sw + rnd(40), dh = sh + rnd(40);
+        uint32_t size;
+        uint8_t *ga = gdib(dw, dh, rnd(2) ? 0x40 : 0, &size), *gb = malloc(size);
+        memcpy(gb, ga, size), *(uint8_t **)(gb + GUARD + 0x20) = gb + GUARD + 0x24;
+        uint8_t *a = ga + GUARD, *b = gb + GUARD;
+        int dx = rnd(dw - w + 1), dy = rnd(dh - h + 1);
+        uint32_t flip = rnd(4), fl = (flip & 1) | (flip & 2 ? 0x100 : 0);
+        uint32_t *cm = rnd(2) ? cmap : NULL;
+        ORIG_CDECL(0x10059e74, U(a), U(src), w, h, dx, dy, sx, sy, fl, U(cm));
+        dib_merge_rle(&e, b, src, w, h, dx, dy, sx, sy, fl, cm);
+        *(uint8_t **)(b + 0x20) = *(uint8_t **)(a + 0x20); /* the only expected difference */
+        int same = !memcmp(ga, gb, size);
+        if (!same && failures < 5) {
+            uint32_t k = 0;
+            while (ga[k] == gb[k])
+                k++;
+            printf("  sw=%d sh=%d w=%d h=%d sx=%d sy=%d dw=%d dh=%d dx=%d dy=%d flip=%x cmap=%d env=%d,%d first diff at %d orig=%d ours=%d\n",
+                   sw, sh, w, h, sx, sy, dw, dh, dx, dy, fl, cm != NULL, e.dither_slow, e.dither_fast,
+                   (int)k - GUARD - 0x24, ga[k], gb[k]);
+        }
+        check(full ? "merge full" : "merge clipped", same, i);
+        free(ga), free(gb), free(src);
+    }
+    printf("merge (run-length): done\n");
+}
+
 int main(int argc, char **argv)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     if (argc < 2 || !(base = (uint8_t *)LoadLibraryA(argv[1]))) {
         printf("usage: blit_compare <unmodified Rtlib32.dll>\n");
         return 2;
@@ -175,6 +277,7 @@ int main(int argc, char **argv)
     test_fade();
     test_fill();
     test_copy();
+    test_merge();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }
