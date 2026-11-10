@@ -1,0 +1,5 @@
+/* Prototypes of our rewritten engine functions, one header per subsystem. */
+#ifndef DOMINION_RTLIB_RT_H
+#define DOMINION_RTLIB_RT_H
+#include "res.h"
+#endif

@@ -3,7 +3,11 @@
 Each patch checks the original bytes first, so it refuses to touch unknown versions.
 A .orig backup is written the first time a file is patched.
 
-Usage: python3 tools/patch_game.py <game_dir> [--list]
+Usage: python3 tools/patch_game.py <game_dir> [patch names...] [--list]
+       (no names: all patches)
+
+With our engine installed (src/rtlib), Rtlib32.dll is our wrapper and the original
+engine is Rtlib32_orig.dll; the Rtlib32.dll patches then go into Rtlib32_orig.dll.
 
 Patches:
   nocd     WAVEPLAY.R32  DSCheckCDIdentity -> always "found" (mov eax,1; ret)
@@ -43,6 +47,11 @@ def rva_to_offset(d, rva):
 
 
 def find_file(game_dir, name):
+    if name.lower() == "rtlib32.dll":
+        try:
+            return find_file(game_dir, "Rtlib32_orig.dll")
+        except FileNotFoundError:
+            pass
     for f in os.listdir(game_dir):
         if f.lower() == name.lower():
             return os.path.join(game_dir, f)
@@ -57,7 +66,10 @@ def main():
             print(f"{p[0]:8s} {p[1]:13s} rva=0x{p[2]:x}")
         return
     game_dir = sys.argv[1]
+    only = sys.argv[2:]
     for name, fname, rva, orig, new in PATCHES:
+        if only and name not in only:
+            continue
         path = find_file(game_dir, fname)
         data = bytearray(open(path, "rb").read())
         off = rva_to_offset(data, rva)
