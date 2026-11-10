@@ -228,7 +228,7 @@ The engine has its own sound system: a software wave mixer on `waveOut`, a MIDI 
 The sprite engine's DirectDraw code: creating the DirectDraw object, setting the 8-bit display mode (and the "not supported" warning), the flip chain (double or triple buffering, decided by video memory), the palette, page flipping with timing, the back buffer locked as the "screen" bitmap the blitters draw into, the frame around a smaller view, and the interface panel. The panel is a separate surface that is only redrawn where its sprites changed (dirty rectangles) and copied below the play area every frame.
 * The sprite engine's state (over 4 KB) is still shared with original code, so its fields are reached at the original's offsets. The DirectDraw objects sit in a 0xb4-byte block of their own (`DisplayDD`).
 * The calls use DirectDraw's C interface instead of raw vtable offsets, so this file also documents exactly what the engine asks of DirectDraw. That is the list the SDL replacement has to cover.
-* One of the Phase 1a `palette` byte patches sat in this code (`display_set_size`). The rewrite has the fix built in: the display is always treated as a palette device. The other four patched spots are in code not rewritten yet.
+* One of the Phase 1a `palette` byte patches sat in this code (`display_set_size`). The rewrite has the fix built in: the display is always treated as a palette device. Two more were in the engine-state code (built in there too); the last two are in `RtSetDisplayMode` (application core, not rewritten yet).
 * Left original: the background setup at 0x10049a02, which calls hand-written blitters; and a debug assertion.
 * Checked: menu tour and Human mission 1 identical to the all-original run.
 
