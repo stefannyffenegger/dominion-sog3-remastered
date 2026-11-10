@@ -94,7 +94,6 @@ typedef void(__stdcall *PaintHook)(uint32_t, HDC, RECT *, uint32_t);
 /* blitters, still original: dst, src, w, h, dst x, y, src x, y, flip, ... */
 #define dib_fill16 ORIG(void(__stdcall *)(uint32_t, int, int, int, int, uint32_t), 0x100638d8)
 #define dib_copy16 ORIG(void(__stdcall *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t), 0x10063a78)
-#define SpriteDibCopy ORIG(void(__stdcall *)(uint8_t *, uint32_t, uint32_t, uint32_t, int, int, int, int), 0x100537b1)
 
 
 
@@ -412,7 +411,7 @@ int __stdcall draw_view_sprites(const void *r, uint32_t level)
         uint8_t *shot = SpriteDibCreate(H(int32_t, HSL_WIDTH), H(int32_t, HSL_HEIGHT), 1, 8);
         if (shot && H(uint32_t, HSL_SCREEN_DIB)) {
             S(uint32_t, shot, 0x10) |= 0x40;
-            SpriteDibCopy(shot, H(uint32_t, HSL_SCREEN_DIB), H(uint32_t, HSL_WIDTH), H(uint32_t, HSL_HEIGHT), 0, 0, 0, 0);
+            SpriteDibCopy((uint32_t)(uintptr_t)shot, H(uint32_t, HSL_SCREEN_DIB), H(uint32_t, HSL_WIDTH), H(uint32_t, HSL_HEIGHT), 0, 0, 0, 0);
             SpriteSaveScreenShot(shot, &H(char, HSL_CAPTURE_NAME));
         }
         H(uint32_t, HSL_CAPTURE) = 0;
@@ -500,4 +499,81 @@ void __cdecl draw_sprite_into(uint8_t *s, uint32_t dst)
         return;
     blit(s, dst, S(uint32_t, s, SP_BITMAP), c.right - c.left, c.bottom - c.top, c.left - H(int32_t, HSL_VIEW),
          c.top - H(int32_t, HSL_VIEW + 4), c.left - S(int32_t, s, SP_RECT), c.top - S(int32_t, s, SP_RECT + 4));
+}
+
+/* ---- the exported bitmap operations (0x100537b1-0x100539eb) ---- */
+
+#define BMP(p) ((void *)(uintptr_t)(p))
+
+void __stdcall SpriteDibCopy(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy)
+{
+    dib_copy(BMP(dst), BMP(src), w, h, dx, dy, sx, sy, 0);
+}
+
+/* Puts src's pixels back wherever dst is 255 */
+void __stdcall SpriteDibDiff(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy)
+{
+    dib_restore(BMP(dst), BMP(src), w, h, dx, dy, sx, sy, 0);
+}
+
+/* 0x10053823 (not exported): clears dst wherever src is not 0 */
+void __stdcall sprite_dib_mask(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy)
+{
+    dib_mask(BMP(dst), BMP(src), w, h, dx, dy, sx, sy, 0);
+}
+
+void __stdcall SpriteDibMerge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy)
+{
+    dib_merge(dst, src, w, h, dx, dy, sx, sy, 0, 0);
+}
+
+void __stdcall SpriteDibSet(uint32_t bm, int x, int y, int w, int h, uint32_t color)
+{
+    dib_fill8(BMP(bm), x, y, w, h, color);
+}
+
+void __stdcall SpriteDibColorMapMerge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                      uint32_t flip, uint32_t cmap)
+{
+    dib_merge(dst, src, w, h, dx, dy, sx, sy, flip, cmap);
+}
+
+void __stdcall SpriteDibFXMerge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                uint32_t flip, uint32_t fx, uint32_t arg)
+{
+    dib_fx_merge(dst, src, w, h, dx, dy, sx, sy, flip, fx, arg, 0);
+}
+
+/* 0x10062f2c, 0x10062ffe: the assembly behind SpriteDibDiff and the mask */
+void __stdcall dib_restore_asm(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                               uint32_t flip)
+{
+    dib_restore(BMP(dst), BMP(src), w, h, dx, dy, sx, sy, flip);
+}
+
+void __stdcall dib_mask_asm(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                            uint32_t flip)
+{
+    dib_mask(BMP(dst), BMP(src), w, h, dx, dy, sx, sy, flip);
+}
+
+/* 0x100661b0, 0x1006630c: the engine's own memcpy and memmove */
+void __stdcall rt_memcpy(void *d, const void *s, uint32_t n)
+{
+    memcpy(d, s, n);
+}
+
+void __stdcall rt_memmove(void *d, const void *s, uint32_t n)
+{
+    memmove(d, s, n);
+}
+
+/* 0x10059a70 (unused): the name of a drawing order (T tiles, O overlays, S sprites).
+ * "T+O" can't be reached: it is tested for 0 again. */
+char *__cdecl draw_order_name(int order)
+{
+    static const char *const names[] = {"T", "O+T", "ARB", "T+S", "S+T", "O"};
+    char *buf = (char *)ORIG_PTR(0x10089e78);
+    lstrcpyA(buf, order >= 0 && order <= 5 ? names[order] : "???");
+    return buf;
 }

@@ -104,6 +104,12 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - plain (not run-length) bitmaps are drawn without the effect and lose their color map.
 * **code.** The DirectDraw tile blitter copies row 30 of a tile 2 bytes too long when the tile isn't 4-byte aligned on screen: two unused bytes of the tile file appear right of the diamond's lower tip, until the next row of tiles covers them.
 * **code.** The pixel test for mirrored run-length sprites mirrors around the bitmap's row pitch instead of its width, so picking a mirrored sprite with the mouse is off by the difference (0-3 pixels).
+* **code.** Sprite hit detection (`SpriteHitDetect`, `SpriteHitDetectRect`) is complete but unused, and looks like a leftover from an earlier engine:
+  - it reads run-length bitmaps in the background format, not the sprite format, so it can't work on the game's sprites;
+  - for flipped sprites it only moves the tested area to the other side of the bitmap and compares the pixels unmirrored;
+  - with two run-length bitmaps, skipping a transparent run miscounts by one pixel: each skip shortens the tested row by a pixel, and in one direction the two bitmaps end up a pixel out of step;
+  - two plain bitmaps are always read bottom-up, whatever their flags say.
+* **code.** An unused function names drawing orders: "T", "T+O", "O+T", "T+S", "S+T", "O", "ARB" (tiles, overlays, sprites, arbitrary). "T+O" can never be returned: its test repeats the one for "T".
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

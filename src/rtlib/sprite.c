@@ -1462,3 +1462,90 @@ uint32_t __cdecl bitmap_pixel(uint32_t bm, int x, int y, uint32_t flip)
 {
     return dib_pixel((void *)(uintptr_t)bm, x, y, flip);
 }
+
+/* ---- hit detection (0x10057f40-0x10058400; unused by Dominion) ----
+ * Two sprites hit when their bitmaps (or any of their parts) both have a non-zero pixel
+ * in the same place. The pixel test (blit.c) reads run-length bitmaps in the copy
+ * routine's format, not the sprites' own, so it can't have worked on coded sprites. */
+
+static uint32_t overlap_in(const int32_t *area, uint32_t bm1, const int32_t *r1, uint32_t bm2, const int32_t *r2,
+                           const uint8_t *s1, const uint8_t *s2)
+{
+    return dib_overlap((void *)(uintptr_t)bm1, (void *)(uintptr_t)bm2, area[2] - area[0], area[3] - area[1],
+                       area[0] - r1[0], area[1] - r1[1], area[0] - r2[0], area[1] - r2[1], S(uint32_t, s1, 0x7c),
+                       S(uint32_t, s2, 0x7c));
+}
+
+/* 0x1005810d: any part of s1 against any part of s2 */
+uint32_t __stdcall hit_parts_parts(uint8_t *s1, uint8_t *s2)
+{
+    int32_t area[4];
+    int32_t *p1 = S(int32_t *, s1, 0x20), *end1 = p1 + S(int32_t, s1, 0x90) * 5;
+    for (; p1 < end1; p1 += 5) {
+        int32_t *p2 = S(int32_t *, s2, 0x20), *end2 = p2 + S(int32_t, s2, 0x90) * 5;
+        for (; p2 < end2; p2 += 5)
+            if (rect_intersect(area, p1 + 1, p2 + 1) && overlap_in(area, p1[0], p1 + 1, p2[0], p2 + 1, s1, s2))
+                return 1;
+    }
+    return 0;
+}
+
+/* 0x1005821a: s1's bitmap against the parts of s2 */
+uint32_t __stdcall hit_bitmap_parts(uint8_t *s1, uint8_t *s2)
+{
+    int32_t area[4];
+    int32_t *p = S(int32_t *, s2, 0x20), *end = p + S(int32_t, s2, 0x90) * 5;
+    for (; p < end; p += 5)
+        if (rect_intersect(area, (int32_t *)(s1 + 0x44), p + 1) &&
+            overlap_in(area, S(uint32_t, s1, 0x18), (int32_t *)(s1 + 0x44), p[0], p + 1, s1, s2))
+            return 1;
+    return 0;
+}
+
+/* 0x10058090: at least one of the two has parts */
+uint32_t __stdcall hit_parts(uint8_t *s1, uint8_t *s2)
+{
+    if (S(uint32_t, s1, 0x90) && S(uint32_t, s2, 0x90))
+        return hit_parts_parts(s1, s2);
+    return S(uint32_t, s1, 0x90) ? hit_bitmap_parts(s2, s1) : hit_bitmap_parts(s1, s2);
+}
+
+static uint32_t hit_in(const int32_t *area, uint8_t *s1, uint8_t *s2)
+{
+    if (S(uint32_t, s1, 0x90) || S(uint32_t, s2, 0x90))
+        return hit_parts(s1, s2);
+    if (!S(uint32_t, s1, 0x18) || !S(uint32_t, s2, 0x18))
+        return 0;
+    return overlap_in(area, S(uint32_t, s1, 0x18), (int32_t *)(s1 + 0x44), S(uint32_t, s2, 0x18),
+                      (int32_t *)(s2 + 0x44), s1, s2);
+}
+
+/* hidden1, hidden2: test that sprite even when it is hidden. same_level: only when both
+ * are on the same level. */
+uint32_t __stdcall SpriteHitDetect(uint8_t *s1, uint8_t *s2, int hidden1, int hidden2, int same_level)
+{
+    int32_t area[4];
+    if (same_level && S(int32_t, s2, 0x98) != S(int32_t, s1, 0x98))
+        return 0;
+    if ((!S(uint32_t, s1, 0xec) && !hidden1) || (!S(uint32_t, s2, 0xec) && !hidden2))
+        return 0;
+    if (!rect_intersect(area, (int32_t *)(s1 + 0x44), (int32_t *)(s2 + 0x44)))
+        return 0;
+    return hit_in(area, s1, s2);
+}
+
+/* The same within rectangle r in place of s1's bounds */
+uint32_t __stdcall SpriteHitDetectRect(uint8_t *s1, uint8_t *s2, const int32_t *r)
+{
+    int32_t area[4];
+    if (!S(uint32_t, s1, 0xec) || !S(uint32_t, s2, 0xec) || !rect_intersect(area, r, (int32_t *)(s2 + 0x44)))
+        return 0;
+    return hit_in(area, s1, s2);
+}
+
+/* 0x10064415 */
+uint32_t __stdcall dib_overlap_asm(uint32_t a, uint32_t b, uint32_t w, uint32_t h, int ax, int ay, int bx, int by,
+                                   uint32_t flipa, uint32_t flipb)
+{
+    return dib_overlap((void *)(uintptr_t)a, (void *)(uintptr_t)b, w, h, ax, ay, bx, by, flipa, flipb);
+}

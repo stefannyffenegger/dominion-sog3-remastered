@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 524 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 542 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -300,6 +300,11 @@ The sprite engine's hand-written assembly, rewritten in portable C one routine a
 * **Paths:** commands 9 and 5 move a sprite along a line or a curve in a fixed number of steps while its cels animate; command 10 jumps to a position. The point math was assembly: the line rounds to nearest, the curve is a quadratic in 10-bit fixed point.
 * **Pixel tests** for picking sprites with the mouse: whether a bitmap is solid at a point, for both run-length formats and plain bitmaps.
 * The math and the pixel tests are byte-exact against the original (20,000 random cases each).
+
+### Bitmap operations and hit detection (`draw.c` +12, `sprite.c` +6)
+* The exported bitmap calls (`SpriteDibCopy`, `SpriteDibMerge`, `SpriteDibSet`, `SpriteDibColorMapMerge`, `SpriteDibFXMerge`, `SpriteDibDiff`) are thin wrappers around the blitters. `SpriteDibDiff` puts a source pixel back wherever the destination is 255; an unexported twin clears the destination wherever the source is non-zero.
+* The engine's own assembly memcpy and memmove are replaced too.
+* `SpriteHitDetect` / `SpriteHitDetectRect` test whether two sprites (or their parts) overlap in a non-zero pixel. Dominion never calls them. The overlap routine was 875 bytes of assembly; ours matches it on 30,000 random cases.
 
 ### Tile map (`tiles.c` 19 functions, `tileblit.c` 9 blitters)
 The map's ground: isometric tiles, 64 x 32 pixel diamonds, drawn in half-tile rows (every second row shifted by half a tile), with the layers above them.

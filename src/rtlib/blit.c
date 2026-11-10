@@ -75,6 +75,68 @@ static const uint8_t *inc_si(const uint8_t *p)
     return (const uint8_t *)((v & ~(uintptr_t)0xffff) | ((v + 1) & 0xffff));
 }
 
+/* 0x10066992: where a plain source and the destination start, and how far to move on
+ * after each row of w pixels. Rows are walked from the block's last row to its first
+ * (or the other way for the source with a vertical flip). */
+static void plain_setup(void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy, uint32_t flip,
+                        const uint8_t **ps, uint8_t **pd, int32_t *psgap, int32_t *pdgap)
+{
+    int fx = (flip & 0xff) != 0, fy = (flip & 0xff00) != 0;
+    uint32_t dpitch = F(uint32_t, dst, 8), dh = F(uint32_t, dst, 0xc);
+    int32_t dgap = (int32_t)dpitch;
+    uint32_t drow;
+    uint32_t spitch = F(uint32_t, src, 8);
+    int32_t sgap = (int32_t)spitch;
+    uint32_t srow;
+    if (!fy) {
+        srow = F(uint32_t, src, 0xc) - sy - h;
+    } else {
+        sgap = -sgap;
+        srow = sy + h - 1;
+    }
+    uint32_t off = srow * spitch + (fx ? F(uint32_t, src, 4) - sx : (uint32_t)sx);
+    *ps = F(uint8_t *, src, 0x20) + off;
+    if (!(F(uint32_t, dst, 0x10) & 0x40)) {
+        drow = dh - dy - h;
+    } else {
+        dgap = -dgap;
+        drow = dy + h - 1;
+    }
+    *pd = F(uint8_t *, dst, 0x20) + (drow * dpitch + dx);
+    *psgap = fx ? sgap + (int32_t)w : sgap - (int32_t)w;
+    *pdgap = dgap - (int32_t)w;
+}
+
+/* 0x10062f2c: puts src's pixel wherever dst is 255. Nothing for run-length sources. */
+void __stdcall dib_restore(void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy, uint32_t flip)
+{
+    if (!w || !h || (F(uint32_t, src, 0x10) & 0x80))
+        return;
+    const uint8_t *s;
+    uint8_t *d;
+    int32_t sgap, dgap;
+    plain_setup(dst, src, w, h, dx, dy, sx, sy, flip, &s, &d, &sgap, &dgap);
+    for (; h; h--, d += dgap, s += sgap)
+        for (uint32_t i = 0; i < w; i++, d++, s++)
+            if (*d == 0xff)
+                *d = *s;
+}
+
+/* 0x10062ffe: clears dst to 0 wherever src is not 0. Nothing for run-length sources. */
+void __stdcall dib_mask(void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy, uint32_t flip)
+{
+    if (!w || !h || (F(uint32_t, src, 0x10) & 0x80))
+        return;
+    const uint8_t *s;
+    uint8_t *d;
+    int32_t sgap, dgap;
+    plain_setup(dst, src, w, h, dx, dy, sx, sy, flip, &s, &d, &sgap, &dgap);
+    for (; h; h--, d += dgap, s += sgap)
+        for (uint32_t i = 0; i < w; i++, d++, s++)
+            if (*s)
+                *d = 0;
+}
+
 /* 0x100629f4: copies a w x h block from src at sx, sy to dst at dx, dy. flip: low byte
  * mirrors horizontally, second byte vertically. Run-length coded sources are drawn
  * opaque. Reproduces the original exactly, including:
@@ -91,26 +153,10 @@ void __stdcall dib_copy(void *dst, void *src, uint32_t w, uint32_t h, int dx, in
     int32_t dgap = (int32_t)dpitch;
     uint32_t drow;
     if (!(F(uint8_t, src, 0x10) & 0x80)) {
-        uint32_t spitch = F(uint32_t, src, 8);
-        int32_t sgap = (int32_t)spitch;
-        uint32_t srow;
-        if (!fy) {
-            srow = F(uint32_t, src, 0xc) - sy - h;
-        } else {
-            sgap = -sgap;
-            srow = sy + h - 1;
-        }
-        uint32_t off = srow * spitch + (fx ? F(uint32_t, src, 4) - sx : (uint32_t)sx);
-        const uint8_t *s = F(uint8_t *, src, 0x20) + off;
-        if (!(F(uint32_t, dst, 0x10) & 0x40)) {
-            drow = dh - dy - h;
-        } else {
-            dgap = -dgap;
-            drow = dy + h - 1;
-        }
-        uint8_t *d = F(uint8_t *, dst, 0x20) + (drow * dpitch + dx);
-        sgap = fx ? sgap + (int32_t)w : sgap - (int32_t)w;
-        dgap -= (int32_t)w;
+        const uint8_t *s;
+        uint8_t *d;
+        int32_t sgap;
+        plain_setup(dst, src, w, h, dx, dy, sx, sy, flip, &s, &d, &sgap, &dgap);
         for (; h; h--) {
             for (uint32_t i = 0; i < w; i++)
                 *d++ = *s++;
@@ -1005,5 +1051,191 @@ uint32_t dib_pixel(const void *bm, int x, int y, uint32_t flip)
                 return type <= 1 ? 0 : 0xff;
         }
     }
+    return 0;
+}
+
+/* ---- bitmap overlap (0x10064415, for SpriteHitDetect) ----
+ * 1 when two bitmaps both have a non-zero pixel somewhere in a w x h area, given each
+ * one's own coordinates of that area. Run-length bitmaps here are in the copy routine's
+ * format, not the sprites' one. A flip only moves the area to the other side of the
+ * bitmap; the pixels are not mirrored. */
+
+/* pixel x of row `row` of a bitmap in the copy routine's run-length format */
+static uint8_t copy_coded_pixel(const void *bm, uint32_t row, int32_t x)
+{
+    const uint8_t *bits = F(const uint8_t *, bm, 0x20);
+    const uint8_t *p = bits + *(const uint16_t *)(bits + row * 2);
+    for (;;) {
+        uint32_t code = *p++;
+        if (code <= 0x7f) {
+            p++;
+            x -= (int32_t)code;
+            if (x < 0)
+                return p[-1];
+        } else {
+            code ^= 0xff;
+            if (!code)
+                code = *p++;
+            p += code;
+            x -= (int32_t)code;
+            if (x < 0)
+                return p[x];
+        }
+    }
+}
+
+/* State of one coded row being walked: p is at the run's value or the literal's current
+ * pixel, rem pixels of the item are left (an 8-bit counter). */
+typedef struct {
+    const uint8_t *p;
+    uint8_t rem;
+    int lit;
+} CodedPos;
+
+static void coded_load(CodedPos *c)
+{
+    c->lit = 0;
+    c->rem = *c->p++;
+    if (c->rem > 0x7f) {
+        c->lit = 1;
+        c->rem ^= 0xff;
+        if (!c->rem)
+            c->rem = *c->p++;
+    }
+}
+
+/* Moves on by count pixels. enter: 0 at the start of an item, 1 inside the current one. */
+static void coded_skip(CodedPos *c, int32_t count, int enter)
+{
+    uint32_t n = c->rem;
+    int lit = c->lit;
+    for (;; enter = 0) {
+        if (!enter) {
+            n = *c->p++;
+            lit = n > 0x7f;
+            if (lit) {
+                n ^= 0xff;
+                if (!n)
+                    n = *c->p++;
+            }
+        }
+        if (lit)
+            c->p += n;
+        else
+            c->p++;
+        count -= (int32_t)n;
+        if (count < 0)
+            break;
+    }
+    if (lit)
+        c->p += count;
+    else
+        c->p--;
+    c->rem = (uint8_t)-count;
+    c->lit = lit;
+}
+
+/* One step of a row for one bitmap: takes its pixel, 1 if that was a pixel to compare.
+ * A transparent run is skipped in one go instead: the other bitmap moves on by the run's
+ * length and the row counter by one more than that. (So each skipped run shortens the
+ * tested row by a pixel; and when it is the second bitmap's run, the first one, which had
+ * already taken its pixel, ends up a pixel ahead.) Returns -1 when the row is over. */
+static int coded_step(CodedPos *c, CodedPos *other, int32_t *left, uint8_t *value)
+{
+    *value = *c->p;
+    if (c->lit) {
+        c->p++;
+        if (!--c->rem)
+            coded_load(c);
+        return 1;
+    }
+    if (*value) {
+        if (!--c->rem) {
+            c->p++;
+            coded_load(c);
+        }
+        return 1;
+    }
+    *left -= c->rem;
+    if (*left <= 0)
+        return -1;
+    c->p++;
+    coded_skip(other, c->rem, 1);
+    coded_load(c);
+    return 0;
+}
+
+/* both bitmaps coded; rows from the area's last to its first */
+static uint32_t overlap_coded(const void *a, const void *b, uint32_t w, uint32_t h, int ax, int ay, int bx, int by)
+{
+    const uint8_t *abits = F(const uint8_t *, a, 0x20), *bbits = F(const uint8_t *, b, 0x20);
+    const uint8_t *at = abits + (uint32_t)(ay + (int32_t)h - 1) * 2, *bt = bbits + (uint32_t)(by + (int32_t)h - 1) * 2;
+    for (;; at -= 2, bt -= 2) {
+        CodedPos ca = {abits + *(const uint16_t *)at, 0, 0}, cb = {bbits + *(const uint16_t *)bt, 0, 0};
+        coded_skip(&ca, ax, 0);
+        coded_skip(&cb, bx, 0);
+        for (int32_t left = (int32_t)w;;) {
+            if (--left < 0)
+                break;
+            uint8_t va, vb;
+            int r = coded_step(&cb, &ca, &left, &vb);
+            if (r < 0)
+                break;
+            if (!r)
+                continue;
+            r = coded_step(&ca, &cb, &left, &va);
+            if (r < 0)
+                break;
+            if (r && va && vb)
+                return 1;
+        }
+        if (!--h)
+            return 0;
+    }
+}
+
+uint32_t __stdcall dib_overlap(void *a, void *b, uint32_t w, uint32_t h, int ax, int ay, int bx, int by, uint32_t flipa,
+                               uint32_t flipb)
+{
+    if (!w || !h)
+        return 0;
+    if (flipa & 0xff)
+        ax = F(int32_t, a, 4) - ax - (int32_t)w;
+    if (flipa & 0xff00)
+        ay = F(int32_t, a, 0xc) - ay - (int32_t)h;
+    if (flipb & 0xff)
+        bx = F(int32_t, b, 4) - bx - (int32_t)w;
+    if (flipb & 0xff00)
+        by = F(int32_t, b, 0xc) - by - (int32_t)h;
+    int ca = (F(uint32_t, a, 0x10) & 0x80) != 0, cb = (F(uint32_t, b, 0x10) & 0x80) != 0;
+    if (ca && cb)
+        return overlap_coded(a, b, w, h, ax, ay, bx, by);
+    if (ca && !cb) { /* the original swaps them too */
+        void *t = a;
+        a = b, b = t;
+        int v = ax;
+        ax = bx, bx = v;
+        v = ay, ay = by, by = v;
+        ca = 0, cb = 1;
+    }
+    const uint8_t *abits = F(const uint8_t *, a, 0x20), *bbits = F(const uint8_t *, b, 0x20);
+    uint32_t apitch = F(uint32_t, a, 8), bpitch = F(uint32_t, b, 8);
+    /* a plain bitmap next to a coded one may be top-down; two plain ones are taken as
+     * bottom-up whatever their flags say */
+    int a_top_down = cb && (F(uint32_t, a, 0x10) & 0x40);
+    for (uint32_t r = 0; r < h; r++)
+        for (uint32_t i = 0; i < w; i++) {
+            uint8_t pa, pb;
+            if (a_top_down)
+                pa = abits[(ay + r) * apitch + ax + i];
+            else
+                pa = abits[(F(uint32_t, a, 0xc) - 1 - ay - r) * apitch + ax + i];
+            if (cb)
+                pb = copy_coded_pixel(b, by + r, bx + (int32_t)i);
+            else
+                pb = bbits[(F(uint32_t, b, 0xc) - 1 - by - r) * bpitch + bx + i];
+            if (pa && pb)
+                return 1;
+        }
     return 0;
 }

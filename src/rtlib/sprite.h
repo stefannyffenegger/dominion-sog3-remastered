@@ -123,4 +123,12 @@ void __stdcall line_point_asm(uint32_t step, uint32_t steps, int32_t x0, int32_t
 uint32_t __stdcall bitmap_pixel_plain(uint32_t bm, int x, int y, uint32_t flip);
 uint32_t __cdecl bitmap_pixel(uint32_t bm, int x, int y, uint32_t flip);
 
+uint32_t __stdcall hit_parts_parts(uint8_t *s1, uint8_t *s2);
+uint32_t __stdcall hit_bitmap_parts(uint8_t *s1, uint8_t *s2);
+uint32_t __stdcall hit_parts(uint8_t *s1, uint8_t *s2);
+uint32_t __stdcall SpriteHitDetect(uint8_t *s1, uint8_t *s2, int hidden1, int hidden2, int same_level);
+uint32_t __stdcall SpriteHitDetectRect(uint8_t *s1, uint8_t *s2, const int32_t *r);
+uint32_t __stdcall dib_overlap_asm(uint32_t a, uint32_t b, uint32_t w, uint32_t h, int ax, int ay, int bx, int by,
+                                   uint32_t flipa, uint32_t flipb);
+
 #endif

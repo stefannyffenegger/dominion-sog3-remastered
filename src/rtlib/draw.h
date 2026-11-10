@@ -31,4 +31,21 @@ void __stdcall fx_dither_asm(uint8_t *d, const uint8_t *s, uint32_t n, uint32_t 
 void __cdecl copy_mirrored(uint8_t *d, const uint8_t *s, uint32_t n);
 void __cdecl shadow_run(int type, uint8_t *p, uint32_t n, uint32_t row);
 
+void __stdcall SpriteDibCopy(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy);
+void __stdcall SpriteDibDiff(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy);
+void __stdcall sprite_dib_mask(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy);
+void __stdcall SpriteDibMerge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy);
+void __stdcall SpriteDibSet(uint32_t bm, int x, int y, int w, int h, uint32_t color);
+void __stdcall SpriteDibColorMapMerge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                      uint32_t flip, uint32_t cmap);
+void __stdcall SpriteDibFXMerge(uint32_t dst, uint32_t src, int w, int h, int dx, int dy, int sx, int sy,
+                                uint32_t flip, uint32_t fx, uint32_t arg);
+void __stdcall dib_restore_asm(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                               uint32_t flip);
+void __stdcall dib_mask_asm(uint32_t dst, uint32_t src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
+                            uint32_t flip);
+void __stdcall rt_memcpy(void *d, const void *s, uint32_t n);
+void __stdcall rt_memmove(void *d, const void *s, uint32_t n);
+char *__cdecl draw_order_name(int order);
+
 #endif

@@ -113,6 +113,8 @@ static void test_fill(void)
 
 /* a run-length coded bitmap: row table of 16-bit offsets, then per row runs
  * (code n <= 0x7f, value) and literals (code 0xff - n, or 0xff, n, then n bytes) */
+static uint32_t sparse; /* rle_dib: only one value in `sparse` is non-zero */
+static uint8_t rle_value(void) { return sparse && rnd(sparse) ? 0 : (uint8_t)rnd(256); }
 static uint8_t *rle_dib(int w, int h)
 {
     uint8_t *p = calloc(1, 0x24 + 2 * h + h * (w * 3 + 8) + 64);
@@ -124,14 +126,14 @@ static uint8_t *rle_dib(int w, int h)
         for (int left = w; left > 0;) {
             int n = 1 + rnd(left < 100 ? left : 100);
             if (rnd(2)) {
-                *q++ = (uint8_t)n, *q++ = (uint8_t)rnd(256);
+                *q++ = (uint8_t)n, *q++ = rle_value();
             } else {
                 if (n <= 0x7f && rnd(2))
                     *q++ = (uint8_t)(0xff - n);
                 else
                     *q++ = 0xff, *q++ = (uint8_t)n;
                 for (int k = 0; k < n; k++)
-                    *q++ = (uint8_t)rnd(256);
+                    *q++ = rle_value();
             }
             left -= n;
         }
@@ -175,6 +177,30 @@ static void test_copy(void)
         ORIG(0x100629f4, U(a), U(src), w, 1, dx, dy, sx, sy, flip);
         dib_copy(b, src, w, 1, dx, dy, sx, sy, flip);
         check("copy flip", !memcmp(a + 0x24, b + 0x24, *(uint32_t *)(a + 8) * dh), i);
+        free(a), free(b), free(src);
+    }
+    /* restore (dst 255 -> src) and mask (src != 0 -> dst 0) */
+    for (int i = 0; i < 10000; i++) {
+        int rle = rnd(8) == 0;
+        int sw = 1 + rnd(120), sh = rle ? 1 : 1 + rnd(50);
+        uint8_t *src = rle ? rle_dib(sw, sh) : dib(sw, sh, 0);
+        int dw = sw + rnd(40), dh = sh + rnd(40);
+        uint8_t *a = dib(dw, dh, rnd(2) ? 0x40 : 0);
+        for (uint32_t k = 0; k < *(uint32_t *)(a + 8) * dh; k++)
+            if (rnd(2))
+                a[0x24 + k] = 0xff;
+        if (!rle)
+            for (uint32_t k = 0; k < *(uint32_t *)(src + 8) * sh; k++)
+                if (rnd(2))
+                    src[0x24 + k] = 0;
+        uint8_t *b = clone(a);
+        int w = 1 + rnd(sw), h = 1 + rnd(sh), sx = rnd(sw - w + 1), sy = rnd(sh - h + 1);
+        int dx = rnd(dw - w + 1), dy = rnd(dh - h + 1);
+        uint32_t flip = rnd(2) ? 0x100 : 0;
+        int mask = rnd(2);
+        ORIG(mask ? 0x10062ffe : 0x10062f2c, U(a), U(src), w, h, dx, dy, sx, sy, flip);
+        (mask ? dib_mask : dib_restore)(b, src, w, h, dx, dy, sx, sy, flip);
+        check(mask ? "mask" : "restore", !memcmp(a + 0x24, b + 0x24, *(uint32_t *)(a + 8) * dh), i);
         free(a), free(b), free(src);
     }
     printf("copy: done\n");
@@ -586,6 +612,30 @@ static void test_points(void)
             printf("  kind %d w=%d h=%d x=%d y=%d flip=%x orig=%u ours=%u\n", kind, w, h, x, y, flip, a, b);
         check(kind == 0 ? "pixel plain" : kind == 1 ? "pixel coded" : "pixel copy-coded", a == b, i);
         free(bm);
+    }
+    /* overlap of two bitmaps (plain or copy-coded) */
+    for (int i = 0; i < 30000; i++) {
+        uint8_t *bm[2];
+        int x[2], y[2], w = 1 + rnd(12), h = 1 + rnd(6);
+        for (int k = 0; k < 2; k++) {
+            int coded = rnd(2), bw = w + rnd(50), bh = h + rnd(20);
+            sparse = 2 + rnd(6);
+            bm[k] = coded ? rle_dib(bw, bh) : dib(bw, bh, coded ? 0 : rnd(2) ? 0x40 : 0);
+            sparse = 0;
+            if (!coded)
+                for (uint32_t q = 0; q < *(uint32_t *)(bm[k] + 8) * bh; q++)
+                    if (rnd(8))
+                        bm[k][0x24 + q] = 0;
+            x[k] = rnd(bw - w + 1), y[k] = rnd(bh - h + 1);
+        }
+        uint32_t fa = (rnd(2) ? 1 : 0) | (rnd(2) ? 0x100 : 0), fb = (rnd(2) ? 1 : 0) | (rnd(2) ? 0x100 : 0);
+        uint32_t o = ORIG(0x10064415, U(bm[0]), U(bm[1]), w, h, x[0], y[0], x[1], y[1], fa, fb);
+        uint32_t m = dib_overlap(bm[0], bm[1], w, h, x[0], y[0], x[1], y[1], fa, fb);
+        if (o != m && failures < 6)
+            printf("  flags %x %x w=%d h=%d at %d,%d / %d,%d flips %x %x: orig %u ours %u\n", *(uint32_t *)(bm[0] + 0x10),
+                   *(uint32_t *)(bm[1] + 0x10), w, h, x[0], y[0], x[1], y[1], fa, fb, o, m);
+        check("overlap", o == m, i);
+        free(bm[0]), free(bm[1]);
     }
     printf("points and pixels: done\n");
 }
