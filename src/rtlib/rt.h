@@ -7,4 +7,5 @@
 #include "audio.h"
 #include "display.h"
 #include "sprite.h"
+#include "view.h"
 #endif

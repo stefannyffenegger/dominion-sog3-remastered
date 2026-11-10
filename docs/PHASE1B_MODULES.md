@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 335 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 388 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -245,13 +245,20 @@ Mouse picking, replacing and copying cels, drawing levels, flips, the remaining 
 * `SpriteSetFlip`, `SpriteSetProcessMsgs` and `SpriteSetRedraw` are `cdecl`, unlike the rest; `SpriteSetGraphicsQuality` takes two unused arguments.
 * Three functions only log "UNIMPLEMENTED" (see `HIDDEN_AND_UNUSED.md`).
 * Checked: menu tour and Human mission 1 identical to the all-original run (apart from the usual animation timing).
-* Next: part 3 (sprite messages, the script queue interpreter, showing and hiding), then the hand-written blitters.
+
+### View and palette (`view.c` 34 functions, `display.c` +19)
+The background (a bitmap, a tile map or a fill color), the screen rectangle and clip boxes, scrolling, repainting, composing sprites into the background, bitmap helpers and screenshots; and the palette (GDI palette with Windows' static colors, palette animation, fades, the DirectDraw palette).
+* Sprite coordinates are relative to the center of the background. Scrolling moves every scrollable sprite's rectangles; the horizontal scroll position is always kept odd.
+* With GDI, scrolling moves the window contents with `ScrollDC` and repaints only the uncovered edges; a tile map background is scrolled in memory the same way.
+* The fade itself (0x10062ed8) is hand-written assembly and stays original, called through the register-safe wrapper. So do the `SpriteDib*Merge`/`Copy`/`Diff`/`Set` wrappers, which only forward to blitters.
+* Checked: menu tour and Human mission 1, now with scrolling right and back left, identical to the all-original run (apart from animation timing).
+* Next: sprite messages, the script queue interpreter, showing and hiding, then the hand-written blitters.
 
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|
 | Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
-| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~295 | 16,000 |
+| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~240 | 14,700 |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~170 | 4,800 |
 | C runtime (not ported; replaced by the system's) | ~430 | |
 

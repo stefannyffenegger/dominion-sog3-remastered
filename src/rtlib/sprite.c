@@ -10,6 +10,7 @@
 #include "orig.h"
 #include "sprite.h"
 #include "display.h"
+#include "view.h"
 #include "utils.h"
 
 #define g_hsl G(uint8_t *, 0x10089e24)
@@ -132,7 +133,6 @@
 #define sprite_callback ORIG(void(__stdcall *)(uint8_t *), 0x10053c50)
 #define SpriteShow ORIG(void(__stdcall *)(uint8_t *, uint8_t *, uint32_t, int), 0x10057c57)
 #define SpriteReplaceBitmap ORIG(int(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10057a63)
-#define SpritePaintRect ORIG(void(__stdcall *)(uint8_t *, RECT *, int), 0x10052cb2)
 #define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
 /* pixel test of a bitmap: > 3 is a drawn pixel */
 #define bitmap_pixel ORIG(uint32_t(__cdecl *)(uint32_t, int, int, uint32_t), 0x10062d30)

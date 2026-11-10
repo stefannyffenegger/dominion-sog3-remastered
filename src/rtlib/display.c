@@ -1,6 +1,6 @@
 /* The sprite engine's display layer: DirectDraw object, screen mode, flip chain, palette,
  * the "interface" overlay and its dirty rectangles. Rewritten from the original
- * (0x10048580-0x1004d270).
+ * (0x10048580-0x1004d270), and the palette functions (0x100517c0-0x100524c0).
  *
  * The sprite engine's state ("HSL", over 4 KB) is shared with code not rewritten yet, so
  * its fields are reached at the original's offsets (H()). The DirectDraw objects live in a
@@ -8,6 +8,7 @@
 #define COBJMACROS
 #include "orig.h"
 #include "display.h"
+#include "view.h"
 #include "utils.h"
 #include <ddraw.h>
 
@@ -17,13 +18,18 @@
 
 /* HSL fields */
 #define HSL_DD 0x010           /* DisplayDD * */
+#define HSL_DIB_COLORS 0x054   /* colors of the screen DIB: 256 RGBQUADs, or palette indices */
 #define HSL_DC 0x468
+#define HSL_HPALETTE 0x46c
 #define HSL_WND 0x470
 #define HSL_BACKGROUND 0x474   /* background bitmap (ResDib *) */
 #define HSL_SCREEN_DIB 0x478   /* the screen as a bitmap: points at the locked back buffer */
 #define HSL_INTERFACE 0x47c
+#define HSL_LOGPALETTE 0x488   /* LOGPALETTE header; the entries follow */
 #define HSL_PALETTE 0x48c      /* 256 PALETTEENTRY */
+#define HSL_PALETTE_HIGH 0x864 /* entries 246-255 */
 #define HSL_FILL 0x898         /* background fill color, -1 = none */
+#define HSL_DIB_INDICES 0x8a0  /* HSL_DIB_COLORS holds palette indices */
 #define HSL_WIDTH 0x8a4
 #define HSL_HEIGHT 0x8a8
 #define HSL_DEPTH 0x8ac
@@ -44,6 +50,7 @@
 #define HSL_HAS_1280 0x968
 #define HSL_PALETTE_DEVICE 0x9fc
 #define HSL_REDRAW_ALL 0xa04
+#define HSL_A0C 0xa0c
 #define HSL_BG_X 0xa18
 #define HSL_BG_Y 0xa1c
 #define HSL_BORDER 0xb20       /* draw a frame around the view; RECT at 0xb24 */
@@ -56,6 +63,7 @@
 #define HSL_IFACE_DIB 0xb58
 #define HSL_B5C 0xb5c
 #define HSL_IFACE_ON 0xb68
+#define HSL_B80 0xb80
 #define HSL_SYSPAL_LOW 0xbec
 #define HSL_SYSPAL_HIGH 0xfc4
 #define HSL_PAINTING 0xff0
@@ -98,9 +106,9 @@ _Static_assert(sizeof(DisplayDD) == 0xb4, "DisplayDD");
 /* original functions not rewritten yet */
 #define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
 #define draw_iface_rect ORIG(void(__stdcall *)(void *), 0x100562d9)
-#define SpriteDibCreate ORIG(uint8_t *(__stdcall *)(uint32_t, uint32_t, uint32_t, uint32_t), 0x10053708)
-#define SpriteRealizePalette2 ORIG(int(__stdcall *)(void *, int), 0x10051f1a)
-#define palette_changed ORIG(void(__stdcall *)(void *), 0x1005234a)
+#define palette_check_a0c ORIG(uint32_t(__cdecl *)(void), 0x10055256)
+#define g_static_low ((PALETTEENTRY *)ORIG_PTR(0x1007b148))  /* Windows' static colors 0-9 */
+#define g_static_high ((PALETTEENTRY *)ORIG_PTR(0x1007b170)) /* 246-255 */
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
 
 static void union_rect(RECT *out, const RECT *a, const RECT *b)
@@ -1381,4 +1389,227 @@ int __stdcall display_activate(uint8_t *hsl, int active)
     }
     H(uint32_t, HSL_INACTIVE) = !active;
     return 1;
+}
+
+/* ---- palette (0x100517c0-0x100524c0) ---- */
+
+#define PAL_FLAG(i) H(uint8_t, HSL_PALETTE + (i) * 4 + 3)
+
+static void dib_colors_are_indices(void)
+{
+    H(uint32_t, HSL_DIB_INDICES) = 1;
+    for (uint32_t i = 0; i < 0x100; i++)
+        H(uint16_t, HSL_DIB_COLORS + i * 2) = (uint16_t)i;
+}
+
+/* Deletes the GDI palette */
+void __cdecl palette_delete(void)
+{
+    if (!H(HPALETTE, HSL_HPALETTE))
+        return;
+    SelectPalette(H(HDC, HSL_DC), GetStockObject(DEFAULT_PALETTE), FALSE);
+    RealizePalette(H(HDC, HSL_DC));
+    DeleteObject(H(HPALETTE, HSL_HPALETTE));
+    H(HPALETTE, HSL_HPALETTE) = NULL;
+}
+
+/* GDI palette with Windows' 20 static colors at both ends */
+int __cdecl palette_create(void)
+{
+    if (g_use_ddraw1)
+        return palette_create_reserved();
+    memcpy(&H(uint8_t, HSL_PALETTE), g_static_low, 0x28);
+    memcpy(&H(uint8_t, HSL_PALETTE_HIGH), g_static_high, 0x28);
+    for (uint32_t i = 0; i < 0x100; i++)
+        PAL_FLAG(i) = 0;
+    dib_colors_are_indices();
+    palette_delete();
+    H(HPALETTE, HSL_HPALETTE) = CreatePalette((LOGPALETTE *)(g_hsl + HSL_LOGPALETTE));
+    if (!H(HPALETTE, HSL_HPALETTE))
+        return 0;
+    SpriteRealizePalette(g_hsl);
+    if (H(uint32_t, HSL_DIRECTDRAW))
+        palette_apply();
+    return 1;
+}
+
+/* GDI palette whose colors 10-245 can be animated */
+int __cdecl palette_create_reserved(void)
+{
+    for (uint32_t i = 0; i < 0x100; i++)
+        PAL_FLAG(i) = (i < 10 || i > 0xf5) ? 0 : PC_RESERVED;
+    dib_colors_are_indices();
+    palette_delete();
+    H(HPALETTE, HSL_HPALETTE) = CreatePalette((LOGPALETTE *)(g_hsl + HSL_LOGPALETTE));
+    if (!H(HPALETTE, HSL_HPALETTE))
+        return 0;
+    if (H(uint32_t, HSL_DIRECTDRAW))
+        palette_apply();
+    return 1;
+}
+
+int __stdcall SpriteChangePalette(uint8_t *hsl, uint32_t first, uint32_t n, const uint32_t *colors, int animate,
+                                  int same)
+{
+    g_hsl = hsl;
+    if (first + n - 1 > 0x100)
+        return 0;
+    for (uint32_t i = first; i < first + n; i++) {
+        H(uint32_t, HSL_PALETTE + i * 4) = *colors;
+        PAL_FLAG(i) = (!g_use_ddraw1 && H(uint32_t, HSL_DIRECTDRAW)) ? 0 : PC_RESERVED;
+        if (!same)
+            colors++;
+    }
+    if (!H(uint32_t, HSL_PALETTE_DEVICE)) {
+        palette_to_dib(first, first + n, animate);
+    } else if (!H(HPALETTE, HSL_HPALETTE) || !animate) {
+        DisplayDD *d = DD();
+        if (d && d->palette)
+            IDirectDrawPalette_SetEntries(d->palette, 0, 0, 256, (PALETTEENTRY *)(g_hsl + HSL_PALETTE));
+    } else {
+        AnimatePalette(H(HPALETTE, HSL_HPALETTE), first, n, (PALETTEENTRY *)(g_hsl + HSL_PALETTE + first * 4));
+    }
+    return 1;
+}
+
+/* Copies palette entries first..end-1 into the screen DIB's colors */
+void __stdcall palette_to_dib(uint32_t first, uint32_t end, uint32_t unused)
+{
+    (void)unused;
+    uint8_t *q = g_hsl + HSL_DIB_COLORS + first * 4;
+    H(uint32_t, HSL_DIB_INDICES) = 0;
+    for (uint32_t i = first; i < end; i++, q += 4) {
+        q[2] = H(uint8_t, HSL_PALETTE + i * 4);
+        q[1] = H(uint8_t, HSL_PALETTE + i * 4 + 1);
+        q[0] = H(uint8_t, HSL_PALETTE + i * 4 + 2);
+    }
+}
+
+void __stdcall SpriteGetPalette(uint8_t *hsl, void *out, uint32_t first, uint32_t n)
+{
+    g_hsl = hsl;
+    memcpy(out, hsl + HSL_PALETTE + first * 4, n * 4);
+}
+
+/* returns 1 when there is no GDI palette (the colors are the real ones) */
+int __stdcall SpriteGetRgbPalette(uint8_t *hsl, void *out, uint32_t first, uint32_t n)
+{
+    g_hsl = hsl;
+    memcpy(out, hsl + HSL_DIB_COLORS + first * 4, n * 4);
+    return H(HPALETTE, HSL_HPALETTE) == NULL;
+}
+
+/* Shows the palette faded to step/steps (assembly helper of the original) */
+int __stdcall SpriteFadePalette(uint8_t *hsl, uint32_t step, uint32_t steps, uint32_t unused1, uint32_t unused2)
+{
+    PALETTEENTRY faded[256];
+    (void)unused1, (void)unused2;
+    g_hsl = hsl;
+    if (!steps)
+        steps = 1;
+    if (steps < step || steps > 0xff || !H(HPALETTE, HSL_HPALETTE))
+        return 0;
+    uint32_t first = H(uint32_t, HSL_DIRECTDRAW) == 0; /* GDI: leave the static colors alone */
+    uint32_t n = first ? 0xfe : 0x100;
+    uint32_t args[5] = {(uint32_t)(uintptr_t)faded, (uint32_t)(uintptr_t)(hsl + HSL_PALETTE + first * 4), step,
+                        steps, n};
+    orig_stdcall_unsafe(ORIG_PTR(0x10062ed8), 5, args);
+    if (!H(uint32_t, HSL_DIRECTDRAW)) {
+        AnimatePalette(H(HPALETTE, HSL_HPALETTE), first, n, faded);
+    } else {
+        DisplayDD *d = DD();
+        if (d && d->palette)
+            IDirectDrawPalette_SetEntries(d->palette, 0, first, n, faded);
+    }
+    return 1;
+}
+
+UINT __stdcall SpriteRealizePalette(uint8_t *hsl)
+{
+    g_hsl = hsl;
+    if (!hsl || !H(HPALETTE, HSL_HPALETTE))
+        return 0;
+    return palette_realize(H(HDC, HSL_DC), H(HPALETTE, HSL_HPALETTE), 0);
+}
+
+UINT __stdcall SpriteRealizePalette2(uint8_t *hsl, int background)
+{
+    g_hsl = hsl;
+    if (!hsl || !H(HPALETTE, HSL_HPALETTE))
+        return 0;
+    return palette_realize(H(HDC, HSL_DC), H(HPALETTE, HSL_HPALETTE), background);
+}
+
+HPALETTE __stdcall SpriteSelectPalette(uint8_t *hsl, HDC dc)
+{
+    g_hsl = hsl;
+    if (!H(HPALETTE, HSL_HPALETTE))
+        return NULL;
+    return SelectPalette(dc, H(HPALETTE, HSL_HPALETTE), FALSE);
+}
+
+int __stdcall SpriteSetPalette(uint8_t *hsl, const void *colors)
+{
+    g_hsl = hsl;
+    palette_delete();
+    if (!colors)
+        return 0;
+    memcpy(&H(uint8_t, HSL_PALETTE), colors, 0x400);
+    if (H(uint32_t, HSL_A0C) && !palette_check_a0c())
+        return 0;
+    H(uint32_t, HSL_LOGPALETTE) = 0x1000300; /* version 0x300, 256 entries */
+    if (H(uint32_t, HSL_PALETTE_DEVICE))
+        palette_create();
+    if (!H(HPALETTE, HSL_HPALETTE))
+        palette_to_dib(0, 0x100, 1);
+    return H(HPALETTE, HSL_HPALETTE) != NULL;
+}
+
+uint32_t __stdcall palette_get_b80(uint8_t *hsl)
+{
+    g_hsl = hsl;
+    return H(uint32_t, HSL_B80);
+}
+
+uint32_t __stdcall palette_get_b80_2(uint32_t unused1, uint32_t unused2)
+{
+    (void)unused1, (void)unused2;
+    return H(uint32_t, HSL_B80);
+}
+
+int __cdecl palette_false(void) { return 0; }
+int __cdecl palette_true(void) { return 1; }
+
+UINT __cdecl palette_realize(HDC dc, HPALETTE pal, int background)
+{
+    /* (a debug assertion on dc left out; the 0xb80 mode only adds calls that do nothing) */
+    if (H(uint32_t, HSL_B80) && !background && !palette_true())
+        return (UINT)-1;
+    if (!SelectPalette(dc, pal, background))
+        return (UINT)-1;
+    return RealizePalette(dc);
+}
+
+/* Loads all-black colors into the DirectDraw palette, keeping the flags */
+void __stdcall palette_changed(uint8_t *hsl)
+{
+    uint8_t black[0x400];
+    g_hsl = hsl;
+    DisplayDD *d = DD();
+    if (!d || !d->palette)
+        return;
+    for (int i = 0; i < 0x100; i++) {
+        black[i * 4] = black[i * 4 + 1] = black[i * 4 + 2] = 0;
+        black[i * 4 + 3] = PAL_FLAG(i);
+    }
+    IDirectDrawPalette_SetEntries(d->palette, 0, 0, 256, (PALETTEENTRY *)black);
+}
+
+void __stdcall palette_set_painting(uint8_t *hsl, int painting, int apply)
+{
+    g_hsl = hsl;
+    H(uint32_t, HSL_PAINTING) = painting;
+    DisplayDD *d = DD();
+    if (painting && apply && d && d->palette)
+        IDirectDrawPalette_SetEntries(d->palette, 0, 0, 256, (PALETTEENTRY *)(g_hsl + HSL_PALETTE));
 }

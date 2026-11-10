@@ -74,4 +74,25 @@ void __stdcall display_flip_now(uint8_t *hsl);
 int __cdecl surfaces_restore(void);
 int __stdcall display_activate(uint8_t *hsl, int active);
 
+void __cdecl palette_delete(void);
+int __cdecl palette_create(void);
+int __cdecl palette_create_reserved(void);
+int __stdcall SpriteChangePalette(uint8_t *hsl, uint32_t first, uint32_t n, const uint32_t *colors, int animate,
+                                  int same);
+void __stdcall palette_to_dib(uint32_t first, uint32_t end, uint32_t unused);
+void __stdcall SpriteGetPalette(uint8_t *hsl, void *out, uint32_t first, uint32_t n);
+int __stdcall SpriteGetRgbPalette(uint8_t *hsl, void *out, uint32_t first, uint32_t n);
+int __stdcall SpriteFadePalette(uint8_t *hsl, uint32_t step, uint32_t steps, uint32_t unused1, uint32_t unused2);
+UINT __stdcall SpriteRealizePalette(uint8_t *hsl);
+UINT __stdcall SpriteRealizePalette2(uint8_t *hsl, int background);
+HPALETTE __stdcall SpriteSelectPalette(uint8_t *hsl, HDC dc);
+int __stdcall SpriteSetPalette(uint8_t *hsl, const void *colors);
+uint32_t __stdcall palette_get_b80(uint8_t *hsl);
+uint32_t __stdcall palette_get_b80_2(uint32_t unused1, uint32_t unused2);
+int __cdecl palette_false(void);
+int __cdecl palette_true(void);
+UINT __cdecl palette_realize(HDC dc, HPALETTE pal, int background);
+void __stdcall palette_changed(uint8_t *hsl);
+void __stdcall palette_set_painting(uint8_t *hsl, int painting, int apply);
+
 #endif
