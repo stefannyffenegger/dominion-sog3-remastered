@@ -8,6 +8,7 @@
  *  - the animation list (prev +8, next +0xc) that SpriteAnimate walks, in the same order.
  * The sprite engine's state (HSL) is shared with code not rewritten yet (H()). */
 #include "orig.h"
+#include "spritelib.h"
 #include "sprite.h"
 #include "display.h"
 #include "view.h"
@@ -124,12 +125,8 @@
 #define MAX_SPRITES 4000
 
 /* original functions not rewritten yet */
-#define sprite_move ORIG(void(__stdcall *)(uint8_t *, int, int, int, int), 0x10057753)
-#define SpriteHide ORIG(void(__stdcall *)(uint8_t *, uint8_t *, int), 0x100579e3)
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define SpriteShow ORIG(void(__stdcall *)(uint8_t *, uint8_t *, uint32_t, int), 0x10057c57)
-#define SpriteReplaceBitmap ORIG(int(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10057a63)
 #define draw_view_sprites ORIG(void(__stdcall *)(void *, uint32_t), 0x10056c51)
 /* pixel test of a bitmap: > 3 is a drawn pixel */
 #define bitmap_pixel ORIG(uint32_t(__cdecl *)(uint32_t, int, int, uint32_t), 0x10062d30)

@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 407 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 429 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -261,13 +261,21 @@ Each sprite can run a list of commands: animate cels, move along a line or a cur
 * The commands that do the actual moving and animating (types 1, 2, 5, 9, 10, 0x17) are still original; the per-command helpers return a full register that is passed on unchanged.
 * The screen bitmap (plain memory, a GDI DIB section, or the locked DirectDraw back buffer) moved to `view.c`.
 * Checked: menu tour and Human mission 1 match the all-original run. The edge-scrolling screenshot lands on one of two positions, in the original's runs too.
-* Next: showing, hiding and moving sprites, the drawing pass, then the hand-written blitters.
+
+### Engine state and sprite display (`spritelib.c`, 22 functions)
+Creating, resetting and freeing the engine state, the screen modes of the drawing bitmap, and showing, hiding, moving and redrawing sprites, plus the cel-animation command.
+* The engine state is 0xff4 bytes. The first one is a static block inside the DLL; further ones are allocated.
+* `SpriteInitLibrary` reads hidden `dominion.ini` settings (see `HIDDEN_AND_UNUSED.md`) and remembers Windows' system colors.
+* Redrawing a sprite: if its new bounds overlap the old ones, one pass redraws both; otherwise the old place is redrawn without the sprite, then the new one.
+* Two more spots of the Phase 1a `palette` patch were in this code (`SpriteInitLibrary` and the desktop-size function); the rewrite has the fix built in. Without it the screen stays black.
+* Checked: menu tour and Human mission 1 match the all-original runs.
+* Next: the drawing pass (0x100562d9-0x100573d5) together with the hand-written blitters.
 
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|
 | Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
-| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~220 | 14,000 |
+| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~200 | 13,300 |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~170 | 4,800 |
 | C runtime (not ported; replaced by the system's) | ~430 | |
 

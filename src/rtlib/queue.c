@@ -6,6 +6,7 @@
  * byte: when set, the value is an index into the game's variable table (sprite_delay).
  * Commands still original: 1 (cels), 2, 5 (curve), 9 (line), 10, 0x17. */
 #include "orig.h"
+#include "spritelib.h"
 #include "queue.h"
 #include "sprite.h"
 #include "view.h"
@@ -55,17 +56,13 @@
 typedef void(__stdcall *MsgProc)(void *, uint32_t);
 
 /* original functions not rewritten yet */
-#define cmd_cels ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10055fc0)
 #define cmd_2 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1006254a)
 #define cmd_curve ORIG(uint32_t(__stdcall *)(uint8_t *), 0x100634b0)
 #define cmd_line ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10063180)
 #define cmd_10 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10063368)
 #define cmd_17 ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1005bd70)
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define sprite_move ORIG(void(__stdcall *)(uint8_t *, int, int, int, int), 0x10057753)
 #define parts_update_bounds ORIG(void(__stdcall *)(uint8_t *), 0x10062320)
-#define SpriteHide ORIG(void(__stdcall *)(uint8_t *, uint8_t *, int), 0x100579e3)
-#define SpriteShow ORIG(void(__stdcall *)(uint8_t *, uint8_t *, uint32_t, int), 0x10057c57)
 
 /* value at off with its flag byte at flag */
 #define VAL(c, off, flag) (uint32_t) sprite_delay(C(int32_t, c, off), C(char, c, flag))

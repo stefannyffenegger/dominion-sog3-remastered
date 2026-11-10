@@ -9,4 +9,5 @@
 #include "sprite.h"
 #include "view.h"
 #include "queue.h"
+#include "spritelib.h"
 #endif

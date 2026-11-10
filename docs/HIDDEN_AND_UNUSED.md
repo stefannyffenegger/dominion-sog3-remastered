@@ -58,6 +58,11 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[audio] CdVolume`, `MidiVolume`, `WaveVolume` | 0x7fff | the engine's own volumes |
 | `[audio] WaveFormatMask`, `MaxWaveBuffers`, `DisableWaveVolume`, `RemapMidiDrums`, `ProfileCD` | | the unused sound system |
 | `[utils] Pentium` | 1 | treat a Pentium as a Pentium (processor detection) |
+| `[DirectDraw] AllowTripleBuffer` | 1 | allow three screen buffers when video memory allows |
+| `[DirectDraw] NoWaitForIFBlit` | 0 | don't wait for the interface panel copy |
+| `[DirectDraw] WaitForFlip` | 0 | wait for the page flip later |
+| `[DirectDraw] WaitIfStillDrawing` | 0 | read, but not used by the code rewritten so far |
+| `[dominion] SafeModeSwitch` | 0 | read into the sprite engine; use not found yet |
 | `[resource]` | | data files copied to the hard disk, deleted at the next start (see below) |
 
 ## Leftovers from earlier versions
@@ -73,6 +78,9 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
 * **code.** `SpriteCompToBackground`, asked to draw one sprite into the background, goes on to draw every sprite, and (unless told to keep them) hides them all and empties their script queues.
 * **code.** `SpritePaint`, when repainting everything by hand, reads the next sprite through a null pointer and would crash after the first sprite. That path doesn't seem to run (our rewrite walks the list correctly).
 * **code.** The GDI DIB-section mode of the screen bitmap: its cleanup deletes the bitmap that was selected before instead of the DIB section, and deletes the DC with `DeleteObject`. Dominion uses DirectDraw, so this doesn't run.
+* **code.** Note on the table above: the `[DirectDraw]` and `SafeModeSwitch` keys are read from `dominion.ini` in the Windows folder (a bare file name), not from the game's own `Dominion.ini`.
+* **code.** `SpriteInitLibrary`, on a display without a palette, fills both halves of its copy of Windows' 20 static colors with the first 10.
+* **code.** Switching the screen mode (0x10055c7e) frees the drawing bitmap but keeps the pointer to it.
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

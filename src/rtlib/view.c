@@ -6,6 +6,7 @@
  *
  * Sprite coordinates are relative to the center of the background (HSL_ORIGIN). */
 #include "orig.h"
+#include "spritelib.h"
 #include "view.h"
 #include "display.h"
 #include "sprite.h"
@@ -65,9 +66,7 @@
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 #define tiles_draw ORIG(void(__stdcall *)(void *, uint32_t, uint32_t), 0x1005e85a)
 #define tiles_create ORIG(uint8_t *(__stdcall *)(uint32_t), 0x1005e5bf)
-#define background_draw ORIG(void(__stdcall *)(int, int, uint32_t), 0x100579a7)
 #define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
-#define SpriteHide ORIG(void(__stdcall *)(uint8_t *, uint8_t *, int), 0x100579e3)
 /* merges a bitmap into another: dst, src, w, h, dst x, y, src x, y, flip, color map */
 #define dib_merge                                                                                  \
     ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int, int, int, int, int, uint32_t, uint32_t), 0x10059e74)
@@ -404,7 +403,7 @@ void __stdcall SpritePaint(uint8_t *hsl, uint8_t *s, HDC dc)
     } else if (!draw_view_sprites(&H(RECT, HSL_SCREEN_RECT), REDRAW_ALL)) {
         if (H(uint32_t, HSL_BACKGROUND))
             background_draw(H(int32_t, HSL_SCROLL_X) - H(int32_t, HSL_ORIGIN_X),
-                            H(int32_t, HSL_SCROLL_Y) - H(int32_t, HSL_ORIGIN_Y), H(uint32_t, HSL_BACKGROUND));
+                            H(int32_t, HSL_SCROLL_Y) - H(int32_t, HSL_ORIGIN_Y), H(uint8_t *, HSL_BACKGROUND));
         /* original: reads the next sprite through s (NULL here), which would crash after
          * the first sprite; this path never seems to run */
         if (H(uint32_t, HSL_COUNT) && H(uint8_t *, HSL_HEAD)) {
