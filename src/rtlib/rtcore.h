@@ -39,13 +39,9 @@
 #define RT_95F9 0x95f9
 #define RT_BKG_SCROLLS 0x9600
 
-/* objects: every loaded resource has an entry; its first field points at the data */
-#define obj_is ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x100132ad)     /* id, type */
-#define obj_entry ORIG(uint32_t *(__stdcall *)(uint32_t), 0x10013270)     /* id */
-#define obj_release ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x10012546) /* id, type */
-#define obj_load ORIG(uint8_t *(__stdcall *)(uint32_t, SIZE_T *), 0x10014663)
-#define obj_12000 ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x10012000)
-#define obj_14409 ORIG(uint32_t(__stdcall *)(uint32_t, uint32_t), 0x10014409)
+/* objects: see rt_obj.h */
+#define obj_12000 obj_check_type
+#define obj_14409 obj_loaded
 #define rt_message_box ORIG(void(__stdcall *)(HWND, uint32_t, uint32_t), 0x10025da8)
 
 #endif

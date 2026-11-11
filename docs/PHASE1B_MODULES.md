@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 652 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 700 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -349,6 +349,15 @@ Expressions in the menu scripts are compiled to a small stack machine: one opcod
 ### Engine core, part 4: showing and hiding the scene (`rt_fade.c`, 6 functions)
 * On a palette display the scene comes up by fading the palette in over 75 steps and goes down by fading it out; sprites keep animating during the fade. `RtSetNoFade` skips the steps.
 * Without a palette (true color) the background is wiped in or out instead, with the sprite engine's wipes.
+
+### Engine core, part 5: the object table (`rt_obj.c`, 48 functions; `load.cpp` in the original)
+Every resource id has a 12-byte entry in the object table; what it holds depends on the resource type.
+* **Types:** 1 bitmap, 0xf bitmap reference (its own header on another bitmap's pixels), 6 MIDI, 0xc wave, 0x10 group (a list of ids), 0x14 sprite, 0x16 tile map, 2/0xe/0x11-0x13 plain data (palettes, handlers), and 4, 5, 7-10 for the game's own types, which the game creates and frees through callbacks.
+* **Loading** a resource loads what it refers to: a sprite record creates the sprite and loads its bitmaps and sounds; a tile map loads its tiles. Bitmaps are counted by use and freed when the last user goes.
+* Before a group or sprite loads, the bitmaps it will need are collected and read in one pass over the file.
+* **Copies:** sprites and the game's types can be duplicated at run time under new ids and deleted again.
+* The game can hook every load and release. `RtGetLibraryState` returns a plugin's state by name.
+* Checked: menu tour and Human mission 1 against the all-original runs.
 
 ### What's left
 | Part | Functions | Decompiled lines |

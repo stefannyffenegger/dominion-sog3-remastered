@@ -54,7 +54,6 @@
 
 #define event_send ORIG(int(__stdcall *)(uint32_t, uint32_t, uint32_t), 0x10025e97) /* handler, id, arg */
 #define handler_record_run ORIG(void(__stdcall *)(uint8_t *), 0x100220dd)
-#define obj_ensure ORIG(void(__stdcall *)(uint32_t), 0x100147a6)
 #define mouse_filter ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x10014dc0)
 #define key_filter_down ORIG(int(__stdcall *)(uint32_t), 0x10010d50)
 #define key_filter_up ORIG(int(__cdecl *)(uint32_t), 0x10010f54)
