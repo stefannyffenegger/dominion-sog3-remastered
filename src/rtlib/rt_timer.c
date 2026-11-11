@@ -120,3 +120,71 @@ void __stdcall ctimer_set(U key, U interval, U callback, uint8_t flag)
     P(U, t, 0xc) = callback;
     t[0x10] = flag;
 }
+
+#define RT_DELAYED_EVENT 0x3f3f
+#define RT_DELAYED_DUE 0x0b80
+#define RT_PAUSE_TIME 0x0b78
+#define RT_TIMERS_PAUSED 0x95f0
+#define event_send ORIG(U(__stdcall *)(U, U, U), 0x10025e97)
+
+/* 0x10024db2: sends the delayed event when its time has come */
+void __cdecl delayed_event_service(void)
+{
+    if (RU(RT_DELAYED_EVENT) && RU(RT_DELAYED_DUE) <= timeGetTime()) {
+        event_send(RU(RT_DELAYED_EVENT), 0, 0);
+        RU(RT_DELAYED_EVENT) = 0;
+    }
+}
+
+/* 0x10024e10: runs the handlers of due script timers; one-shot timers go away first */
+void __cdecl timers_service(void)
+{
+    if (RB(RT_TIMERS_PAUSED))
+        return;
+    for (g_timer_iter = 0; g_timer_iter < (int)RU(RT_TIMER_COUNT); g_timer_iter++) {
+        uint8_t *t = timer((U)g_timer_iter);
+        if (P(U, t, 0) > timeGetTime())
+            continue;
+        U handler = P(U, t, 0xc);
+        if (!t[0x10])
+            timer_delete(g_timer_iter);
+        else
+            P(U, timer((U)g_timer_iter), 0) = P(U, timer((U)g_timer_iter), 4) + timeGetTime();
+        script_run(handler);
+    }
+}
+
+/* 0x10024f1c: calls back due controller timers */
+void __cdecl ctimers_service(void)
+{
+    if (RB(RT_TIMERS_PAUSED))
+        return;
+    for (int i = 0; i < (int)RU(RT_CTIMER_COUNT); i++) {
+        uint8_t *t = ctimer((U)i);
+        if (P(U, t, 0) > timeGetTime())
+            continue;
+        void *cb = P(void *, t, 0xc);
+        U key = P(U, t, 8);
+        if (!t[0x10])
+            i = ctimer_delete(i);
+        else
+            P(U, ctimer((U)i), 0) = P(U, ctimer((U)i), 4) + timeGetTime();
+        orig_stdcall_unsafe(cb, 1, &key);
+    }
+}
+
+/* 0x10025037: pauses all timers; unpausing moves them on by the time paused */
+void __stdcall timers_pause(uint8_t paused)
+{
+    U now = timeGetTime();
+    RB(RT_TIMERS_PAUSED) = paused;
+    if (paused) {
+        RU(RT_PAUSE_TIME) = now;
+        return;
+    }
+    U d = now - RU(RT_PAUSE_TIME);
+    for (U i = 0; i < RU(RT_TIMER_COUNT); i++)
+        P(U, timer(i), 0) += d;
+    for (U i = 0; i < RU(RT_CTIMER_COUNT); i++)
+        P(U, ctimer(i), 0) += d;
+}
