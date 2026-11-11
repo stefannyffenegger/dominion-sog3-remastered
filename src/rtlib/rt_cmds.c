@@ -11,6 +11,7 @@
 #define VAR(c, off) (*script_var(F(c, off)))
 
 #define RT_AUDIO 0x0c90
+#define RES R(ResFile *, RT_RES)
 #define RT_SCENE 0x0b88          /* the scene record being started, 0x104 bytes */
 #define RT_SCENES 0x329b         /* scene records, 0x10c bytes each */
 #define RT_KEYS 0x1947
@@ -284,4 +285,331 @@ void __stdcall cmd_random(const uint8_t *c)
         r = (r + 1) % n;
     G(uint32_t, 0x1007cad8) = r;
     *script_var(F(c, 2)) = (int32_t)(r + lo);
+}
+
+/* ---- second batch: 0x10019a62-0x1001aa0b ---- */
+
+#define list_count ORIG(uint32_t(__stdcall *)(uint32_t), 0x10021960)
+#define list_run ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x10022e5c)
+#define wave_save ORIG(int(__stdcall *)(LPSTR, uint32_t), 0x100258e9)
+#define file_saved ORIG(void(__stdcall *)(LPSTR, uint32_t), 0x10027eba)
+#define rt_script_error ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x100260f6)
+#define rt_fatal ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10025b0f)
+#define AudioStopMidi ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x1003f57c)
+#define AudioGetWaveVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1004137a)
+#define AudioSetWaveVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x10041446)
+#define AudioGetCDVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10042fe6)
+#define AudioSetCDVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x1004359c)
+#define AudioGetMidiVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10043aca)
+#define AudioSetMidiVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x10043b7a)
+#define AUDIO R(uint8_t *, RT_AUDIO)
+
+/* A random index below n, not the one at *last unless n is 1 */
+static uint32_t pick_other(uint32_t n, uint8_t *last)
+{
+    uint32_t r = (uint32_t)crt_rand() % n;
+    if (*last == r && ++r >= n)
+        r = 0;
+    *last = (uint8_t)r;
+    return r;
+}
+
+/* 0x10019a62: runs one of several scripts at random: +2 count and scripts at +6, or
+ * (+4 set) the entries of list +6. +3 keeps the last pick. */
+int __stdcall cmd_random_script(uint8_t *c)
+{
+    if (!c[4])
+        return script_run(F(c, 6 + pick_other(c[2], c + 3) * 4));
+    uint32_t list = F(c, 6), n = list_count(list);
+    if (!n)
+        return 0;
+    return list_run(list, pick_other(n, c + 3));
+}
+
+/* 0x10019b54: saves resource +2 (a wave, or a bitmap as .bmp) as the file named by
+ * string +6 in the Windows directory */
+void __stdcall cmd_save_resource(const uint8_t *c)
+{
+    char *name = (char *)string_get(F(c, 6));
+    if (!name)
+        return;
+    char dir[256], path[256];
+    GetWindowsDirectoryA(dir, sizeof dir);
+    MakeFullPath(path, dir, name);
+    uint32_t id = F(c, 2);
+    uint16_t t = ResGetType(RES, id);
+    int ok = 0;
+    if (t == 3)
+        ok = wave_save(path, id);
+    else if (t == 1 && obj_is(F(c, 2), 1)) {
+        ok = dib_save_bmp((uint8_t *)(uintptr_t)obj_entry(id)[0], path);
+        obj_release(F(c, 2), 1);
+    }
+    if (ok)
+        file_saved(path, c[10]);
+}
+
+/* 0x10019c89 */
+uint32_t __stdcall cmd_set_position(const uint8_t *c)
+{
+    if (!obj_is(F(c, 2), 0x14))
+        return 0;
+    uint8_t *s = SPRITE(F(c, 2));
+    if (s)
+        SpriteSetPosition(HSL, s, P(int32_t, c, 6), P(int32_t, c, 10), 0);
+    return 1;
+}
+
+/* 0x10019ecd: the number of % conversions in a format; -1 for a % at the end */
+int __stdcall format_arg_count(LPCSTR fmt)
+{
+    int n = 0;
+    uint32_t len = (uint32_t)lstrlenA(fmt);
+    for (uint32_t i = 0; i < len; i++) {
+        if (fmt[i] != '%')
+            continue;
+        if (i == len - 1)
+            return -1;
+        if (fmt[i + 1] == '%')
+            i++;
+        else
+            n++;
+    }
+    return n;
+}
+
+/* 0x10019d07: string +2 = format string +6 with +0xc arguments (6 bytes each at +0x10:
+ * value, then 1 for a number or 0 for a string id). +9 bit 7: check the count. */
+void __stdcall cmd_format(const uint8_t *c)
+{
+    if (c[5] & 0x80)
+        return;
+    char *dst = (char *)string_get(F(c, 2));
+    const char *fmt = string_get(F(c, 6));
+    if (!dst || !fmt)
+        return;
+    uint32_t n = F(c, 0xc);
+    if (!n) {
+        lstrcpynA(dst, fmt, 0x200);
+        return;
+    }
+    char *buf = winmalloc(0x400, 0);
+    if (!buf)
+        return;
+    if (c[9] & 0x80) {
+        int k = format_arg_count(fmt);
+        if ((int)n != k || k == -1) {
+            if (!R(uint8_t, 0x95d8)) {
+                rt_fatal(0x3f0, 0);
+                return; /* (the buffer is not freed) */
+            }
+            rt_script_error(0x73, 0);
+        }
+    }
+    uint32_t args[12];
+    for (uint32_t i = 0; i < n && i < 12; i++) {
+        const uint8_t *a = c + 0x10 + i * 6;
+        if (a[4])
+            args[i] = F(a, 0);
+        else {
+            const char *s = string_get(F(a, 0));
+            args[i] = (uint32_t)(uintptr_t)(s ? s : "<NULL>");
+        }
+    }
+    wvsprintfA(buf, fmt, (va_list)args);
+    lstrcpynA(dst, buf, 0x200);
+    winfree(buf);
+}
+
+/* 0x10019fe1: one step of an arithmetic command: +0 value, +4 operation (0 set, 1 +,
+ * 2 -, 3 *, 4 / rounded, 5 |, 6 &, 7 %), +6 negate the value */
+uint32_t __stdcall math_step(const uint8_t *e, uint32_t acc)
+{
+    uint32_t v = F(e, 0);
+    if (e[6])
+        v = 0u - v;
+    switch (e[4]) {
+    case 0:
+        return v;
+    case 1:
+        return v + acc;
+    case 2:
+        return acc - v;
+    case 3:
+        return v * acc;
+    case 4: {
+        if (!v)
+            return 0;
+        int32_t half = (int32_t)v / 2;
+        if ((int32_t)v < 0)
+            half = -half;
+        return (uint32_t)(((int32_t)acc + half) / (int32_t)v);
+    }
+    case 5:
+        return v | acc;
+    case 6:
+        return v & acc;
+    case 7:
+        return (uint32_t)((int32_t)acc % (int32_t)v);
+    }
+    return 0;
+}
+
+/* 0x10019f62: variable +2 = variable +2 combined with +6 steps of 8 bytes at +10 */
+void __stdcall cmd_math(const uint8_t *c)
+{
+    uint32_t acc = (uint32_t)*script_var(F(c, 2));
+    for (uint32_t i = 0; i < F(c, 6); i++)
+        acc = math_step(c + 10 + i * 8, acc);
+    *script_var(F(c, 2)) = (int32_t)acc;
+}
+
+/* 0x1001a32a: a volume (two 16-bit channels) one step of 31 up or down */
+uint32_t __stdcall volume_step(uint32_t vol, int up)
+{
+    uint32_t l = (vol & 0xffff) >> 11, r = (uint32_t)((int32_t)(vol >> 16) >> 11);
+    if (up && l <= 0x1e && r <= 0x1e)
+        l++, r++;
+    else if (!up && l && r)
+        l--, r--;
+    return (r * 0xffff) / 0x1f << 16 | ((l * 0xffff) / 0x1f & 0xffff);
+}
+
+/* 0x1001a132: volume command: +2 0 up, 1 down, 2 set to +6 (0-127, flag +4); +3 which
+ * (0 all, 1 CD, 2 MIDI, 3 wave) */
+void __stdcall cmd_volume(const uint8_t *c)
+{
+    uint32_t set = 0;
+    if (c[2] == 2) {
+        set = script_value(F(c, 6), c[4]);
+        if (set > 0x7f)
+            set = 0x7f;
+        set = set << 25 | (set & 0x7f) << 9;
+    }
+    int up = c[2] == 0;
+    if (c[3] == 0 || c[3] == 1)
+        AudioSetCDVolume(AUDIO, c[2] == 2 ? set : volume_step(AudioGetCDVolume(AUDIO), up));
+    if (c[3] == 0 || c[3] == 2)
+        AudioSetMidiVolume(AUDIO, c[2] == 2 ? set : volume_step(AudioGetMidiVolume(AUDIO), up));
+    if (c[3] == 0 || c[3] == 3)
+        AudioSetWaveVolume(AUDIO, c[2] == 2 ? set : volume_step(AudioGetWaveVolume(AUDIO), up));
+}
+
+/* 0x1001a3f0: runs the scripts in turn: +2 count at +6, or (+4 set) list +6; +3 the
+ * position. A script that is a still unfinished 0xa7 command keeps the position. */
+int __stdcall cmd_sequence(uint8_t *c)
+{
+    if (!c[4]) {
+        if (c[2] <= c[3])
+            c[3] = 0;
+        uint32_t id = F(c, 6 + c[3] * 4);
+        if (!obj_is(id, 0x13))
+            return 0;
+        const uint8_t *s = (const uint8_t *)(uintptr_t)obj_entry(id)[0];
+        if (P(int16_t, s, 0) != 0xa7 || s[2] == s[3])
+            c[3]++;
+        return script_run(id);
+    }
+    uint32_t list = F(c, 6), n = list_count(list);
+    if (!n)
+        return 0;
+    uint8_t i = c[3]++;
+    if (n <= c[3])
+        c[3] = 0;
+    return list_run(list, i);
+}
+
+/* 0x1001a50a: gives sprite object id the script queue `queue` (0: empties it); hide:
+ * hide it first */
+uint32_t __stdcall cmd_set_queue(uint32_t id, uint32_t queue, int hide)
+{
+    if (!id)
+        return 0;
+    if (!queue && !obj_loaded(id, 0x14))
+        return 1;
+    if (!obj_is(id, 0x14))
+        return 0;
+    uint8_t *s = SPRITE(id);
+    if (s && hide)
+        SpriteHide(HSL, s, 1);
+    if (!queue) {
+        SpriteEmptyQueue(HSL, s);
+        return 1;
+    }
+    if (!obj_is(queue, 0x12))
+        return 0;
+    uint32_t *q = obj_entry(queue);
+    SpriteSetQueue(HSL, s, (const void *)(uintptr_t)q[0], q[1]);
+    return 1;
+}
+
+/* 0x1001a621: stops MIDI resource id (0: all) */
+void __stdcall cmd_stop_midi(uint32_t id)
+{
+    AudioStopMidi(AUDIO, id ? obj_entry(id)[0] : 0);
+}
+
+/* 0x1001a66f: compares strings +6 and +10 into variable +2; command 0xd6 ignores case */
+void __stdcall cmd_strcmp(const uint8_t *c)
+{
+    const char *a = string_get(F(c, 6)), *b = string_get(F(c, 10));
+    if (!a || !b)
+        return;
+    int32_t *v = script_var(F(c, 2));
+    *v = P(int16_t, c, 0) == 0xd6 ? lstrcmpiA(a, b) : lstrcmpA(a, b);
+}
+
+/* 0x1001a70c: runs entry +10 of list +2; past the end, script +6 if +0xe; +0xf: step
+ * the index on (wrapping) */
+uint32_t __stdcall cmd_list_entry(uint8_t *c)
+{
+    uint32_t list = F(c, 2), n = list_count(list);
+    if (!n)
+        return 0;
+    uint32_t i = F(c, 10), r;
+    if (i < n)
+        r = list_run(list, i);
+    else
+        r = !c[0xe] || script_run(F(c, 6));
+    if (c[0xf])
+        F(c, 10) = (i + 1) % n;
+    return r;
+}
+
+/* The case table of a switch: +6 its offset, +0xe count, entries of 12 bytes (+2 value,
+ * +6 jump, +10 value is a variable); +10 the default jump */
+static uint32_t switch_jump(const uint8_t *c, uint32_t v)
+{
+    uint32_t n = P(uint16_t, c, 0xe);
+    const uint8_t *t = c + F(c, 6);
+    for (uint32_t i = 0; i < n; i++)
+        if (script_value(F(t, 2 + i * 12), t[10 + i * 12]) == v)
+            return F(t, 6 + i * 12);
+    return F(c, 10);
+}
+
+/* 0x1001a7d2: switch on value +2 (variable flag +0x11) */
+uint32_t __stdcall cmd_switch(const uint8_t *c)
+{
+    return switch_jump(c, script_value(F(c, 2), c[0x11]));
+}
+
+/* 0x1001a88c: switch on the expression at +0x10 */
+uint32_t __stdcall cmd_switch_expr(const uint8_t *c)
+{
+    return switch_jump(c, (uint32_t)script_eval(c + 0x10));
+}
+
+/* 0x1001a93f: whether sprite object +6 is shown, into variable +2 */
+void __stdcall cmd_is_visible(const uint8_t *c)
+{
+    uint8_t *s = obj_loaded(F(c, 6), 0x14) ? SPRITE(F(c, 6)) : NULL;
+    int32_t *v = script_var(F(c, 2));
+    *v = s && SpriteIsVisible(s);
+}
+
+/* 0x1001a9cc: like cmd_if_expr */
+uint32_t __stdcall cmd_if_expr2(const uint8_t *c)
+{
+    return script_eval(c + 10) ? F(c, 6) : F(c, 2);
 }

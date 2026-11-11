@@ -26,4 +26,23 @@ void __stdcall cmd_play_midi(uint8_t *c);
 uint32_t __stdcall cmd_play_wave(uint32_t id, int32_t *params);
 void __stdcall cmd_random(const uint8_t *c);
 
+int __stdcall cmd_random_script(uint8_t *c);
+void __stdcall cmd_save_resource(const uint8_t *c);
+uint32_t __stdcall cmd_set_position(const uint8_t *c);
+int __stdcall format_arg_count(const char *fmt);
+void __stdcall cmd_format(const uint8_t *c);
+uint32_t __stdcall math_step(const uint8_t *e, uint32_t acc);
+void __stdcall cmd_math(const uint8_t *c);
+uint32_t __stdcall volume_step(uint32_t vol, int up);
+void __stdcall cmd_volume(const uint8_t *c);
+int __stdcall cmd_sequence(uint8_t *c);
+uint32_t __stdcall cmd_set_queue(uint32_t id, uint32_t queue, int hide);
+void __stdcall cmd_stop_midi(uint32_t id);
+void __stdcall cmd_strcmp(const uint8_t *c);
+uint32_t __stdcall cmd_list_entry(uint8_t *c);
+uint32_t __stdcall cmd_switch(const uint8_t *c);
+uint32_t __stdcall cmd_switch_expr(const uint8_t *c);
+void __stdcall cmd_is_visible(const uint8_t *c);
+uint32_t __stdcall cmd_if_expr2(const uint8_t *c);
+
 #endif

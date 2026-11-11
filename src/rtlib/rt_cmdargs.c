@@ -85,13 +85,13 @@ WV(cmdw_100175ee, 0x10, V(0x6, 0xe); V(0xa, 0xf);, cmd_random(b)) /* -> 0x100199
 WV(cmdw_100177a0, 0x1e, V(0x6, 0xe); V(0xa, 0xf);, bg_cmd(b)) /* -> 0x10001000 */
 WV(cmdw_1001794a, 0x12, V(0x2, 0xb); V(0x6, 0xc);, palette_cmd(b)) /* -> 0x100019f9 */
 WV(cmdw_100179ac, 0x8, V(0x2, 0x6);, palette_load_cmd(b)) /* -> 0x10001b06 */
-W(cmdw_100179e8, 0xc, V(0x2, 0xb);, CALL1(0x10019b54)(b)) /* -> 0x10019b54 */
-W(cmdw_10017a2c, 0x12, V(0x2, 0xe); V(0x6, 0xf); V(0xa, 0x10);, CALL1(0x10019c89)(b)) /* -> 0x10019c89 */
+WV(cmdw_100179e8, 0xc, V(0x2, 0xb);, cmd_save_resource(b)) /* -> 0x10019b54 */
+W(cmdw_10017a2c, 0x12, V(0x2, 0xe); V(0x6, 0xf); V(0xa, 0x10);, cmd_set_position(b)) /* -> 0x10019c89 */
 W(cmdw_10017b32, 0x12, V(0x2, 0xe); V(0x6, 0xf); V(0xa, 0x10);, CALL1(0x10024171)(b)) /* -> 0x10024171 */
 W(cmdw_10017ba4, 0xc, V(0x2, 0xa); V(0x6, 0xb);, CALL1(0x10024225)(b)) /* -> 0x10024225 */
 W(cmdw_10017c6e, 0xc, V(0x6, 0xa);, CALL1(0x10014bba)(b)) /* -> 0x10014bba */
 W(cmdw_10017dfe, 0x2e, V(0xa, 0x26); V(0xe, 0x27); V(0x12, 0x28); V(0x16, 0x29); V(0x1a, 0x2a); V(0x1e, 0x2b); V(0x22, 0x2c);, CALL1(0x10014c1f)(b)) /* -> 0x10014c1f */
-W(cmdw_10017e9b, 0xc, V(0x6, 0xa);, CALL1(0x1001a93f)(b)) /* -> 0x1001a93f */
+WV(cmdw_10017e9b, 0xc, V(0x6, 0xa);, cmd_is_visible(b)) /* -> 0x1001a93f */
 W(cmdw_10017edf, 0x12, V(0x2, 0xe); V(0x6, 0xf); V(0xa, 0x10);, CALL1(0x1001aa0b)(b)) /* -> 0x1001aa0b */
 
 /* ---- written out ---- */
@@ -255,14 +255,15 @@ uint32_t __stdcall cmdw_10017899(const uint8_t *c)
     memcpy(b, c, 0x22);
     for (uint32_t i = 0; i < FIELD(b, 6); i++)
         FIELD(b, 0xa + i * 8) = script_value(FIELD(b, 0xa + i * 8), b[0x11 + i * 8]);
-    return CALL1(0x10019f62)(b);
+    cmd_math(b);
+    return 0;
 }
 
 /* 0x10017902 */
 void __stdcall cmdw_10017902(const uint8_t *c)
 {
     uint32_t b = VAL(6, 0xc), a = VAL(2, 0xb);
-    ORIG(void(__stdcall *)(uint32_t, uint32_t, uint32_t), 0x1001a50a)(a, b, c[10]);
+    cmd_set_queue(a, b, c[10]);
 }
 
 /* 0x10017a9e: +0xc entries of 6 bytes at +0x10 (value, used, flag) */
@@ -274,7 +275,8 @@ uint32_t __stdcall cmdw_10017a9e(const uint8_t *c)
     for (uint32_t i = 0; i < FIELD(b, 0xc); i++)
         if (b[0x14 + i * 6])
             FIELD(b, 0x10 + i * 6) = script_value(FIELD(b, 0x10 + i * 6), b[0x15 + i * 6]);
-    return CALL1(0x10019d07)(b);
+    cmd_format(b);
+    return 0;
 }
 
 /* 0x10017bf8 */
@@ -287,7 +289,7 @@ void __stdcall cmdw_10017bf8(const uint8_t *c)
 /* 0x10017cb2, 0x10017cdd */
 void __stdcall cmdw_10017cb2(const uint8_t *c)
 {
-    ORIG(void(__stdcall *)(uint32_t), 0x1001a621)(VAL(2, 6));
+    cmd_stop_midi(VAL(2, 6));
 }
 
 void __stdcall cmdw_10017cdd(const uint8_t *c)
@@ -304,7 +306,7 @@ uint32_t __stdcall cmdw_10017d0f(const uint8_t *c)
     FIELD(b, 10) = (uint32_t)*script_var(FIELD(c, 10));
     V(2, 0x10);
     V(6, 0x11);
-    CALL1(0x1001a70c)(b);
+    cmd_list_entry(b);
     *script_var(FIELD(c, 10)) = (int32_t)FIELD(b, 10);
     return FIELD(b, 10);
 }
