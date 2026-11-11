@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,023 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,032 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -412,6 +412,10 @@ A scene is one resource file with its script. Fourth batch (3): the run-state re
 A script handler is a list of commands: a 16-bit opcode, then fixed-size or self-sized arguments. The command dispatcher runs one command through its (already ported) handler and returns its size; handlers run until a command stops them or the scene changes, calling each other up to 30 deep with their locals on a stack in the state block. Also the command size table, handler records (arguments become the first locals), and the sprite engine's script message callback. Every script command of the game now runs through our code.
 * Checked mechanically: the size table and every dispatcher case (size and handler called) against the decompile.
 * Fixed on the way: four command wrappers ported earlier as `void` return their handler's result in the original, which the dispatcher uses to stop a handler; they now return it explicitly (before, it only worked because the compiler left the value in place).
+* Checked: menu tour and Human mission 1.
+
+### Engine core, part 16: one command, program launcher, kiosk mode (`rt_launch.c`, 9 functions)
+Running a single command of a handler (live), and two features Dominion doesn't use: launching an external program while the engine waits hidden, and run mode 2's window procedure (see `HIDDEN_AND_UNUSED.md`). Untested ports apart from the first.
 * Checked: menu tour and Human mission 1.
 
 ### What's left

@@ -7,10 +7,10 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/rtlib32_orig.def)
 add_custom_target(rtlib32_orig_implib DEPENDS ${ORIG_IMPLIB})
 
-add_library(rtlib SHARED hooks.c res.c utils.c compress.c codec.c audio.c display.c sprite.c view.c queue.c spritelib.c draw.c blit.c tiles.c tileblit.c rt_bg.c rt_script.c rt_input.c rt_fade.c rt_obj.c rt_plugin.c rt_cmdargs.c rt_cmds.c rt_ini.c rt_exports.c rt_startup.c rt_service.c rt_joystick.c rt_scene.c rt_interp.c rtlib32.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+add_library(rtlib SHARED hooks.c res.c utils.c compress.c codec.c audio.c display.c sprite.c view.c queue.c spritelib.c draw.c blit.c tiles.c tileblit.c rt_bg.c rt_script.c rt_input.c rt_fade.c rt_obj.c rt_plugin.c rt_cmdargs.c rt_cmds.c rt_ini.c rt_exports.c rt_startup.c rt_service.c rt_joystick.c rt_scene.c rt_interp.c rt_launch.c rtlib32.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
 add_dependencies(rtlib rtlib32_orig_implib)
 set_target_properties(rtlib PROPERTIES PREFIX "" OUTPUT_NAME "Rtlib32" SUFFIX ".dll")
 target_compile_options(rtlib PRIVATE ${DOM_MODULE_FLAGS})
 # away from the original's preferred address (0x10000000)
 target_link_options(rtlib PRIVATE ${DOM_MODULE_LINK} -Wl,--image-base,0x60000000)
-target_link_libraries(rtlib PRIVATE ${ORIG_IMPLIB} kernel32 user32 gdi32 advapi32 winmm ddraw dxguid gcc)
+target_link_libraries(rtlib PRIVATE ${ORIG_IMPLIB} kernel32 user32 gdi32 advapi32 shell32 winmm ddraw dxguid gcc)
