@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 813 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 845 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -375,6 +375,12 @@ A script command's fields can be constants or variables; a flag byte per field s
 
 ### Engine core, part 8: command handlers (`rt_cmds.c`)
 The handlers behind the script commands, in address order. First batch (21): sprite bounds, position and level, the date and time, conditions (`if` with a script per branch, conditional jumps, expression tests), key states, MIDI, wave and CD audio, random numbers (never the same draw twice in a row) and starting a new scene. Second batch (18): random and sequential script choice, `switch` on a value or expression, arithmetic on variables (divide rounds to nearest), `sprintf` into string variables, string comparison, CD/MIDI/wave volume up, down or set, sprite script queues, and saving a resource as a file in the Windows directory.
+
+### Engine core, part 9: settings and display mode (`rt_ini.c`, 32 functions)
+* **Settings:** the script reads and writes `DOMINION.INI` (in the Windows directory) and the registry, as numbers or strings with `\n`-style escapes. Values can optionally be stored scrambled (see `HIDDEN_AND_UNUSED.md`).
+* **Display mode:** switching the desktop to a resolution and depth (the exact depth first, then any deeper one), in a thread of its own; all zeros restores the user's mode.
+* Zoom, CD stop, wave stop, and `RtCaptureFrame`.
+* Checked: menu tour and Human mission 1; the game reads and writes its settings through this code.
 
 ### What's left
 | Part | Functions | Decompiled lines |

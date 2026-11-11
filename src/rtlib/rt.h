@@ -19,6 +19,7 @@
 #include "rt_plugin.h"
 #include "rt_cmdargs.h"
 #include "rt_cmds.h"
+#include "rt_ini.h"
 #include "rt_script.h"
 #include "rt_input.h"
 #include "rt_fade.h"
