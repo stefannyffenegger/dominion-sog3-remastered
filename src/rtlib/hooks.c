@@ -15,7 +15,7 @@ uint8_t *g_orig;
 
 /* Makes Rtlib32_orig.dll a load-time dependency, so it is loaded (and its C runtime
  * initialized) before our DllMain runs. */
-__declspec(dllimport) int __cdecl RtStartup(void);
+__declspec(dllimport) int __cdecl RtEnableDirectDraw(void); /* stays original */
 void *volatile g_keep_orig_import;
 
 void rt_debug(const char *fmt, ...)
@@ -225,7 +225,7 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved)
     (void)inst;
     (void)reserved;
     if (reason == DLL_PROCESS_ATTACH) {
-        g_keep_orig_import = (void *)RtStartup;
+        g_keep_orig_import = (void *)RtEnableDirectDraw;
         g_orig = (uint8_t *)GetModuleHandleA("Rtlib32_orig.dll");
         if (!g_orig) {
             MessageBoxA(NULL, "Rtlib32_orig.dll (the original engine) is missing.", "Dominion", 0);

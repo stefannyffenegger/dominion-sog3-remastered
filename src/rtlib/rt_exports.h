@@ -12,7 +12,6 @@ U __cdecl RtDeviceBitmapToDibData(uint8_t *rt, U bm, int8_t a, uint8_t b, uint8_
 U __cdecl RtDelete(uint8_t *rt, U id);
 U __cdecl RtDirectDrawRect(uint8_t *rt, U a, U b, U c, U d);
 U __cdecl RtDynamicResource(uint8_t *rt, int8_t type, U data);
-U __cdecl RtEnableDirectDraw(void);
 U __cdecl RtFlipPages(uint8_t *rt);
 U __cdecl RtGetAllocatedMemSize(uint8_t *rt);
 U __cdecl RtGetBkgColor(uint8_t *rt);

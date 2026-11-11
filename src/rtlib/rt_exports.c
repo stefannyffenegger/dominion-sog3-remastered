@@ -75,7 +75,6 @@ U __cdecl RtDynamicResource(uint8_t *rt, int8_t type, U data)
     return id;
 }
 
-U __cdecl RtEnableDirectDraw(void) { return 0; }
 U __cdecl RtFlipPages(uint8_t *rt) { SET(rt); return R(uint8_t, RT_DIRECTDRAW) ? C1(0x1004af58, HSLU) : 0; }
 U __cdecl RtGetAllocatedMemSize(uint8_t *rt) { SET(rt); return ORIG(U(__cdecl *)(void), 0x1003e284)(); }
 U __cdecl RtGetBkgColor(uint8_t *rt) { SET(rt); return RU(RT_BKG_COLOR); }

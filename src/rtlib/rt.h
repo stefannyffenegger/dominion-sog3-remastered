@@ -21,6 +21,7 @@
 #include "rt_cmds.h"
 #include "rt_ini.h"
 #include "rt_exports.h"
+#include "rt_startup.h"
 #include "rt_script.h"
 #include "rt_input.h"
 #include "rt_fade.h"

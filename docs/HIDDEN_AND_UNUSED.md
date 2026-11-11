@@ -28,7 +28,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 ## Debug features left in
 * **code.** `Rtlib32.dll` is a debug build: debug assertions of the C runtime are still in, and many functions write `DebugStr` messages ("setres: 640 x 480", "CREATE FLIP CHAIN", ...). Under Wine they appear with `WINEDEBUG=+debugstr`.
 * **code.** A debug window: `UtilsInitDebug` takes a window that receives every `DebugStr` line (message 0x41a).
-* **code.** The engine's error messages can add "Executing Script %s File %s" when a script debugging mode is on (0x100260f6). How to turn it on is not known yet.
+* **code.** The engine's error messages can add "Executing Script %s File %s" when script debug mode is on (0x100260f6). The engine reads a `Debug` setting from `DOMINION.INI` and then switches debug mode on regardless, so it is always on: script errors report with a message instead of ending the game with a numbered fatal error.
 * **code.** The game logic has debug files and modes: `IsoOpenDebugFiles`, `IsoDebugFile`, `IsoSetDebugMode`, `IsoSetDebugSprite`, `IsoDebugScriptMessageProc`, a profiler (`IsoGetProfilerValue`), and AI debug logs.
 * **code.** A map editor is built into the game logic: `IsoMapEditDisplayLoop`, the `EDITPATH_*` path editor and `IsoInitMapEditAITempFiles`. Whether the shipped menus can reach it is not tested yet. Single Player → Mission lists custom missions (`.wxp`) from that editor; the shipped campaign maps don't appear there (**tested**).
 * **code.** The script compiler's name, "Dominion Compiler", is in the engine's error messages, and the resource library has everything needed to *write* resource files (`ResCreateFile`, `ResWriteScriptBuf`, ...). The engine contains the tools side of Ion Storm's script system.
@@ -69,6 +69,12 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[DirectDraw] WaitForFlip` | 0 | wait for the page flip later |
 | `[DirectDraw] WaitIfStillDrawing` | 0 | read, but not used by the code rewritten so far |
 | `[dominion] SafeModeSwitch` | 0 | read into the sprite engine; use not found yet |
+| `[DirectDraw] AllowDirectDraw` | 1 | 0 forbids DirectDraw full screen |
+| `[Dominion] AltTab` | 0 | read at startup; use not found yet |
+| `[Dominion] Debug` | 0 | script debug mode; read, then always switched on regardless (see below) |
+| `[Dominion] MaxJoySticks` | 2 | joysticks whose calibration (from `SYSTEM.INI`) is handed to the driver at startup |
+| `[Dominion] MaxDropFrames` | 1 | read at startup; use not found yet |
+| `[Input] Timeout` | 200 | milliseconds; used by the input code |
 | `[resource]` | | data files copied to the hard disk, deleted at the next start (see below) |
 
 ## Leftovers from earlier versions
