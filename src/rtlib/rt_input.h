@@ -29,4 +29,13 @@ uint32_t __stdcall hover_sprite(int x, int y);
 void __stdcall key_cmd(uint8_t *c);
 uint32_t __stdcall collide_cmd(uint8_t *c);
 
+void __cdecl collide_check(void);
+uint32_t __stdcall hover_region_add(uint8_t *c);
+uint32_t __stdcall hover_region_remove(uint8_t *c);
+uint32_t __stdcall hover_region_cmd(uint8_t *c);
+void __cdecl events_flush(void);
+void __stdcall hover_handler_set(uint32_t handler);
+void __cdecl hover_update(void);
+int __stdcall drag_start(uint32_t id);
+
 #endif

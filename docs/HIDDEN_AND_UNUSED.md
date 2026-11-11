@@ -118,6 +118,7 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
   - the two "only where both are not 0" copies test an uninitialized variable where they mean the height, and the 16-bit one tests 32 bits of the destination;
   - an unused 8-bit fill steps two bytes per pixel.
 * **code.** The engine can read the desktop resolution from the Windows 95 registry (`Display\Settings`, "Resolution" and "BitsPerPixel"), but nothing calls that.
+* **code.** Removing a hover region moves one region too many down, reading past the last one. The collision check, after removing a one-shot pair, skips the pair that moved into its place.
 * **code.** `SpriteScreenShake` repaints the uncovered edges with bands one pixel wider on the left and bottom than on the right and top.
 * **code.** `SpriteCopy` copies a sprite's whole block, including its list links and its info block pointer, so the copy shares the original's info and corrupts the sprite lists. The game doesn't call it.
 * **code.** The bitmap packer can write a run-length method (block type 0x2000) that the unpacker refuses. The packer's setting is fixed to LZW, so no game file contains it.

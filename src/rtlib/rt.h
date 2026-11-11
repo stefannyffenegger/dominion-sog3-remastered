@@ -17,4 +17,5 @@
 #include "rt_bg.h"
 #include "rt_script.h"
 #include "rt_input.h"
+#include "rt_fade.h"
 #endif

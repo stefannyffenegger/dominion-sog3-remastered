@@ -526,3 +526,148 @@ uint32_t __stdcall collide_cmd(uint8_t *c)
     P(uint8_t, e, 0x15) = c[0x19];
     return 1;
 }
+
+/* ---- 0x1000cf7e-0x1000d7c0: collisions, hover commands, queued events ---- */
+
+#define RT_EVENT_QUEUE 0x36df /* queued handler records, 0x22 bytes each */
+#define RT_N_EVENTS 0x3e47
+
+/* 0x1000cf7e: runs the handler of every watched pair of sprites that touch. One-shot
+ * pairs are removed first; a handler returning 0 ends the pass. */
+void __cdecl collide_check(void)
+{
+    uint32_t *e = (uint32_t *)PAIRS->data;
+    for (uint32_t i = 0; (int32_t)i < (int32_t)PAIRS->count; i++, e += 6) {
+        uint32_t a = obj_entry(e[0])[1];
+        if (!a)
+            continue;
+        uint32_t b = obj_entry(e[1])[1];
+        if (!b || !SpriteHitDetect((uint8_t *)(uintptr_t)a, (uint8_t *)(uintptr_t)b, P(uint8_t, e, 0x16),
+                                   P(uint8_t, e, 0x17), P(uint8_t, e, 0x15)))
+            continue;
+        uint32_t handler = e[2], id = e[3], arg = e[4];
+        if (!P(uint8_t, e, 0x14))
+            i = array_remove(PAIRS, i);
+        if (!event_send(handler, id, arg))
+            return;
+    }
+}
+
+/* Index of the hover region with this rectangle or sprite; the count when there is none */
+static uint32_t hover_region_find(const uint8_t *c)
+{
+    uint32_t sprite = P(uint32_t, c, 0x22), i = 0;
+    for (; i < R(uint32_t, RT_N_HOVER_REGIONS); i++) {
+        uint8_t *g = g_rt + RT_HOVER_REGIONS + i * 0x24;
+        if (sprite ? P(uint32_t, g, 0x20) == sprite : !memcmp(g, c + 2, 16))
+            break;
+    }
+    return i;
+}
+
+static void hover_at_pointer(int sprites, int regions)
+{
+    POINT pt;
+    GetCursorPos(&pt);
+    ScreenToClient(R(HWND, RT_HWND), &pt);
+    mouse_to_view(&pt);
+    if (sprites)
+        hover_sprite(pt.x, pt.y);
+    if (regions)
+        hover_regions(pt.x, pt.y);
+}
+
+/* 0x1000d112: adds or changes a hover region (at most 80) and checks the pointer */
+uint32_t __stdcall hover_region_add(uint8_t *c)
+{
+    uint32_t i = hover_region_find(c);
+    if (R(uint32_t, RT_N_HOVER_REGIONS) <= i) {
+        if (R(uint32_t, RT_N_HOVER_REGIONS) > 0x4f)
+            return 0;
+        i = R(uint32_t, RT_N_HOVER_REGIONS)++;
+    }
+    uint8_t *g = g_rt + RT_HOVER_REGIONS + i * 0x24;
+    memcpy(g, c + 2, 16);
+    memcpy(g + 0x10, c + 0x12, 16); /* enter handler, arg, leave handler, arg */
+    P(uint32_t, g, 0x20) = P(uint32_t, c, 0x22);
+    hover_at_pointer(0, 1);
+    return 1;
+}
+
+/* 0x1000d33e: removes a hover region. (It moves one region too many down, reading past
+ * the last one.) */
+uint32_t __stdcall hover_region_remove(uint8_t *c)
+{
+    uint32_t i = hover_region_find(c);
+    if (i >= R(uint32_t, RT_N_HOVER_REGIONS))
+        return 1;
+    uint8_t *g = g_rt + RT_HOVER_REGIONS + i * 0x24;
+    memmove(g, g + 0x24, (R(uint32_t, RT_N_HOVER_REGIONS) - i) * 0x24);
+    R(uint32_t, RT_N_HOVER_REGIONS)--;
+    if (R(uint32_t, RT_HOVER_REGION)) {
+        uint32_t cur = R(uint32_t, RT_HOVER_REGION) - 1;
+        if (cur == i)
+            R(uint32_t, RT_HOVER_REGION) = 0;
+        else if (i < cur)
+            R(uint32_t, RT_HOVER_REGION)--;
+    }
+    return 1;
+}
+
+/* 0x1000d097: the hover region command: +2 rectangle or +0x22 sprite, +0x12 enter
+ * handler (0 removes the region), +0x26 remove all */
+uint32_t __stdcall hover_region_cmd(uint8_t *c)
+{
+    if (c[0x26]) {
+        R(uint32_t, RT_HOVER_REGION) = 0;
+        R(uint32_t, RT_N_HOVER_REGIONS) = 0;
+        return 1;
+    }
+    return P(uint32_t, c, 0x12) ? hover_region_add(c) : hover_region_remove(c);
+}
+
+/* 0x1000d511: runs the handlers queued so far (ones queued meanwhile stay for next time) */
+void __cdecl events_flush(void)
+{
+    uint32_t n = R(uint32_t, RT_N_EVENTS);
+    for (uint32_t i = 0; i < n; i++)
+        handler_record_run(g_rt + RT_EVENT_QUEUE + i * 0x22);
+    R(uint32_t, RT_N_EVENTS) -= n;
+    if (R(uint32_t, RT_N_EVENTS))
+        memmove(g_rt + RT_EVENT_QUEUE, g_rt + RT_EVENT_QUEUE + n * 0x22, R(uint32_t, RT_N_EVENTS) * 0x22);
+}
+
+/* 0x1000d5d4: sets the handler for the pointer entering and leaving sprites (a
+ * resource of type 0x13, or 0 for none) */
+void __stdcall hover_handler_set(uint32_t handler)
+{
+    if (handler && ResGetType(R(ResFile *, RT_RES), handler) != 0x13)
+        return;
+    if (R(uint32_t, RT_HOVER_HANDLER) && R(uint32_t, RT_HOVER_SPRITE))
+        hover_sprite_leave();
+    R(uint32_t, RT_HOVER_HANDLER) = handler;
+    if (handler)
+        hover_at_pointer(1, 0);
+}
+
+/* 0x1000d693: checks what is under the pointer now */
+void __cdecl hover_update(void)
+{
+    if (R(uint32_t, RT_MODE) == 4) {
+        if (R(uint32_t, RT_HOVER_SPRITE))
+            hover_sprite_leave();
+        return;
+    }
+    hover_at_pointer(R(uint32_t, RT_HOVER_HANDLER) != 0, R(uint32_t, RT_N_HOVER_REGIONS) != 0);
+}
+
+/* 0x1000d73b: starts dragging sprite id from where the pointer is */
+int __stdcall drag_start(uint32_t id)
+{
+    if (!obj_14409(id, 0x14))
+        return 0;
+    R(uint32_t, RT_DRAG_SPRITE) = id;
+    R(int, RT_DRAG_X) = R(int, RT_MOUSE_X);
+    R(int, RT_DRAG_Y) = R(int, RT_MOUSE_Y);
+    return 1;
+}

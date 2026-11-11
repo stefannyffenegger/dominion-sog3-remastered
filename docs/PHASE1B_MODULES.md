@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 638 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 652 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -342,8 +342,13 @@ Expressions in the menu scripts are compiled to a small stack machine: one opcod
 * **Hover:** events when the pointer enters or leaves a sprite, and a list of hover regions (rectangles or sprites) with enter and leave handlers.
 * **Keys:** a table of 256 keys with separate handlers for plain, Shift, Ctrl, Shift+Ctrl and release. The Pause key pauses the sound and the engine, or asks a script handler first.
 * The script can install handlers that see every mouse event and every key and can swallow them; the game can install a key hook in front of all of it.
-* **Collision pairs:** the script can ask for a handler to run when two sprites touch (the list is kept here; the check itself comes later).
+* **Collision pairs:** the script can ask for a handler to run when two sprites touch; the pairs are checked with the (unused-by-Dominion) hit detection.
+* Hover region commands (up to 80 regions), queued events, and starting a drag from the script (+8 functions).
 * Checked: menu tour and Human mission 1 (clicks, Escape, pause, drag-select, scrolling) against the all-original runs.
+
+### Engine core, part 4: showing and hiding the scene (`rt_fade.c`, 6 functions)
+* On a palette display the scene comes up by fading the palette in over 75 steps and goes down by fading it out; sprites keep animating during the fade. `RtSetNoFade` skips the steps.
+* Without a palette (true color) the background is wiped in or out instead, with the sprite engine's wipes.
 
 ### What's left
 | Part | Functions | Decompiled lines |
