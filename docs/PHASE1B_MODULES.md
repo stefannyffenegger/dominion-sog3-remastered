@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 942 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 981 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -389,6 +389,13 @@ The functions the game calls in the engine. First batch (57, `RtCopy` to `RtSetC
 `RtStartup` is the game's first call into the engine: it creates the state block (the first one is static), the full-screen window with its seven cursors, and the sound, sprite, resource and utility libraries; reads the engine's settings; checks for at least 256 colors; and opens the game's resource file. `RtFree` shuts it all down.
 * `RtInit` holds the last of Phase 1a's palette patch spots; the fix is built in. **With this, the game runs on an unpatched original engine behind ours**: every place the patch changed is now our code. (The install still patches the original copy, which `DOMINION_ORIGINAL=all` comparison runs use.)
 * Our DLL used to import the original's `RtStartup` only to make Windows load the original first; it now imports `RtEnableDirectDraw`, which stays original (it is too short to hook).
+
+### Engine core, part 12: command line, service and small exports (`rt_service.c`, 39 functions)
+* **Command line:** lowercased outside quotes; `/w`, `/k` and `/s` pick a run mode, `/t "name"` sets the disc title for "Please insert ..." messages, and any other word is taken as the resource file path. Dominion passes no switches (traced: none of the run-mode code runs).
+* **Per frame:** `RtService` and Dominion's own `RtDominionService` (sprites, plugins, collisions, queued events).
+* 29 small `Rt*` getters, setters and scene calls (`RtGetCopyId`, `RtSceneRestart`, `RtSetWindowBox`, ...); byte setters return what the original leaves in EAX.
+* The screensaver window procedure for `/s` (see `HIDDEN_AND_UNUSED.md`); not reachable in Dominion, so it is an untested port.
+* Checked: menu tour and Human mission 1.
 
 ### What's left
 | Part | Functions | Decompiled lines |
