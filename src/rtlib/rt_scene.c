@@ -22,6 +22,10 @@
 #define RT_EVENT_SLOTS 0x1947
 #define RT_RES_BUF 0x3247
 #define RT_LOAD_BUF 0x3263
+#define RT_SCRIPT_OFFSETS 0x0cbc
+#define RT_RES_TABLES 0x3267   /* up to 13 blocks of 0x1528 entries of 12 bytes */
+#define RT_SCRIPT_TEXT 0x329f
+#define RT_COPY_MAP 0x32a3
 #define RT_SCENES 0x329b       /* 0x10c bytes each: name (0x100), vars, ?, extra */
 #define RT_SYS_PALETTE 0x32af
 #define RT_PALETTE_COLORS 0x3e3b
@@ -43,6 +47,15 @@
 #define RT_LOADING 0x95f9
 #define RT_DRAW_FLAGS 0x95c7
 #define RT_SCENE_NAME 0x9954
+#define RT_FIRST_COPY 0x3dfb
+#define RT_RES_COUNT 0x3e43
+#define RT_DRIVE_TYPE 0x3dd7
+#define RT_MAX_FADE 0x3def
+#define RT_MAX_SCR_MSG 0x3f4b
+#define RT_BUILD_TYPE 0x95f3
+#define RT_SIGNON_PATH 0x9a54
+#define RT_RES_TITLE 0x9904
+#define RT_TITLE 0x9d56
 
 #define SCENE_SIZE 0x10c
 #define VARS_SIZE 0x4e24
@@ -51,9 +64,6 @@
 #define paint_black ORIG(void(__stdcall *)(HDC), 0x100268f0)
 #define rt_script_error ORIG(U(__stdcall *)(U, U), 0x100260f6)
 #define script_run(h) C1(0x10022ce9, h)
-#define scene_open(name) C1(0x10020276, name)
-#define scene_read(name) C1(0x10020564, name)
-#define scene_player_setup() C0(0x100200ba)
 
 static uint8_t *scene_entry(U i) { return R(uint8_t *, RT_SCENES) + i * SCENE_SIZE; }
 
@@ -193,7 +203,7 @@ U __stdcall scene_load(char *name, U progress, U cb, U arg)
         return rt_script_error(100, 0);
     }
     if (RB(RT_PLAYER) || RB(RT_COMPONENT))
-        scene_player_setup();
+        scene_names_load();
     if (progress)
         ResSetCallBack(RES, (void(__stdcall *)(void))ORIG_PTR(0x1002635d), 0x2000);
     scene_palette_load();
@@ -217,5 +227,107 @@ U __stdcall scene_load(char *name, U progress, U cb, U arg)
     SetCursor(old);
     RB(RT_LOADING) = 0;
     ResSetCallBack(RES, NULL, 0);
+    return 1;
+}
+
+/* 0x100200ba: the resource names (for players and components): the name table, each
+ * name's offset in it, and room to map run-time copies to their resources */
+void __cdecl scene_names_load(void)
+{
+    RU(RT_COPY_MAP) = (U)(uintptr_t)winmalloc((RU(RT_RES_COUNT) - RU(RT_FIRST_COPY) + 1) * 4, 0);
+    RU(RT_SCRIPT_TEXT) = (U)(uintptr_t)ResLoadNameTable(RES, NULL);
+    RU(RT_SCRIPT_OFFSETS) = (U)(uintptr_t)winmalloc(RU(RT_RES_COUNT) << 2, 0);
+    if (!RU(RT_COPY_MAP) || !RU(RT_SCRIPT_TEXT) || !RU(RT_SCRIPT_OFFSETS)) {
+        static const uint16_t f[] = {RT_COPY_MAP, RT_SCRIPT_TEXT, RT_SCRIPT_OFFSETS};
+        for (int i = 0; i < 3; i++)
+            if (RU(f[i]))
+                RU(f[i]) = (U)(uintptr_t)winfree(R(void *, f[i]));
+        return;
+    }
+    const char *p = R(const char *, RT_SCRIPT_TEXT);
+    U off = 0;
+    for (U i = 0; i < RU(RT_RES_COUNT); i++) {
+        R(U *, RT_SCRIPT_OFFSETS)[i] = off;
+        int n = HugeStrLen(p);
+        off += n + 1;
+        p += n + 1;
+    }
+}
+
+/* 0x10020276: opens the scene's resource file (next to the signon path) and reads its
+ * header: start handler, counts, title (shown as the window title), color limits;
+ * then loads its plugins */
+U __stdcall scene_open(char *name)
+{
+    char path[MAX_PATH];
+    MakeFullPath(path, (char *)(g_rt + RT_SIGNON_PATH), name);
+    RU(RT_RES) = (U)(uintptr_t)ResOpenFile(path, 0);
+    if (!RU(RT_RES))
+        return rt_script_error(0x79, (U)(uintptr_t)path);
+    if (path[1] == ':') {
+        char root[4] = {path[0], ':', '\\', 0};
+        RU(RT_DRIVE_TYPE) = GetDriveTypeA(root);
+    }
+    ResSetNotify(RES, R(HWND, RT_HWND));
+    RU(RT_SCRIPT_START) = res_get_entry_id(RES);
+    RU(RT_MAX_SCR_MSG) = ResGetMaxScrMsg(RES);
+    RU(RT_RES_COUNT) = ResCountResources(RES, &RU(RT_FIRST_COPY));
+    U left = RU(RT_RES_COUNT);
+    for (U i = 0; i < 13 && left; i++) {
+        U n = left > 0x1527 ? 0x1528 : left;
+        RU(RT_RES_TABLES + i * 4) = (U)(uintptr_t)winmalloc(n * 12, 1);
+        if (!RU(RT_RES_TABLES + i * 4))
+            return 0;
+        left -= n;
+    }
+    memset(g_rt + RT_RES_TITLE, 0, 0x50);
+    char title[0x51] = {0};
+    ResGetTitle(RES, title, 0x50);
+    if (!title[1]) {
+        SetWindowTextA(R(HWND, RT_HWND), (LPCSTR)(g_rt + RT_TITLE));
+    } else {
+        lstrcpyA((LPSTR)(g_rt + RT_RES_TITLE), title + 1);
+        SetWindowTextA(R(HWND, RT_HWND), (LPCSTR)(g_rt + RT_RES_TITLE));
+    }
+    RU(RT_MAX_FADE) = ResGetMaxFadeColors(RES);
+    RU(RT_PAL_RESERVED) = ResGetMaxTransColors(RES);
+    RB(RT_BUILD_TYPE) = ResGetBuildType(RES);
+    return plugins_load();
+}
+
+/* 0x10020564: finds the scene in the scene list or adds it (with room for its
+ * variables and strings, and the file's initial variable values), then makes its
+ * name and variables current */
+U __stdcall scene_read(char *path)
+{
+    char *name = SkipPath(path);
+    RU(RT_SCENE) = 0;
+    while (RU(RT_SCENE) < RU(RT_SCENE_COUNT) && lstrcmpiA(name, (LPCSTR)scene_entry(RU(RT_SCENE))))
+        RU(RT_SCENE)++;
+    if (RU(RT_SCENE) >= RU(RT_SCENE_COUNT)) {
+        uint8_t *t = winrealloc(R(void *, RT_SCENES), (RU(RT_SCENE_COUNT) + 1) * SCENE_SIZE, 0);
+        if (!t)
+            return 0;
+        RU(RT_SCENES) = (U)(uintptr_t)t;
+        void *vars = winmalloc(VARS_SIZE, 1);
+        if (!vars)
+            return 0;
+        uint8_t *e = t + RU(RT_SCENE) * SCENE_SIZE;
+        P(U, e, 0x108) = 0;
+        P(void *, e, 0x100) = vars;
+        P(U, e, 0x104) = ResCountStrings(RES);
+        if (P(U, e, 0x104)) {
+            P(void *, e, 0x108) = winmalloc(P(U, e, 0x104) * 0x201, 1);
+            if (!P(U, e, 0x108))
+                return 0;
+        }
+        lstrcpyA((LPSTR)scene_entry(RU(RT_SCENE_COUNT)), name);
+        ResEnumVariables(RES, (int(__stdcall *)(uint32_t, uint32_t))ORIG_PTR(0x1001f550));
+        RU(RT_SCENE) = RU(RT_SCENE_COUNT);
+        RU(RT_SCENE_COUNT)++;
+    }
+    memcpy(g_rt + RT_SCENE_NAME, scene_entry(RU(RT_SCENE)), 0x100);
+    memcpy(g_rt + RT_VARS, P(void *, scene_entry(RU(RT_SCENE)), 0x100), VARS_SIZE);
+    SpriteSetVarTable(HSL, (U)(uintptr_t)(g_rt + RT_VARS));
     return 1;
 }

@@ -12,5 +12,8 @@ void __cdecl scenes_trim(void);
 void __cdecl input_flush(void);
 void __stdcall scene_change(char *path);
 U __stdcall scene_load(char *name, U progress, U cb, U arg);
+void __cdecl scene_names_load(void);
+U __stdcall scene_open(char *name);
+U __stdcall scene_read(char *path);
 
 #endif
