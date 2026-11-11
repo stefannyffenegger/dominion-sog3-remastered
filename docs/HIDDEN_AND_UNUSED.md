@@ -73,7 +73,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[DirectDraw] WaitIfStillDrawing` | 0 | read, but not used by the code rewritten so far |
 | `[dominion] SafeModeSwitch` | 0 | read into the sprite engine; use not found yet |
 | `[DirectDraw] AllowDirectDraw` | 1 | 0 forbids DirectDraw full screen |
-| `[Dominion] AltTab` | 0 | read at startup; use not found yet |
+| `[Dominion] AltTab` | 0 | 1 keeps the game running when you switch to another window; with 0, switching away (or Alt+Tab) pauses it, with the sound off and the arrow cursor |
 | `[Dominion] Debug` | 0 | script debug mode; read, then always switched on regardless (see below) |
 | `[Dominion] MaxJoySticks` | 2 | joysticks whose calibration (from `SYSTEM.INI`) is handed to the driver at startup |
 | `[Dominion] MaxDropFrames` | 1 | read at startup; use not found yet |

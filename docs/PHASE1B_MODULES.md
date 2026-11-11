@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,089 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,099 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -435,6 +435,10 @@ Resource type 0x15: text drawn with GDI (`DrawText`) into a bitmap that up to ei
 ### Engine core, part 20: cursors, strings, errors, events (`rt_msg.c`, 14 functions)
 String lookup (script variables, or constants from the resource file), the cursor modes, the fatal-error and script-error message boxes (with the running script and file added), the 40-entry script event queue, extracting a resource to a file, and dropping pending messages. The string lookup and event queue run constantly; the error boxes only on errors (untested).
 * Checked: menu tour and Human mission 1.
+
+### Engine core, part 21: the window procedure (`rt_wndproc.c`, 10 functions)
+The engine window's procedure: activation (switching away pauses the game unless `AltTab` is set), painting, mouse, keyboard and joystick routing (with the idle timer re-armed on input), the engine's own messages (deferred handlers, scene change, queued calls, the program launcher's poll), Alt+Tab and Alt+F4, and closing (exit handler, libraries shut down, cursors destroyed).
+* Checked: menu tour and Human mission 1, and Alt+F4 at the main menu exits the game cleanly.
 
 ### What's left
 | Part | Functions | Decompiled lines |
