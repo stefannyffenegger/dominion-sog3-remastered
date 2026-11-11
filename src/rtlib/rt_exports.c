@@ -247,3 +247,196 @@ U __cdecl RtSetComposeCallback(uint8_t *rt, U a, U b, U c, int d, int e, int f)
     U args[7] = {HSLU, a, b, c, (U)d, (U)e, (U)f};
     return orig_stdcall_unsafe(ORIG_PTR(0x10055c7e), 7, args);
 }
+
+/* ---- second batch: RtSetDisplayMode to RtGetPalette ---- */
+
+#define RT_FULLSCREEN_OK 0x95cf
+#define RT_SMALL_SCREEN 0x95cc
+#define RT_95DE 0x95de
+#define RT_95EC 0x95ec
+#define RT_SWITCHING 0x95f4
+#define RT_SAVED_W 0x3e13
+#define RT_SAVED_H 0x3e17
+#define RT_8D7B 0x8d7b
+#define RT_8D7F 0x8d7f
+#define RT_8DA7 0x8da7
+#define RT_VIEW_ORG 0x36c7
+#define RT_MEM_FREE 0x0b70
+#define RT_PALETTE_SIZE 0x3e3b
+
+/* Switches the display: w x h at depth bits. full: DirectDraw full screen; windowed:
+ * keep the window's mode (0: change the desktop, w = h = 0 back to the saved size).
+ * Phase 1a's "palette" patch is built in: the display is always treated as a 256-color
+ * palette device (the original asks GetDeviceCaps(RASTERCAPS) & RC_PALETTE, which is
+ * false on today's desktops, and its 8-bit screen then stays black). */
+U __cdecl RtSetDisplayMode(uint8_t *rt, U w, U h, int depth, int full, int windowed, int keep_dd, U flags)
+{
+    SET(rt);
+    U was_dd = RB(RT_DIRECTDRAW);
+    int dd = R(uint8_t, RT_FULLSCREEN_OK) && ((!keep_dd && full) || (keep_dd && was_dd));
+    int change = windowed == 0;
+    if (!dd)
+        flags = 0;
+    if (change) {
+        if (!w || !h) {
+            w = RU(RT_SAVED_W);
+            h = RU(RT_SAVED_H);
+        } else {
+            RU(RT_SAVED_W) = RU(RT_SCREEN_W);
+            RU(RT_SAVED_H) = RU(RT_SCREEN_H);
+        }
+        R(uint8_t, RT_SWITCHING) = 1;
+    }
+    if (was_dd && !dd)
+        R(uint8_t, RT_DIRECTDRAW) = 0;
+    if (!SpriteSetDisplayMode(R(uint8_t *, RT_HSL), w, h, depth, was_dd, dd, change, flags))
+        return 0;
+    if (change) {
+        R(uint8_t, RT_SWITCHING) = 0;
+        RU(RT_SCREEN_W) = GetDeviceCaps(R(HDC, RT_DC), HORZRES);
+        RU(RT_8D7B) = RU(RT_SCREEN_W);
+        RU(RT_SCREEN_H) = GetDeviceCaps(R(HDC, RT_DC), VERTRES);
+        RU(RT_8D7F) = RU(RT_SCREEN_H);
+        R(uint8_t, RT_PALETTE_DEVICE) = 1; /* original: (RASTERCAPS & RC_PALETTE) != 0 */
+        screen_size_from_desktop(R(uint8_t *, RT_HSL));
+        R(uint8_t, RT_DIRECTDRAW) = (uint8_t)dd;
+        palette_get_b80_2(HSLU, 0); /* (it ignores its arguments) */
+        ORIG(void(__cdecl *)(void), 0x1001f599)();
+        GetViewportOrgEx(R(HDC, RT_DC), (POINT *)(rt + RT_VIEW_ORG));
+        R(uint8_t, RT_SMALL_SCREEN) = GetSystemMetrics(SM_CXSCREEN) < 0x281;
+        R(uint8_t, RT_95DE) = R(uint8_t, RT_PALETTE_DEVICE) == 0;
+        RU(RT_8DA7) = RB(RT_95DE);
+    }
+    R(uint8_t, RT_DIRECTDRAW) = (uint8_t)dd;
+    R(uint8_t, RT_95EC) = (uint8_t)flags;
+    if (!R(uint8_t, RT_DIRECTDRAW))
+        ShowWindow(R(HWND, RT_HWND), SW_MAXIMIZE);
+    RedrawWindow(R(HWND, RT_HWND), NULL, NULL, RDW_NOERASE);
+    return 1;
+}
+
+U __cdecl RtSetGameInfo(uint8_t *rt, const U *info)
+{
+    SET(rt);
+    RU(RT_GAME_INFO) = info[0];
+    RU(RT_GAME_INFO + 4) = info[1];
+    return info[1];
+}
+
+U __cdecl RtSetLoadProc(uint8_t *rt, U proc) { SET(rt); return RU(0x3c2f) = proc; }
+U __cdecl RtSetUnloadProc(uint8_t *rt, U proc) { SET(rt); return RU(0x3c33) = proc; }
+U __cdecl RtSetNoFade(uint8_t *rt, uint8_t on) { SET(rt); return R(uint8_t, RT_NO_FADE) = on; }
+U __cdecl RtSetPaletteRealized(uint8_t *rt, uint8_t on) { SET(rt); return R(uint8_t, RT_PALETTE_REALIZED) = on; }
+
+/* moves a sprite object (through the 0xb8 command) */
+U __cdecl RtSetPos(uint8_t *rt, U id, int x, int y)
+{
+    uint8_t c[0x12];
+    SET(rt);
+    P(uint16_t, c, 0) = 0xb8;
+    P(U, c, 2) = id;
+    P(int32_t, c, 6) = x;
+    P(int32_t, c, 10) = y;
+    P(U, c, 14) = 0;
+    return cmd_set_position(c);
+}
+
+U __cdecl RtSetRenderCopyProc(uint8_t *rt, U proc) { SET(rt); return RU(0x36d3) = proc; }
+U __cdecl RtSetRenderFreeProc(uint8_t *rt, U proc) { SET(rt); return RU(0x36d7) = proc; }
+U __cdecl RtSetRenderLoadProc(uint8_t *rt, U proc) { SET(rt); return RU(0x36db) = proc; }
+
+U __cdecl RtSetSpriteClipBox(uint8_t *rt, U id, int l, int t, int r, int b)
+{
+    SET(rt);
+    int32_t box[4] = {l, r, t, b}; /* (the original stores them in this order) */
+    SpriteSetSpriteClipBox((uint8_t *)(uintptr_t)obj_entry(id)[1], box);
+    return 0;
+}
+
+U __cdecl RtSetSpriteFlip(uint8_t *rt, U s, U fx, U fy)
+{
+    SET(rt);
+    SpriteSetFlip(R(uint8_t *, RT_HSL), (uint8_t *)(uintptr_t)s, fx, fy);
+    return 0;
+}
+
+U __cdecl RtSetSpriteRedraw(uint8_t *rt, U s, U on, int update)
+{
+    SET(rt);
+    SpriteSetRedraw(R(uint8_t *, RT_HSL), (uint8_t *)(uintptr_t)s, on, update);
+    return 0;
+}
+
+/* sets string n (from 1) of the current scene */
+U __cdecl RtSetString(uint8_t *rt, U n, LPCSTR s)
+{
+    SET(rt);
+    uint8_t *scene = R(uint8_t *, RT_SCENES) + RU(0x3dcf) * 0x10c;
+    if (!n || n > P(U, scene, 0x104))
+        return 0;
+    return (U)(uintptr_t)lstrcpynA(P(char *, scene, 0x108) + (n - 1) * 0x201, s, 0x200);
+}
+
+/* sets the text of text object id (type 0x15); s is used as a format */
+U __cdecl RtSetText(uint8_t *rt, U id, LPCSTR s)
+{
+    (void)rt;
+    if (!obj_is(id, 0x15))
+        return 0;
+    uint8_t *t = (uint8_t *)(uintptr_t)obj_entry(id)[2];
+    if (!s)
+        return 0;
+    wsprintfA((LPSTR)(t + 0x52), s);
+    return C1(0x10023ba4, t) & 0xff;
+}
+
+U __cdecl RtSetVar(uint8_t *rt, int n, U v) { SET(rt); return RU(RT_GLOBALS + n * 4) = v; }
+
+U __cdecl RtSetVars(uint8_t *rt, int first, int n, const void *in)
+{
+    SET(rt);
+    memcpy(rt + RT_GLOBALS + first * 4, in, n << 2);
+    return (U)(uintptr_t)(rt + RT_GLOBALS + first * 4);
+}
+
+U __cdecl RtSetViewPortOrg(uint8_t *rt, const int32_t *pt)
+{
+    SET(rt);
+    R(int32_t, RT_VIEW_ORG) = pt[0];
+    R(int32_t, RT_VIEW_ORG + 4) = pt[1];
+    return (U)pt[1];
+}
+
+U __cdecl RtSetQueue(uint8_t *rt, U id, U queue, uint8_t hide) { SET(rt); return cmd_set_queue(id, queue, hide); }
+U __cdecl RtShowGDISurface(uint8_t *rt) { SET(rt); return ORIG(U(__cdecl *)(U), 0x1004ca08)(HSLU); }
+U __cdecl RtRestoreFromGDISurface(uint8_t *rt) { SET(rt); return ORIG(U(__cdecl *)(U), 0x1004cb4c)(HSLU); }
+U __cdecl RtSpriteTransfer(uint8_t *rt, U a, U b, U c, uint8_t d) { SET(rt); return C4(0x1002524b, a, b, c, d); }
+
+U __cdecl RtUnload(uint8_t *rt, U id)
+{
+    SET(rt);
+    if (id < RU(RT_FIRST_COPY))
+        return (U)obj_release(id, ResGetType(R(ResFile *, RT_RES), id));
+    return (U)obj_delete(id);
+}
+
+U __cdecl RtUpdateBrowse(uint8_t *rt) { SET(rt); hover_update(); return 0; }
+U __cdecl RtFadeIn(uint8_t *rt, U arg) { SET(rt); scene_show_fn(arg); return 0; }
+U __cdecl RtFadeOut(uint8_t *rt, U arg) { SET(rt); scene_hide_fn(arg); return 0; }
+
+U __cdecl RtGetPalette(uint8_t *rt, U *size)
+{
+    SET(rt);
+    *size = RU(RT_PALETTE_SIZE);
+    return (U)(uintptr_t)(rt + RT_PALETTE);
+}
+
+/* 0x1001d7d0: the free physical memory, in 64 KB steps */
+U __cdecl rt_measure_memory(void)
+{
+    MEMORYSTATUS ms;
+    ms.dwLength = 0x20;
+    GlobalMemoryStatus(&ms);
+    RU(RT_MEM_FREE) = ((ms.dwTotalPhys >> 16) * (100 - ms.dwMemoryLoad)) / 100 << 16;
+    return 1;
+}

@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 902 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 930 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -383,7 +383,7 @@ The handlers behind the script commands, in address order. First batch (21): spr
 * Checked: menu tour and Human mission 1; the game reads and writes its settings through this code.
 
 ### Engine core, part 10: the `Rt*` exports (`rt_exports.c`)
-The functions the game calls in the engine. First batch (57, `RtCopy` to `RtSetComposeCallback`): mostly getters, setters and pass-throughs to the sprite and sound layers, plus `RtRun`/`RtRunMsg` (run a script handler), `RtGetCurrentScript`, `RtDynamicResource` and `RtDelete`. Each sets the current state block first; where the original returns the callee's result, ours does too. (`RtEnableDirectDraw` just returns 0 and stays original: too short to patch.)
+The functions the game calls in the engine. First batch (57, `RtCopy` to `RtSetComposeCallback`): mostly getters, setters and pass-throughs to the sprite and sound layers, plus `RtRun`/`RtRunMsg` (run a script handler), `RtGetCurrentScript`, `RtDynamicResource` and `RtDelete`. Each sets the current state block first; where the original returns the callee's result, ours does too. (`RtEnableDirectDraw` just returns 0 and stays original: too short to patch.) Second batch (28, `RtSetDisplayMode` to `RtGetPalette`): `RtSetDisplayMode` has Phase 1a's palette fix built in (the display is always treated as a palette device); the rest are setters and pass-throughs.
 
 ### What's left
 | Part | Functions | Decompiled lines |
