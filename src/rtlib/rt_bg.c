@@ -252,7 +252,7 @@ void __stdcall palette_load_cmd(uint8_t *c)
     memcpy(g_rt + RT_PALETTE + 40, (void *)(uintptr_t)*obj_entry(P(uint32_t, c, 2)), 0x3b0);
     SpriteChangePalette(HSL, 10, 0xec, (const uint32_t *)(g_rt + RT_PALETTE + 40),
                         palette_animates() && !R(uint8_t, RT_COMPOSE), 0);
-    ORIG(void(__cdecl *)(void), 0x10011633)();
+    plugins_palette();
 }
 
 /* ---- exports ---- */

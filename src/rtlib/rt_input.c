@@ -60,7 +60,6 @@
 #define fn_1002799a ORIG(void(__stdcall *)(int, int), 0x1002799a)
 #define fn_10027bbd ORIG(void(__stdcall *)(int), 0x10027bbd)
 #define fn_10028012 ORIG(void(__stdcall *)(int, int), 0x10028012)
-#define fn_100114c3 ORIG(void(__stdcall *)(uint32_t), 0x100114c3)
 #define fn_1000ef5a ORIG(void(__stdcall *)(int), 0x1000ef5a)
 
 #define CLICKS ((RtArray *)(g_rt + RT_CLICK_RECTS))
@@ -426,7 +425,7 @@ void __cdecl pause_toggle(void)
         SpriteAnimate(HSL);
     }
     R(uint8_t, RT_PAUSED) = R(uint8_t, RT_PAUSED) == 0;
-    fn_100114c3(R(uint8_t, RT_PAUSED));
+    plugins_pause(R(uint8_t, RT_PAUSED));
     fn_1000ef5a((int8_t)R(uint8_t, RT_PAUSED));
 }
 

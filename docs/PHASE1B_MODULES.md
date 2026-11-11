@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 700 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 712 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -358,6 +358,15 @@ Every resource id has a 12-byte entry in the object table; what it holds depends
 * **Copies:** sprites and the game's types can be duplicated at run time under new ids and deleted again.
 * The game can hook every load and release. `RtGetLibraryState` returns a plugin's state by name.
 * Checked: menu tour and Human mission 1 against the all-original runs.
+
+### Engine core, part 6: plugins (`rt_plugin.c`, 12 functions)
+The game's `.r32` files are plugins of the engine, and this is the code that loads them.
+* The resource file names the plugins (key resource 10). Each `<name>.r32` is looked for in the game directory, then the data directory, and loaded; its `RtLibInit(rt, info)` returns the plugin's context, which the engine passes back as the first argument of every call.
+* The functions scripts call in plugins are listed by name in the resource file (key 11) with their plugin's number (key 12) and bound with `GetProcAddress`.
+* A plugin can register callbacks in its info block: every frame, on pause, on palette changes and two more.
+* Unloading calls each plugin's `RtLibFree` but frees the DLLs later, from a window message, since a plugin may be on the call stack.
+* A plugin that fails to initialize ends the game with "Error initializing Dominion. Please see the troubleshooting guide."
+* Checked: the game starts, loads all its plugins through this code and plays as before.
 
 ### What's left
 | Part | Functions | Decompiled lines |
