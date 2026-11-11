@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,032 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,047 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -417,6 +417,10 @@ A script handler is a list of commands: a 16-bit opcode, then fixed-size or self
 ### Engine core, part 16: one command, program launcher, kiosk mode (`rt_launch.c`, 9 functions)
 Running a single command of a handler (live), and two features Dominion doesn't use: launching an external program while the engine waits hidden, and run mode 2's window procedure (see `HIDDEN_AND_UNUSED.md`). Untested ports apart from the first.
 * Checked: menu tour and Human mission 1.
+
+### Engine core, part 17: text objects (`rt_text.c`, 15 functions)
+Resource type 0x15: text drawn with GDI (`DrawText`) into a bitmap that up to eight sprites show, with a 10-font cache, word wrap or a measured box, alignment, a color, and a password mode that shows `*` (optionally keeping the last character visible). Dominion draws its text with `BmpFont.r32` and never creates one, so this is an untested port.
+* Checked: menu tour and Human mission 1 (no change).
 
 ### What's left
 | Part | Functions | Decompiled lines |
