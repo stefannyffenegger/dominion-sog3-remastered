@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,047 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,064 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -421,6 +421,11 @@ Running a single command of a handler (live), and two features Dominion doesn't 
 ### Engine core, part 17: text objects (`rt_text.c`, 15 functions)
 Resource type 0x15: text drawn with GDI (`DrawText`) into a bitmap that up to eight sprites show, with a 10-font cache, word wrap or a measured box, alignment, a color, and a password mode that shows `*` (optionally keeping the last character visible). Dominion draws its text with `BmpFont.r32` and never creates one, so this is an untested port.
 * Checked: menu tour and Human mission 1 (no change).
+
+### Engine core, part 18: text entry and timers (`rt_text.c`, `rt_timer.c`, 17 functions)
+* Text entry (11): one text object at a time takes typed characters, with a `_` cursor, Backspace, Delete (clear), Esc (cancel, the old text returns) and Enter (accept: the text goes to a string, a handler is told), an optional length limit, digits-only mode and double-byte characters. The original tests an unset variable to decide whether to redraw after an ignored key; ours doesn't redraw.
+* Timers (6): up to 20 script timers that run a handler after an interval, and up to 8 controller timers. With the table full, the original reports the error and then writes past the table anyway; kept.
+* Checked: menu tour and Human mission 1 (timers run in both).
 
 ### What's left
 | Part | Functions | Decompiled lines |

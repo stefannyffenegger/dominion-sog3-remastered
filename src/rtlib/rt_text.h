@@ -21,5 +21,16 @@ void __stdcall text_detach(uint8_t *t, U sprite);
 U __stdcall text_attach(uint8_t *t, U sprite);
 U __stdcall text_set(const uint8_t *c);
 U __stdcall text_set_color(const uint8_t *c);
+uint8_t *__stdcall text_of(U id);
+U __cdecl edit_beep(void);
+void __stdcall edit_cursor_add(uint8_t *t);
+U __stdcall edit_end(uint8_t *t, U cancel);
+void __stdcall edit_stop(U unused, U cancel);
+U __stdcall edit_begin(const uint8_t *c);
+U __stdcall edit_focus(const uint8_t *c);
+U __stdcall edit_backspace(uint8_t *t, U all);
+U __stdcall edit_type(uint8_t *t, U ch);
+void __stdcall edit_char(U ch);
+void __stdcall edit_key(U vk);
 
 #endif
