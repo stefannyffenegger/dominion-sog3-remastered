@@ -47,6 +47,7 @@
 #define RT_LOADING 0x95f9
 #define RT_DRAW_FLAGS 0x95c7
 #define RT_SCENE_NAME 0x9954
+#define RT_DIRECTDRAW 0x95d9
 #define RT_FIRST_COPY 0x3dfb
 #define RT_RES_COUNT 0x3e43
 #define RT_DRIVE_TYPE 0x3dd7
@@ -396,9 +397,10 @@ U __stdcall scene_find(char *path)
     return found;
 }
 
-/* 0x100208b3: enters the scene in `path` as the first one (RtSceneIn): fresh random
- * seed and state, optionally a memory check, then load, show the window and fade in */
-U __stdcall scene_enter(char *path, U check_memory)
+/* 0x10021387: enters the scene in `path` as the first one (RtSceneIn): fresh random
+ * seed and state, optionally a memory check, then load, show the window and fade in.
+ * `cb(arg, 0/1)` is called around the start handler. */
+U __stdcall scene_enter_cb(char *path, U check_memory, U cb, U arg)
 {
     if (!scene_find(path))
         return 0;
@@ -411,13 +413,13 @@ U __stdcall scene_enter(char *path, U check_memory)
     RB(0x9602) = 0;
     if (check_memory && !rt_measure_memory())
         return 0;
-    C0(0x10020e1d);
+    scene_state_reset();
     char *name = SkipPath(path);
     if (!RB(RT_PALETTE_DEVICE))
         SpriteSetBkgTransparent(HSL, 1);
     RU(0xb68) = timeGetTime();
     paint_black(R(HDC, RT_DC));
-    if (!scene_load(name, 0, 0, 0))
+    if (!scene_load(name, 0, cb, arg))
         return 0;
     plugins_notify_20(1, (U)(uintptr_t)name);
     SpriteSetTopMost(HSL, R(uint8_t *, RT_TOPMOST));
@@ -431,4 +433,103 @@ U __stdcall scene_enter(char *path, U check_memory)
             SpriteSetBkgTransparent(HSL, 0);
     }
     return 1;
+}
+
+/* 0x100208b3 */
+U __stdcall scene_enter(char *path, U check_memory) { return scene_enter_cb(path, check_memory, 0, 0); }
+
+#define RT_GAME_INFO 0x8d73 /* handed to plugins */
+
+static LPCSTR ini_section(void)
+{
+    return (LPCSTR)(g_rt + (R(char, RT_RES_TITLE) ? RT_RES_TITLE : RT_TITLE));
+}
+
+/* 0x10020e1d: the run state for a new first scene. Reads Mode640 and LoMem from
+ * DOMINION.INI (section: the resource file's title, else the game's), fills the info
+ * block for plugins, and resets counters and flags. */
+void __cdecl scene_state_reset(void)
+{
+    static const uint16_t zero32[] = {0x3e67, 0x3e6b, 0x3dc3, 0x3e4f, 0x3c43, 0x3e07, 0x3f47, 0x3f37,
+                                      0x3dcf, 0x3def, 0x3df7, 0x3e3b, 0x3e4b, 0x3e23, 0x3e1f, 0x3ddf,
+                                      0x3e47, 0x3f0f, 0x3e77, 0x3e73};
+    static const uint16_t zero8[] = {0x9601, 0x95f8, 0x95f5, 0x95e4, 0x95e5, 0x95e6,
+                                     0x95e8, 0x95da, 0x95d5, 0x95d3, 0x95d2};
+    static const uint16_t one8[] = {0x95d1, 0x95ce, 0x95cd, 0x95f6, 0x9600};
+    RB(0x95cc) = (uint8_t)GetPrivateProfileIntA(ini_section(), (LPCSTR)ORIG_PTR(0x100755d8), RB(0x95cc),
+                                                (LPCSTR)ORIG_PTR(0x100755c8));
+    RB(0x95e7) = (uint8_t)GetPrivateProfileIntA(ini_section(), (LPCSTR)ORIG_PTR(0x100755f0), RB(0x95e7),
+                                                (LPCSTR)ORIG_PTR(0x100755e0));
+    RU(RT_GAME_INFO + 0x04) = RB(0x95e7);
+    RU(RT_GAME_INFO + 0x08) = RU(0x3de3);
+    RU(RT_GAME_INFO + 0x0c) = RU(0x3e0f);
+    RU(RT_GAME_INFO + 0x2c) = RB(0x95cb);
+    RU(RT_GAME_INFO + 0x28) = RU(0x3e5b);
+    RU(RT_GAME_INFO + 0x30) = GetProcessorType();
+    RU(RT_GAME_INFO + 0x34) = RB(0x95de);
+    RU(RT_GAME_INFO + 0x38) = RB(0x95e2);
+    RU(RT_GAME_INFO + 0x3c) = RU(0x3e2b);
+    POINT pt;
+    GetCursorPos(&pt);
+    ScreenToClient(R(HWND, RT_HWND), &pt);
+    R(LONG, RT_GAME_INFO + 0x10) = pt.x - R(int, 0x36c7);
+    R(LONG, RT_GAME_INFO + 0x14) = pt.y - R(int, 0x36cb);
+    RB(0xc8a) = 1;
+    for (unsigned i = 0; i < sizeof zero32 / sizeof *zero32; i++)
+        RU(zero32[i]) = 0;
+    RU(0x3dd3) = 1;
+    for (unsigned i = 0; i < sizeof zero8 / sizeof *zero8; i++)
+        RB(zero8[i]) = 0;
+    RU(0x3ddb) = 0;
+    for (unsigned i = 0; i < sizeof one8 / sizeof *one8; i++)
+        RB(one8[i]) = 1;
+    RU(0x18b7) = 0;
+    RU(0x18bb) = 0;
+}
+
+/* 0x100215c5: leaves the scene (RtSceneOut): runs its exit handler, blanks the
+ * screen, and frees the scene's objects, plugins, lists and the scene list */
+void __cdecl scene_exit(void)
+{
+    if (RU(0x3e6f)) {
+        uint8_t rec[0x22];
+        memset(rec, 0, sizeof rec);
+        P(U, rec, 2) = RU(0x3e6f);
+        RU(0x3e6f) = 0;
+        C1(0x100220dd, rec);
+    }
+    if (!RB(RT_DIRECTDRAW))
+        paint_black(R(HDC, RT_DC));
+    else
+        SpritePaintDirectDrawSurfacesBlack(HSL, RU(0x3de3), RU(0x3e0f));
+    plugins_notify_20(3, 0);
+    compose_reset(RB(RT_SCENE_CHANGED));
+    obj_release_all();
+    plugins_unload();
+    array_free((RtArray *)(g_rt + RT_CLICK_RECTS));
+    array_free((RtArray *)(g_rt + RT_HOVERS));
+    memset(g_rt + RT_SLOT_HANDLERS, 0, 0x88);
+    memset(g_rt + RT_KEYS, 0, 0xbd7);
+    stop_cd();
+    if (RU(0x324b))
+        RU(0x324b) = (U)(uintptr_t)winfree(R(void *, 0x324b));
+    if (RU(RT_RES_BUF))
+        RU(RT_RES_BUF) = (U)(uintptr_t)winfree(R(void *, RT_RES_BUF));
+    if (RU(RT_SCENES)) {
+        for (U i = 0; i < RU(RT_SCENE_COUNT); i++) {
+            if (P(U, scene_entry(i), 0x108))
+                winfree(P(void *, scene_entry(i), 0x108));
+            if (P(U, scene_entry(i), 0x100))
+                winfree(P(void *, scene_entry(i), 0x100));
+        }
+        RU(RT_SCENES) = (U)(uintptr_t)winfree(R(void *, RT_SCENES));
+    }
+    if (RU(RT_RES))
+        ResCloseFile(RES);
+    RU(RT_RES) = 0;
+    static const uint16_t zero8[] = {0x95e9, 0x95e1, 0x95e0, 0x95df, 0x95fa, 0x95f6, 0x95f4};
+    for (unsigned i = 0; i < sizeof zero8 / sizeof *zero8; i++)
+        RB(zero8[i]) = 0;
+    RU(0x18b7) = 0;
+    RU(0x18bb) = 0;
 }

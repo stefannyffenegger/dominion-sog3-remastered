@@ -17,5 +17,8 @@ U __stdcall scene_open(char *name);
 U __stdcall scene_read(char *path);
 U __stdcall scene_find(char *path);
 U __stdcall scene_enter(char *path, U check_memory);
+U __stdcall scene_enter_cb(char *path, U check_memory, U cb, U arg);
+void __cdecl scene_state_reset(void);
+void __cdecl scene_exit(void);
 
 #endif

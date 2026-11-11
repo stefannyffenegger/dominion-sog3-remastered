@@ -76,6 +76,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[Dominion] MaxJoySticks` | 2 | joysticks whose calibration (from `SYSTEM.INI`) is handed to the driver at startup |
 | `[Dominion] MaxDropFrames` | 1 | read at startup; use not found yet |
 | `[Input] Timeout` | 200 | milliseconds; used by the input code |
+| `Mode640` (section: the game's title) | | read into the engine at every first scene; use not found yet |
+| `LoMem` (same section) | | low-memory flag, read at every first scene and handed to plugins |
 | `[resource]` | | data files copied to the hard disk, deleted at the next start (see below) |
 
 ## Leftovers from earlier versions
