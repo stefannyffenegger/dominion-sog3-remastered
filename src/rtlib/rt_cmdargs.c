@@ -12,7 +12,7 @@
 #define RES R(ResFile *, RT_RES)
 #define script_run ORIG(int(__stdcall *)(uint32_t), 0x10022ce9)
 #define event_send ORIG(int(__stdcall *)(uint32_t, uint32_t, uint32_t), 0x10025e97)
-#define handler_record_run ORIG(void(__stdcall *)(uint8_t *), 0x100220dd)
+#define handler_record_run ORIG(int(__stdcall *)(uint8_t *), 0x100220dd)
 #define CALL1(addr) ORIG(uint32_t(__stdcall *)(uint8_t *), addr)
 
 /* 0x10016800: v itself, or the value of variable v when flagged */
@@ -183,23 +183,22 @@ void __stdcall cmdw_100172ce(const uint8_t *c)
 }
 
 /* 0x100173a9: commands 0x75 (load an object) and its partner (release it) */
-void __stdcall cmdw_load_release(const uint8_t *c)
+uint32_t __stdcall cmdw_load_release(const uint8_t *c)
 {
     uint32_t id = VAL(2, 6), t = ResGetType(RES, id);
     if (P(int16_t, c, 0) == 0x75)
-        obj_is(id, t);
-    else
-        obj_release(id, t);
+        return (uint32_t)obj_is(id, t);
+    return (uint32_t)obj_release(id, t);
 }
 
 /* 0x1001754a */
-void __stdcall cmdw_1001754a(const uint8_t *c)
+uint32_t __stdcall cmdw_1001754a(const uint8_t *c)
 {
     uint8_t b[0x28];
     memcpy(b, c, 0x26);
     V(2, 6);
     V(0x1c, 0x23);
-    cmd_play_wave(FIELD(b, 2), (int32_t *)(b + 8));
+    return cmd_play_wave(FIELD(b, 2), (int32_t *)(b + 8));
 }
 
 /* 0x1001759b: sends an event: handler, id, argument */
@@ -237,7 +236,7 @@ uint32_t __stdcall cmdw_100177ed(uint8_t *c)
 }
 
 /* 0x100176f4: a handler call with +9 arguments at +10 (flag bits in +7) */
-void __stdcall cmdw_handler_call(const uint8_t *c)
+uint32_t __stdcall cmdw_handler_call(const uint8_t *c)
 {
     uint8_t b[0x30];
     memcpy(b, c, c[9] * 4 + 10);
@@ -245,7 +244,7 @@ void __stdcall cmdw_handler_call(const uint8_t *c)
     for (uint32_t i = 0; i < c[9]; i++)
         if (b[7] & (uint8_t)(1 << i))
             FIELD(b, 10 + i * 4) = script_value(FIELD(b, 10 + i * 4), 1);
-    handler_record_run(b);
+    return (uint32_t)handler_record_run(b);
 }
 
 /* 0x10017899: +6 entries of 8 bytes at +10 (value, ..., flag at +7) */
@@ -260,10 +259,10 @@ uint32_t __stdcall cmdw_10017899(const uint8_t *c)
 }
 
 /* 0x10017902 */
-void __stdcall cmdw_10017902(const uint8_t *c)
+uint32_t __stdcall cmdw_10017902(const uint8_t *c)
 {
     uint32_t b = VAL(6, 0xc), a = VAL(2, 0xb);
-    cmd_set_queue(a, b, c[10]);
+    return cmd_set_queue(a, b, c[10]);
 }
 
 /* 0x10017a9e: +0xc entries of 6 bytes at +0x10 (value, used, flag) */

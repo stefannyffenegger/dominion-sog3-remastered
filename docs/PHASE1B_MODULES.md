@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,015 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,023 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -406,6 +406,12 @@ The functions the game calls in the engine. First batch (57, `RtCopy` to `RtSetC
 
 ### Engine core, part 14: scenes (`rt_scene.c`)
 A scene is one resource file with its script. Fourth batch (3): the run-state reset for a new first scene (with the info block handed to plugins), `RtSceneInCallback`'s entry, and leaving a scene (`RtSceneOut`: exit handler, then everything freed; an untested port). Third batch (2): entering the first scene (`RtSceneIn`) and finding its file, with the "Please insert ... into the CDROM drive" prompt on a CD drive. Second batch (3): opening the scene's resource file (its header sets the window title, color limits and start handler; its plugins load), the scene list entry with saved variables, and the resource name table. First batch (6): loading a scene (state reset, open, read, palette, start handler) and changing scenes (the current scene's variables saved, sprite, sound and object state reset, the next one loaded). Loading runs at every game start; changing and trimming the scene list are untested ports (Dominion moves between its scripts another way).
+* Checked: menu tour and Human mission 1.
+
+### Engine core, part 15: the interpreter's command loop (`rt_interp.c`, 8 functions)
+A script handler is a list of commands: a 16-bit opcode, then fixed-size or self-sized arguments. The command dispatcher runs one command through its (already ported) handler and returns its size; handlers run until a command stops them or the scene changes, calling each other up to 30 deep with their locals on a stack in the state block. Also the command size table, handler records (arguments become the first locals), and the sprite engine's script message callback. Every script command of the game now runs through our code.
+* Checked mechanically: the size table and every dispatcher case (size and handler called) against the decompile.
+* Fixed on the way: four command wrappers ported earlier as `void` return their handler's result in the original, which the dispatcher uses to stop a handler; they now return it explicitly (before, it only worked because the compiler left the value in place).
 * Checked: menu tour and Human mission 1.
 
 ### What's left

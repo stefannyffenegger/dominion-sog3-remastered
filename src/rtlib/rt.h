@@ -25,6 +25,7 @@
 #include "rt_service.h"
 #include "rt_joystick.h"
 #include "rt_scene.h"
+#include "rt_interp.h"
 #include "rt_script.h"
 #include "rt_input.h"
 #include "rt_fade.h"
