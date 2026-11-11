@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 712 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 774 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -367,6 +367,11 @@ The game's `.r32` files are plugins of the engine, and this is the code that loa
 * Unloading calls each plugin's `RtLibFree` but frees the DLLs later, from a window message, since a plugin may be on the call stack.
 * A plugin that fails to initialize ends the game with "Error initializing Dominion. Please see the troubleshooting guide."
 * Checked: the game starts, loads all its plugins through this code and plays as before.
+
+### Engine core, part 7: command argument resolvers (`rt_cmdargs.c`, 62 functions)
+A script command's fields can be constants or variables; a flag byte per field says which. Each command has a small wrapper that copies the packed record, replaces the flagged fields by the variables' values and calls the command's handler with the copy.
+* The decompiler output is unreadable for these (unaligned fields), so the field and flag offsets were extracted from the disassembly by a script, and 35 of the wrappers are generated from that table. The 27 irregular ones (rectangles with a flag bit per corner, value lists with a count, results written back into a variable) are written out.
+* Checked: menu tour and Human mission 1 against the all-original runs; every command the menus and the game run goes through these.
 
 ### What's left
 | Part | Functions | Decompiled lines |

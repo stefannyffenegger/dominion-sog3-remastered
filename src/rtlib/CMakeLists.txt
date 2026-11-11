@@ -7,7 +7,7 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/rtlib32_orig.def)
 add_custom_target(rtlib32_orig_implib DEPENDS ${ORIG_IMPLIB})
 
-add_library(rtlib SHARED hooks.c res.c utils.c compress.c codec.c audio.c display.c sprite.c view.c queue.c spritelib.c draw.c blit.c tiles.c tileblit.c rt_bg.c rt_script.c rt_input.c rt_fade.c rt_obj.c rt_plugin.c rtlib32.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+add_library(rtlib SHARED hooks.c res.c utils.c compress.c codec.c audio.c display.c sprite.c view.c queue.c spritelib.c draw.c blit.c tiles.c tileblit.c rt_bg.c rt_script.c rt_input.c rt_fade.c rt_obj.c rt_plugin.c rt_cmdargs.c rtlib32.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
 add_dependencies(rtlib rtlib32_orig_implib)
 set_target_properties(rtlib PROPERTIES PREFIX "" OUTPUT_NAME "Rtlib32" SUFFIX ".dll")
 target_compile_options(rtlib PRIVATE ${DOM_MODULE_FLAGS})
