@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,075 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,089 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -430,6 +430,10 @@ Resource type 0x15: text drawn with GDI (`DrawText`) into a bitmap that up to ei
 ### Engine core, part 19: timer service and sprite transfer (`rt_timer.c`, `rt_transfer.c`, 11 functions)
 * Timers (4): the per-frame services that run due script timers and controller-timer callbacks, the delayed event, and pausing (unpausing moves every timer on by the time paused).
 * Sprite transfer (7, `RtSpriteTransfer`): one sprite object takes over another's place and images, with reference counts on the images; not reached in the tested paths, so an untested port.
+* Checked: menu tour and Human mission 1.
+
+### Engine core, part 20: cursors, strings, errors, events (`rt_msg.c`, 14 functions)
+String lookup (script variables, or constants from the resource file), the cursor modes, the fatal-error and script-error message boxes (with the running script and file added), the 40-entry script event queue, extracting a resource to a file, and dropping pending messages. The string lookup and event queue run constantly; the error boxes only on errors (untested).
 * Checked: menu tour and Human mission 1.
 
 ### What's left

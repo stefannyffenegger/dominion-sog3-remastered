@@ -30,6 +30,7 @@
 #include "rt_text.h"
 #include "rt_timer.h"
 #include "rt_transfer.h"
+#include "rt_msg.h"
 #include "rt_script.h"
 #include "rt_input.h"
 #include "rt_fade.h"

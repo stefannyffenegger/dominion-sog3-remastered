@@ -42,6 +42,5 @@
 /* objects: see rt_obj.h */
 #define obj_12000 obj_check_type
 #define obj_14409 obj_loaded
-#define rt_message_box ORIG(void(__stdcall *)(HWND, uint32_t, uint32_t), 0x10025da8)
 
 #endif
