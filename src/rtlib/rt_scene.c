@@ -331,3 +331,104 @@ U __stdcall scene_read(char *path)
     SpriteSetVarTable(HSL, (U)(uintptr_t)(g_rt + RT_VARS));
     return 1;
 }
+
+#define crt_srand ORIG(void(__cdecl *)(unsigned), 0x10028830)
+#define crt_isalpha ORIG(int(__cdecl *)(int), 0x10029a40)
+#define crt_getdcwd ORIG(char *(__cdecl *)(int, char *, int), 0x10029f40)
+#define g_module G(HMODULE, 0x1007cef0)
+#define RT_MODULE_DIR 0x9803
+#define RT_DISC_TITLE 0x9d96
+
+/* 0x10020aed: finds the scene's file: in the given or the current directory, then
+ * next to the engine. A missing file on a CD-ROM drive asks for the disc (named by
+ * /t, the resource file's title or the game's title) until it is there or the player
+ * cancels. Leaves the file's directory in the signon path. */
+U __stdcall scene_find(char *path)
+{
+    char title[128], msg[0x180], file[256];
+    U cancel = 0, found;
+    do {
+        GetModuleFileNameA(g_module, (LPSTR)(g_rt + RT_MODULE_DIR), 0x101);
+        *SkipPath((char *)(g_rt + RT_MODULE_DIR)) = 0;
+        char *signon = (char *)(g_rt + RT_SIGNON_PATH);
+        GetPathAndFile(path, signon, file);
+        if (!*signon)
+            crt_getdcwd(0, signon, 0x100);
+        MakeFullPath(signon, signon, file);
+        found = (U)(uintptr_t)FileExist(signon);
+        if (!found) {
+            MakeModulePath(g_module, signon, path);
+            found = (U)(uintptr_t)FileExist(signon);
+        }
+        if (found) {
+            *SkipPath(signon) = 0;
+            continue;
+        }
+        if (!crt_isalpha(path[0]) || path[1] != ':' || path[2] != '\\') {
+            rt_message_box(NULL, 0x79, (U)(uintptr_t)path);
+            cancel = 1;
+            continue;
+        }
+        lstrcpyA(msg, path);
+        msg[3] = 0;
+        if (GetDriveTypeA(msg) != DRIVE_CDROM) {
+            rt_message_box(NULL, 0x79, (U)(uintptr_t)path);
+            cancel = 1;
+            continue;
+        }
+        int named = 1;
+        if (R(char, RT_DISC_TITLE))
+            lstrcpyA(title, (LPCSTR)(g_rt + RT_DISC_TITLE));
+        else if (R(char, RT_RES_TITLE))
+            lstrcpyA(title, (LPCSTR)(g_rt + RT_RES_TITLE));
+        else if (R(char, RT_TITLE))
+            lstrcpyA(title, (LPCSTR)(g_rt + RT_TITLE));
+        else
+            named = 0;
+        if (named)
+            wsprintfA(msg, (LPCSTR)ORIG_PTR(0x1007556c), title);
+        else
+            lstrcpyA(msg, (LPCSTR)ORIG_PTR(0x10075598));
+        RtShowGDISurface(g_rt);
+        cancel = MessageBoxA(R(HWND, RT_HWND), msg, (LPCSTR)(g_rt + RT_TITLE), MB_RETRYCANCEL) == IDCANCEL;
+        RtRestoreFromGDISurface(g_rt);
+    } while (!found && !cancel);
+    return found;
+}
+
+/* 0x100208b3: enters the scene in `path` as the first one (RtSceneIn): fresh random
+ * seed and state, optionally a memory check, then load, show the window and fade in */
+U __stdcall scene_enter(char *path, U check_memory)
+{
+    if (!scene_find(path))
+        return 0;
+    crt_srand(timeGetTime());
+    memset(g_rt + 0x9703, 0, 0x100);
+    memset(g_rt + 0xb88, 0, 0x104);
+    memset(g_rt + 0x8d73, 0, 0x1d4);
+    memset(g_rt + RT_SLOT_HANDLERS, 0, 0x88);
+    memset(g_rt + RT_KEYS, 0, 0xbd7);
+    RB(0x9602) = 0;
+    if (check_memory && !rt_measure_memory())
+        return 0;
+    C0(0x10020e1d);
+    char *name = SkipPath(path);
+    if (!RB(RT_PALETTE_DEVICE))
+        SpriteSetBkgTransparent(HSL, 1);
+    RU(0xb68) = timeGetTime();
+    paint_black(R(HDC, RT_DC));
+    if (!scene_load(name, 0, 0, 0))
+        return 0;
+    plugins_notify_20(1, (U)(uintptr_t)name);
+    SpriteSetTopMost(HSL, R(uint8_t *, RT_TOPMOST));
+    if (!IsWindowVisible(R(HWND, RT_HWND)) && !RB(RT_COMPONENT)) {
+        ShowWindow(R(HWND, RT_HWND), SW_SHOW);
+        UpdateWindow(R(HWND, RT_HWND));
+    }
+    if (RB(RT_SHOWN)) {
+        scene_show(RB(RT_NO_FADE) ? 1 : 100);
+        if (!RB(RT_PALETTE_DEVICE))
+            SpriteSetBkgTransparent(HSL, 0);
+    }
+    return 1;
+}

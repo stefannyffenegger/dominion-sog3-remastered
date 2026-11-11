@@ -15,5 +15,7 @@ U __stdcall scene_load(char *name, U progress, U cb, U arg);
 void __cdecl scene_names_load(void);
 U __stdcall scene_open(char *name);
 U __stdcall scene_read(char *path);
+U __stdcall scene_find(char *path);
+U __stdcall scene_enter(char *path, U check_memory);
 
 #endif
