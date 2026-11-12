@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,129 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,138 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -448,6 +448,10 @@ Run mode 1 (`/w`): the window procedure that keeps the engine behind all other w
 ### Engine core, part 23: bitmaps into sprites, icons, printing (`rt_print.c`, 18 functions)
 A device bitmap becomes a sprite bitmap, its colors added to the palette (most used first, up to the free entries, then the nearest one). A file's icon (a `.ico`, or an icon of a program) can be drawn into a sprite, and a bitmap resource can be printed on the default printer (see `HIDDEN_AND_UNUSED.md`). Dominion uses none of it: untested ports.
 * The original crashed when no default printer was set (it cut the `device` entry of `WIN.INI` at commas without checking); ours then reports failure.
+* Checked: menu tour and Human mission 1 (no change).
+
+### Engine core, part 24: geometry built-ins and mouse steering (`rt_geom.c`, 9 functions)
+The script built-ins for angles, sine and cosine, where two lines meet, and where a ray from a point leaves a rectangle; and the unused controller layer's mouse steering (the mouse as a joystick: a dead zone of 40 pixels around the centre, held within 60, the direction from the angle). `GetAngle` and `GetIntersect`, which use x87 floating point, stay the original's.
 * Checked: menu tour and Human mission 1 (no change).
 
 ### What's left
