@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,166 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,180 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -457,6 +457,10 @@ The script built-ins for angles, sine and cosine, where two lines meet, and wher
 ### Engine core, part 25: the engine's movies (`rt_movie.c`, 28 functions)
 Resource type 0xd: a movie is a command list (show the next frame N times, wait, start the sound, timing on or off, run a script command), a frame table and the frame data. Frames (full or changes) and sound are read from the resource file into ten 65,000-byte buffers ahead of playing, and the movie is shown as a sprite's image. A movie more than half a second behind drops change frames; `RtPauseMovies` stops the clocks. Up to four play at once. A trace during the tests showed Dominion never opens one (its videos are Smacker files), so this is an untested port.
 * The command runner (0x10015e27) takes the sprite as an unused second argument, which the decompile had dropped.
+* Checked: menu tour and Human mission 1 (no change).
+
+### Engine core, part 26: built-ins on the script stack (`rt_builtin_misc.c`, 14 functions)
+Built-in functions that take their arguments from the script stack: points on curves and lines, where two lines meet, where a ray leaves a rectangle, the local date and time (hundredths of a second too), collision tests, list entries, and random and sequence script picks whose state is kept per list in a table that grows by 100.
 * Checked: menu tour and Human mission 1 (no change).
 
 ### What's left
