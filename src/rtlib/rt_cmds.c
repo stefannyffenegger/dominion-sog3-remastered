@@ -2,6 +2,7 @@
  * conditions, keys, sound, random numbers). They get the command record with its
  * variable fields already resolved (rt_cmdargs.c). Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_cmds.h"
 
@@ -25,7 +26,6 @@
 #define RT_CD_PLAYING 0x95d2
 #define RT_COMPOSE_OWNS 0x95dc
 
-#define crt_rand ORIG(int(__cdecl *)(void), 0x10028850)
 #define AudioClearNotifications ORIG(void(__stdcall *)(uint8_t *), 0x1003fa9d)
 #define AudioPlayMidi ORIG(void(__stdcall *)(uint8_t *, uint32_t, const void *), 0x1003f2dd)
 #define AudioPlayWave ORIG(void(__stdcall *)(uint8_t *, uint32_t, int32_t *), 0x1003fc7b)

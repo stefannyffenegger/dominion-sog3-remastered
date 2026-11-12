@@ -496,6 +496,12 @@ Goal: our `Rtlib32.dll` stands alone and `Rtlib32_orig.dll` goes. Steps: (1) cal
 * Exports whose function returns nothing (`RtShowGDISurface`, `RtPauseMovies`, `RtCursor`, ...) returned whatever was left in EAX; ours return 0. The game ignores these values.
 * Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
 
+### Cutting loose, step 2: the C runtime (`crt.c`)
+The engine borrowed `rand`, `srand`, `atoi`, `strstr`, `strrchr`, `isalpha`, `abs`, `sscanf`, `_getdcwd` and the debug assertion report from the original's statically linked C library. Ours: the same random generator (seed × 214013 + 2531011, bits 16-30), kept per thread like the original's, so scripts see the same random numbers.
+* The joystick calibration read six hex numbers with `sscanf` and sent whatever was on the stack for numbers it couldn't read (on modern Windows `SYSTEM.INI` has none); ours sends zeros.
+* A failed engine assertion showed the debug C library's Abort/Retry/Ignore box; ours writes it to the debug output and goes on.
+* Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
+
 ### What's left
 | Part | Functions | Status |
 |---|---|---|

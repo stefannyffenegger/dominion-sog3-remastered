@@ -4,6 +4,7 @@
  * made the Windows wallpaper. Also screen captures to numbered files. Dominion uses
  * none of it. Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_wallpaper.h"
 
@@ -29,7 +30,7 @@
 #define g_band_pen G(HPEN, 0x100871dc)
 
 #define g_module G(HMODULE, 0x1007cef0)
-#define crt_abs ORIG(int(__cdecl *)(int), 0x100288a0)
+#define crt_abs(v) ((v) < 0 ? -(v) : (v))
 
 /* 0x100278d0: "<name>NNNN.bmp" in the current directory (name cut to 4 characters;
  * without one the engine's own, string 201) */

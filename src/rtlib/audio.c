@@ -7,6 +7,7 @@
  * goes through WAVEPLAY.R32, which hooks into AudioService. Those parts stay original for
  * now and are reached through ORIG(); they only run once a device is open. */
 #include "orig.h"
+#include "crt.h"
 #include "audio.h"
 
 /* the audio context: 0x2fa bytes, fields at the original's (unaligned) offsets */
@@ -58,7 +59,6 @@
 #define g_cd_profile G(uint32_t, 0x100884b2)
 
 /* original functions of the mixer, sequencer and CD player (see above) */
-#define crt_srand ORIG(void(__cdecl *)(unsigned), 0x10028830)
 #define wave_close ORIG(uint32_t(__cdecl *)(void), 0x10040420)
 #define wave_open ORIG(uint32_t(__stdcall *)(void *), 0x1004081f)
 #define wave_pause ORIG(void(__stdcall *)(int), 0x10041036)

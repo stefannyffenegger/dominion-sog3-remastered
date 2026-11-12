@@ -3,6 +3,7 @@
  * sound, sprite, resource and utility libraries, reads the engine's settings and
  * opens the game's resource file. Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_startup.h"
 
@@ -72,8 +73,8 @@ void __stdcall joystick_calibrate(int n)
         return;
     GetPrivateProfileStringA("joystick.drv", n ? "joycal1" : "joycal0", "", line, sizeof line, "system.ini");
     lstrcpyA(fmt, "%x %x %x %x %x %x");
-    ORIG(int(__cdecl *)(const char *, const char *, ...), 0x10029970)(line, fmt, &v[0], &v[1], &v[2], &v[3], &v[4],
-                                                                       &v[5]);
+    memset(v, 0, sizeof v); /* the original sent what was on the stack for numbers it couldn't read */
+    crt_scan_hex(line, v, 6);
     SendDriverMessage(drv, 0x902, (LPARAM)v, (LPARAM)out);
     CloseDriver(drv, 0, 0);
 }
@@ -255,7 +256,7 @@ U __cdecl RtStartup(HMODULE module, U arg, LPCSTR cmdline)
     if (!RtInit((U)(uintptr_t)module, arg))
         return 0;
     GetModuleFileNameA(module, path, sizeof path);
-    char *dot = ORIG(char *(__cdecl *)(const char *, int), 0x100292b0)(path, '.');
+    char *dot = crt_strrchr(path, '.');
     if (dot)
         lstrcpyA(dot, (LPCSTR)ORIG_PTR(0x10075560));
     C2(0x1001e610, cmdline, path);

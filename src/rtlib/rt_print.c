@@ -3,6 +3,7 @@
  * bitmap resource on the default printer. Dominion uses none of it (text objects use
  * the first). Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_print.h"
 
@@ -21,7 +22,6 @@
 #define g_print_ok G(U, 0x1007cad4) /* cleared when the print is cancelled */
 
 #define g_module G(HMODULE, 0x1007cef0)
-#define crt_strrchr ORIG(char *(__cdecl *)(const char *, int), 0x100292b0)
 
 static int iabs(int v) { return v < 0 ? -v : v; }
 

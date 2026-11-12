@@ -5,6 +5,7 @@
  * after adding the key name's first letter; a number written to the registry has its
  * bits shuffled through a table and 0xbebc205 added. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_ini.h"
 #include <mmsystem.h>
@@ -176,7 +177,7 @@ void __stdcall ini_get_int(LPCSTR file, LPCSTR section, LPCSTR key, int32_t *out
         return;
     if (crypt)
         ini_unscramble(g_value, *key);
-    *out = ORIG(int(__cdecl *)(const char *), 0x10028640)(g_value); /* the C library's atoi */
+    *out = crt_atoi(g_value);
 }
 
 /* 0x1001b6c3: writes a string; an empty or blank one deletes the key */

@@ -10,6 +10,7 @@
  * Loading a type loads what it refers to; releasing undoes it with use counts.
  * Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_obj.h"
 
@@ -44,7 +45,6 @@
 
 #define g_releasing_all G(uint32_t, 0x1007c598)
 
-#define crt_dbg_report ORIG(int(__cdecl *)(int, const char *, int, const char *, const char *), 0x10028a40)
 #define AudioDestroyMidi ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x100418ef)
 #define AudioDestroyWave ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10041f23)
 /* movies (type 0xd) and text objects (0x15) are kept in the table as 32-bit values */
@@ -70,8 +70,7 @@ static uint32_t call4(uint32_t off, uint32_t a, uint32_t b, uint32_t c, uint32_t
 /* The original's debug assertion: report, and break when the report asks for it */
 static void assert_failed(int line)
 {
-    if (crt_dbg_report(2, "D:\\DEV\\RUNTIME\\SRC\\load.cpp", line, NULL, "0") == 1)
-        DebugBreak();
+    crt_assert_failed("D:\\DEV\\RUNTIME\\SRC\\load.cpp", line, "0");
 }
 
 static int wrong_type(uint32_t id, uint32_t type)

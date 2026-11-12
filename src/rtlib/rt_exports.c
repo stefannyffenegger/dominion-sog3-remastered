@@ -4,6 +4,7 @@
  * EAX. Calls go to the original's addresses, which reach our code where it is ported.
  * Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_exports.h"
 
@@ -138,9 +139,8 @@ U __cdecl RtGetPaletteRealized(uint8_t *rt) { SET(rt); return RB(RT_PALETTE_REAL
 U __cdecl RtGetResource(uint8_t *rt, U id)
 {
     SET(rt);
-    if (!id && ORIG(int(__cdecl *)(int, const char *, int, const char *, const char *), 0x10028a40)(
-                   2, "D:\\DEV\\RUNTIME\\SRC\\rtlib.cpp", 0x17f, NULL, "Id > 0") == 1)
-        DebugBreak();
+    if (!id)
+        crt_assert_failed("D:\\DEV\\RUNTIME\\SRC\\rtlib.cpp", 0x17f, "Id > 0");
     return (U)(uintptr_t)obj_entry(id);
 }
 

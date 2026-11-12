@@ -5,6 +5,7 @@
  * Rewritten from the original's assembly (its decompile of this function is wrong in
  * places). Numbers not handled here still go to the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_builtins.h"
 
@@ -29,10 +30,7 @@
 #define g_stack ((int32_t *)ORIG_PTR(0x1007c408))
 #define REG_PATH "Software\\7th Level, Inc."
 
-/* the C runtime's, and the x87 math the original keeps */
-#define crt_rand ORIG(int(__cdecl *)(void), 0x10028850)
-#define crt_atoi ORIG(int(__cdecl *)(const char *), 0x10028640)
-#define crt_strstr ORIG(char *(__cdecl *)(const char *, const char *), 0x100287b0)
+/* the x87 math the original keeps */
 #define GetAngle ORIG(int(__stdcall *)(int, int), 0x1003dad4)
 #define Collide ORIG(int(__stdcall *)(int, int, int, int, int, int, int, int), 0x1003dcd3)
 #define Distance ORIG(int(__stdcall *)(int, int, int, int), 0x1003deb1)

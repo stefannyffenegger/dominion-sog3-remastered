@@ -3,6 +3,7 @@
  * sound and object state, and loads and starts the next.
  * Rewritten from the original. */
 #include "rtcore.h"
+#include "crt.h"
 #include "rt.h"
 #include "rt_scene.h"
 
@@ -331,9 +332,6 @@ U __stdcall scene_read(char *path)
     return 1;
 }
 
-#define crt_srand ORIG(void(__cdecl *)(unsigned), 0x10028830)
-#define crt_isalpha ORIG(int(__cdecl *)(int), 0x10029a40)
-#define crt_getdcwd ORIG(char *(__cdecl *)(int, char *, int), 0x10029f40)
 #define g_module G(HMODULE, 0x1007cef0)
 #define RT_MODULE_DIR 0x9803
 #define RT_DISC_TITLE 0x9d96
