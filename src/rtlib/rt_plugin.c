@@ -32,7 +32,6 @@
 #define PL_20 0x20
 #define PL_PALETTE 0x24
 
-#define RtSetScreenRes ORIG(void(__cdecl *)(uint8_t *, uint32_t, uint32_t, uint32_t), 0x1001d3b3)
 #define fn_10025ff9 flush_engine_messages
 
 #define PLUGIN(i) (R(uint8_t **, RT_PLUGINS)[i])

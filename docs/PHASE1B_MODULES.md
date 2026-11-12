@@ -507,6 +507,9 @@ The engine borrowed `rand`, `srand`, `atoi`, `strstr`, `strrchr`, `isalpha`, `ab
 * The engine converts radians to tenths of a degree with π = 3.1415 (1800 / 3.1415 = 572.97 instead of 572.96).
 * Checked: the comparison above, menu tour, Human mission 1 (no change, rerun twice), and Alt+F4 at the main menu.
 
+### Cutting loose, step 4: the two short exports
+`RtSetScreenRes` and `RtEnableDirectDraw` are empty in the original (they return 0) and too short to hook. Ours are in `rt_exports.c`; our own code now calls ours, and they become the exports in step 7.
+
 ### What's left
 | Part | Functions | Status |
 |---|---|---|

@@ -92,4 +92,7 @@ U __cdecl RtFadeOut(uint8_t *rt, U arg);
 U __cdecl RtGetPalette(uint8_t *rt, U *size);
 U __cdecl rt_measure_memory(void);
 
+U __cdecl RtSetScreenRes(uint8_t *rt, U w, U h, U depth);
+U __cdecl rt_enable_directdraw(void);
+
 #endif

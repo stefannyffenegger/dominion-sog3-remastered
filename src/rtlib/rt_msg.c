@@ -32,7 +32,6 @@
 #define EVENT_SIZE 0x22
 
 #define g_module G(HMODULE, 0x1007cef0)
-#define RtSetScreenRes ORIG(void(__cdecl *)(uint8_t *, U, U, U), 0x1001d3b3)
 
 /* 0x10025a6a: string variable n (1-based; bit 31 marks a constant: none here) */
 char *__stdcall string_var(U n)

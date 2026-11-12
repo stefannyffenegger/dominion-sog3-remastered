@@ -439,3 +439,13 @@ U __cdecl rt_measure_memory(void)
     RU(RT_MEM_FREE) = ((ms.dwTotalPhys >> 16) * (100 - ms.dwMemoryLoad)) / 100 << 16;
     return 1;
 }
+
+/* RtSetScreenRes (0x1001d3b3) and RtEnableDirectDraw (0x1001c2f2): empty in the
+ * original (they return 0), too short to hook; ours for our own callers, and the
+ * exports once we stop forwarding */
+U __cdecl RtSetScreenRes(uint8_t *rt, U w, U h, U depth)
+{
+    (void)rt, (void)w, (void)h, (void)depth;
+    return 0;
+}
+U __cdecl rt_enable_directdraw(void) { return 0; }

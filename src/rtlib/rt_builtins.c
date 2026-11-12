@@ -32,7 +32,6 @@
 #define REG_PATH "Software\\7th Level, Inc."
 
 #define AudioSetWaveSoundPriority ORIG(void(__stdcall *)(uint8_t *, U, U), 0x100402fa)
-#define RtSetScreenRes ORIG(U(__cdecl *)(uint8_t *, U, U, U), 0x1001d3b3) /* too short to hook */
 #define AudioGetWaveSoundTime ORIG(U(__stdcall *)(uint8_t *, U), 0x1003fbf5)
 
 static int32_t pop(void)
