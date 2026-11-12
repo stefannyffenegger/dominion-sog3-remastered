@@ -100,6 +100,7 @@ PORTED(0x1006a588, res_expand_rle)
 
 /* Utilities (utils.c) */
 PORTED(0x1003d800, CopyHugeBytes)
+PORTED(0x1003d8b4, LinearSearch)
 PORTED(0x1003d82c, CopyHugeStr)
 PORTED(0x1003d848, HugeStrLen)
 PORTED(0x1003d95e, BinarySearch)

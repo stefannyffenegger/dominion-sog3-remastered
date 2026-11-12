@@ -2,9 +2,9 @@
  * (angles in tenths of a degree, 0-3599; results scaled by 10000).
  * Rewritten from the original (0x1003d800-0x1003e9b7).
  *
- * Not rewritten yet: GetAngle, Collide, Distance, SquareRoot, GetIntersect (x87 floating
- * point through the C runtime; game logic may depend on their exact results),
- * ExternalCall and LinearSearch. */
+ * Not rewritten: GetAngle, Collide, Distance, SquareRoot, GetIntersect (x87 floating
+ * point through the C runtime; game logic may depend on their exact results).
+ * ExternalCall is in rt_script.c. */
 #include "orig.h"
 #include "utils.h"
 #include <stdarg.h>
@@ -421,4 +421,27 @@ uint32_t __cdecl UtilsInitLibrary(void)
 void __cdecl UtilsExitLibrary(void)
 {
     utils_exit_nothing();
+}
+
+static uint8_t lower(uint8_t c) { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
+
+/* LinearSearch (0x1003d8b4, hand-written assembly; unused by Dominion): finds `key` in a
+ * list of `n` zero-terminated strings, ignoring case when `nocase`. Returns the entry's
+ * offset from the list start in the high word and its number in the low word, or -1.
+ * The original, ignoring case, ran past the end of the list when the key started with
+ * the whole last entry; ours stops there. */
+uint32_t __stdcall LinearSearch(const char *key, const char *list, uint32_t n, uint32_t nocase)
+{
+    const uint8_t *e = (const uint8_t *)list;
+    for (uint32_t i = 0; i < n; i++) {
+        const uint8_t *p = e, *k = (const uint8_t *)key;
+        while (*p && (nocase ? lower(*p) == lower(*k) : *p == *k))
+            p++, k++;
+        if (!*p && !*k)
+            return (uint32_t)(e - (const uint8_t *)list) << 16 | (i & 0xffff);
+        while (*p)
+            p++;
+        e = p + 1;
+    }
+    return 0xffffffffu;
 }

@@ -46,5 +46,6 @@ uint32_t __cdecl utils_detect_processor(void);
 UINT __stdcall utils_ini_int(LPCSTR key, INT def);
 uint32_t __cdecl UtilsInitLibrary(void);
 void __cdecl UtilsExitLibrary(void);
+uint32_t __stdcall LinearSearch(const char *key, const char *list, uint32_t n, uint32_t nocase);
 
 #endif

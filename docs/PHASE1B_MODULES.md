@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,205 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,206 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -485,6 +485,10 @@ When an object needs several bitmaps, the engine sorts them by data file and off
 `set_background` (0x10049a02): in DirectDraw mode the background is a fill color or a bitmap copied (or run-length expanded) into an offscreen video-memory surface made on first use, centred on the screen. The menu tour sets it 7 times (**traced**).
 * The original carried on after a failed surface lock and wrote through a null pointer; ours stops.
 * Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
+
+### Utilities: `LinearSearch` (`utils.c`, 1 function)
+An export (hand-written assembly) that finds a string in a list of strings, with or without case; nothing in Dominion calls it. Checked against the original on 200,000 random searches. The original, ignoring case, ran past the end of the list when the key began with the whole last entry (it fell into its case-sensitive loop with the count used up) and crashed in the test; ours returns "not found". The original also changed EBX without saving it. `Collide`, `Distance`, `SquareRoot`, `GetAngle` and `GetIntersect` use x87 floating point and stay the original's.
+* Checked: the comparison above and the menu tour (no change).
 
 ### What's left
 | Part | Functions | Decompiled lines |
