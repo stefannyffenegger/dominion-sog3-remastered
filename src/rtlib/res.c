@@ -5,15 +5,10 @@
 #include "res.h"
 #include "utils.h"
 #include "compress.h"
+#include "blit.h"
 
 /* ---- original engine functions we call (not rewritten yet) ---- */
 #define AudioCreateMidi ORIG(void *(__stdcall *)(uint32_t, void *, void *), 0x100416e6)
-
-/* The sprite code's run-length expander is hand-written assembly that doesn't keep EBX */
-static void expand_rle_dib(void *dst, const void *src)
-{
-    orig_call2_unsafe(ORIG_PTR(0x1006a588), (uint32_t)(uintptr_t)dst, (uint32_t)(uintptr_t)src);
-}
 
 /* globals of the original */
 #define g_res_module G(HMODULE, 0x1008f900)
@@ -379,7 +374,7 @@ uint8_t *__stdcall res_expand_bitmap(ResFile *rf, ResDib *src, uint32_t *size)
         }
         dst->bits = p + src->header_size;
     } else {
-        expand_rle_dib(p, src);
+        res_expand_rle(p, src);
         dst->bits = p + src->header_size;
         dst->flags &= ~DIB_RLE;
     }

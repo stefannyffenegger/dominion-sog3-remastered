@@ -1376,3 +1376,34 @@ void __stdcall dib_copy_out(uint8_t *dst, int32_t pitch, void *src, uint32_t w, 
     for (; h; h--, d += pitch, s += step)
         memcpy(d, s, w);
 }
+
+/* 0x1006a588 (hand-written assembly): expands a run-length coded bitmap into `dst`:
+ * the header, then rows of codes. A code below 0x80 repeats the next byte that many
+ * times; one above copies (code ^ 0xff) bytes, or the count in the next byte for
+ * 0xff; 0 ends the row (the rest of the pitch is skipped), and a second 0 the
+ * bitmap. The codes start after a table of two bytes per row. */
+void __stdcall res_expand_rle(uint8_t *dst, const void *src)
+{
+    uint32_t skip = F(uint32_t, src, 8) - F(uint32_t, src, 4);
+    memcpy(dst, src, F(uint32_t, src, 0));
+    dst += F(uint32_t, src, 0);
+    const uint8_t *p = F(const uint8_t *, src, 0x20) + F(uint32_t, src, 0xc) * 2;
+    for (;;) {
+        uint8_t c = *p++;
+        if (c == 0) {
+            dst += skip;
+            if (*p == 0)
+                return;
+        } else if (c < 0x80) {
+            memset(dst, *p++, c);
+            dst += c;
+        } else {
+            c ^= 0xff;
+            if (c == 0)
+                c = *p++;
+            memcpy(dst, p, c);
+            dst += c;
+            p += c;
+        }
+    }
+}

@@ -76,4 +76,7 @@ void dib_copy_both_c(void *dst, void *src, int w, int h, int dx, int dy, int sx,
 void __stdcall dib_copy_out(uint8_t *dst, int32_t pitch, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx,
                             int sy);
 
+/* 0x1006a588: expands a run-length coded bitmap (header, then the pixels) */
+void __stdcall res_expand_rle(uint8_t *dst, const void *src);
+
 #endif /* DOMINION_RTLIB_BLIT_H */

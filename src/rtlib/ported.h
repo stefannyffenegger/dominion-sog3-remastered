@@ -90,6 +90,14 @@ PORTED(0x10069c2f, res_cache_file)
 PORTED(0x10069d70, res_copy_file)
 PORTED(0x10069e90, res_drop_cache)
 
+/* Resource files: batch loading, run-length expansion (res_batch.c) */
+PORTED(0x10069f90, res_load_batch)
+PORTED(0x1006a0b1, res_batch_read)
+PORTED(0x1006a1fc, res_batch_run)
+PORTED(0x1006a2ae, res_batch_bitmap)
+PORTED(0x1006a3cf, res_batch_sort)
+PORTED(0x1006a588, res_expand_rle)
+
 /* Utilities (utils.c) */
 PORTED(0x1003d800, CopyHugeBytes)
 PORTED(0x1003d82c, CopyHugeStr)

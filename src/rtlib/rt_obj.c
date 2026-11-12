@@ -48,7 +48,6 @@
 #define rt_fatal ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10025b0f)
 #define crt_dbg_report ORIG(int(__cdecl *)(int, const char *, int, const char *, const char *), 0x10028a40)
 #define load_progress ORIG(void(__cdecl *)(void), 0x1002635d)
-#define res_load_batch ORIG(void(__stdcall *)(ResFile *, void *, uint32_t *, uint32_t), 0x10069f90)
 #define AudioDestroyMidi ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x100418ef)
 #define AudioDestroyWave ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10041f23)
 #define type_d_create ORIG(uint32_t(__stdcall *)(uint8_t *, uint32_t, uint32_t), 0x10015501)

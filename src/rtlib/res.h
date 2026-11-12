@@ -229,4 +229,12 @@ void __stdcall res_cache_file(ResFile *rf, int file, uint32_t unused);
 int __stdcall res_copy_file(ResFile *rf, HMMIO dst, HMMIO src);
 void __stdcall res_drop_cache(ResFile *rf, int file);
 
+/* res_batch.c: loading many bitmaps at once, run-length expansion */
+typedef int(__stdcall *ResBatchLoaded)(uint32_t *data, uint32_t size, uint32_t type, uint32_t id);
+void __stdcall res_batch_sort(ResEntry *e, uint32_t *ids, uint32_t n);
+uint32_t __stdcall res_batch_run(ResFile *rf, const ResEntry *e, uint32_t *size, uint32_t n);
+uint8_t *__stdcall res_batch_bitmap(ResFile *rf, const uint32_t *src, const ResEntry *e, uint32_t *size);
+int __stdcall res_batch_read(ResFile *rf, ResBatchLoaded loaded, const ResEntry *e, const uint32_t *ids, uint32_t n);
+int __stdcall res_load_batch(ResFile *rf, ResBatchLoaded loaded, uint32_t *ids, uint32_t n);
+
 #endif

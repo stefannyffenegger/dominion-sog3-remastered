@@ -729,6 +729,42 @@ static void test_wide(void)
     printf("16-bit and C copies: done\n");
 }
 
+/* run-length coded bitmaps expanded (0x1006a588) */
+static void test_rle(void)
+{
+    for (int i = 0; i < 20000; i++) {
+        int w = 1 + rnd(80), h = 1 + rnd(20), pitch = (w + 3) & ~3;
+        uint8_t code[8192], *c = code + h * 2; /* after the table of two bytes per row */
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w;) {
+                int n = 1 + rnd(w - x < 300 ? w - x : 300);
+                if (rnd(2) && n < 0x80) { /* a run */
+                    *c++ = (uint8_t)n, *c++ = (uint8_t)rnd(256);
+                } else { /* literal bytes, the count in the code or the next byte */
+                    if (n <= 0x7f && rnd(2))
+                        *c++ = (uint8_t)(n ^ 0xff);
+                    else
+                        *c++ = 0xff, *c++ = (uint8_t)(n > 255 ? (n = 255) : n);
+                    for (int k = 0; k < n; k++)
+                        *c++ = (uint8_t)rnd(256);
+                }
+                x += n;
+            }
+            *c++ = 0;
+        }
+        *c++ = 0;
+        uint32_t hdr[9] = {0x24, (uint32_t)w, (uint32_t)pitch, (uint32_t)h, 0x80, 1, 2, 3, U(code)};
+        size_t n = 0x24 + (size_t)pitch * h;
+        uint8_t *a = malloc(n), *b = malloc(n);
+        memset(a, 0x5a, n), memset(b, 0x5a, n);
+        ORIG(0x1006a588, U(a), U(hdr));
+        res_expand_rle(b, hdr);
+        check("rle expand", !memcmp(a, b, n), i);
+        free(a), free(b);
+    }
+    printf("run-length expansion: done\n");
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -746,6 +782,7 @@ int main(int argc, char **argv)
     test_fx();
     test_points();
     test_wide();
+    test_rle();
     printf(failures ? "FAILED: %d differences\n" : "all identical\n", failures);
     return failures != 0;
 }
