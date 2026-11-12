@@ -22,14 +22,6 @@
 
 #define ISO_ICONS 0xcf5c       /* 128 power icons of 0xe bytes: sprite, flags (bit 0 used) */
 
-/* the unit type table: `off` of type t */
-static int32_t type_value(int32_t type, int off)
-{
-    int32_t *t = I(int32_t *, 0x18ec);
-    return P(int32_t, (uintptr_t)t[0], off + t[0xb] * type * 4);
-}
-#define TYPE_GIVES 0x20
-#define TYPE_USES 0x24
 
 /* the flood fill's stack (the original's, 24,000 entries of 5 bytes: direction, x, y) */
 #define FILL_DIR(i) G(int8_t, 0x1015e638 + (i) * 5)

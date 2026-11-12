@@ -44,9 +44,9 @@ PORTED(0x1000585b, selection_clear)
 PORTED(0x10005968, selection_remove)
 
 /* display.c */
-PORTED(0x10005bb1, marker_show)
-PORTED(0x10005bf1, marker_hide)
-PORTED(0x10005c34, marker_number)
+PORTED(0x10005bb1, debug_sprite_show)
+PORTED(0x10005bf1, debug_sprite_hide)
+PORTED(0x10005c34, debug_sprite_number)
 PORTED(0x10005d13, unit_line_clear)
 PORTED(0x10005ef5, unit_direction)
 PORTED(0x1000605e, messages_draw)
@@ -54,3 +54,10 @@ PORTED(0x10006459, table_get)
 PORTED(0x100064c8, IsoSetDisplayDelay)
 PORTED(0x1000652a, IsoInitDisplayProcess)
 PORTED(0x1000659a, IsoStopDisplayProcess)
+
+/* loop.c */
+PORTED(0x100065c3, IsoDisplayLoop)
+PORTED(0x10007668, IsoMapEditDisplayLoop)
+PORTED(0x1000788d, IsoSetDebugSprite)
+PORTED(0x100079bd, IsoFindNextUnit)
+PORTED(0x10007e49, IsoSelectGroup)

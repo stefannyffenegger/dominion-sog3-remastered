@@ -26,8 +26,6 @@
 #define ISO_SHAKE_TIMES 0xc31f
 #define ISO_SHAKE_AMOUNT 0xc323
 #define ISO_SHAKE_PHASE 0xc327
-#define ISO_SELECTED_N 0x1b23  /* per player: how many units are selected */
-#define ISO_SELECTED 0x193c    /* per player: their ids (16 bits) */
 
 #define HSL I(void *, ISO_HSL)
 #define APP I(void *, ISO_APP)
@@ -397,10 +395,6 @@ void __cdecl view_center_on(uint32_t id)
 
 /* ---- selections ---- */
 
-static uint16_t *selected(uint32_t player) { return I(uint16_t *, ISO_SELECTED + player * 4); }
-#define SELECTED_N(p) I(int32_t, ISO_SELECTED_N + (p) * 4)
-#define U_SELECTED 0x2e /* byte */
-#define U_SEL_STATE 0x2d
 
 /* 0x1000585b: the player selects nothing */
 int __cdecl selection_clear(int player)
@@ -433,8 +427,7 @@ void __cdecl selection_remove(uint32_t id, uint32_t player, int notify)
             continue;
         if (P(int8_t, iso_unit((int)id), U_SEL_STATE) != 4)
             P(int8_t, iso_unit((int)id), U_SEL_STATE) = 2;
-        typedef void(__cdecl * handler)(uint32_t);
-        handler deselected = G(handler, 0x101545c0 + P(int32_t, iso_unit((int)v), U_ID_TYPE) * 0x44);
+        UnitHandler deselected = unit_type_handler(P(int32_t, iso_unit((int)v), U_ID_TYPE));
         if (deselected)
             deselected(v);
     }

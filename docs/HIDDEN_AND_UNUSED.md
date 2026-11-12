@@ -59,7 +59,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** `DPEnumPlayersInSession`, listing the players of a session before joining, is never called.
 * **tested.** When the host leaves a match, the others keep playing (the host is reported defeated): DirectPlay's peer-to-peer model. The module even picks a new "host slot", but nobody can join any more.
 * **code.** `ISO.R32` `IsoDisplayPowerInfo` (0x100033fd): a developer box with the power figures of the selected structure (its grid, power given and used, its icon, damage), pausing the game while it is open. A flag at 0x10118030, toggled by a cheat code, gives every structure power.
-* **code.** `ISO.R32` 0x10005c34 would show a number (0-999, as three digits) on one of the four marker sprites, but its first instruction jumps past the body: switched off before release.
+* **code.** `ISO.R32` 0x10005c34 would show a number (0-999, as three digits) on one of the debug sprites (`IsoSetDebugSprite`), but its first instruction jumps past the body: switched off before release.
 * **code.** `ISO.R32` has `IsoInitReconnectAndPauseWindow` (a reconnect/pause window) and `IsoInitCRCCheck` (a checksum check for staying in sync). Not traced yet.
 
 ## Settings that the shipped Dominion.ini doesn't list

@@ -7,5 +7,6 @@
 #include "power.h"
 #include "view.h"
 #include "display.h"
+#include "loop.h"
 
 #endif

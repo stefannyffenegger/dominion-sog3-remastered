@@ -50,6 +50,28 @@ static inline int iso_on_map(int x, int y)
     return x >= 0 && x < I(int, ISO_MAP_W) && y >= 0 && y < I(int, ISO_MAP_H);
 }
 
+/* the unit type table: the value at `off` for type t (0x20 power given, 0x24 used) */
+static inline int32_t type_value(int32_t type, int off)
+{
+    int32_t *t = I(int32_t *, 0x18ec);
+    return P(int32_t, (uintptr_t)t[0], off + t[0xb] * type * 4);
+}
+#define TYPE_GIVES 0x20
+#define TYPE_USES 0x24
+
+/* per unit type: a handler run when the unit is drawn or deselected (17 entries a type) */
+typedef void(__cdecl *UnitHandler)(uint32_t id);
+#define unit_type_handler(type) G(UnitHandler, 0x101545c0 + (type) * 0x44)
+
+/* each player's selected units */
+#define ISO_SELECTED_N 0x1b23 /* per player: how many */
+#define ISO_SELECTED 0x193c   /* per player: their ids (16 bits) */
+#define SELECTED_N(p) I(int32_t, ISO_SELECTED_N + (p) * 4)
+static inline uint16_t *selected(uint32_t player) { return I(uint16_t *, ISO_SELECTED + player * 4); }
+#define U_SEL_STATE 0x2d /* byte */
+#define U_SELECTED 0x2e  /* byte */
+#define U_GROUP 0x15     /* byte: its numbered group */
+
 /* data of the original */
 #define g_power_radius ((int16_t *)ORIG_PTR(0x10118798))  /* per unit type */
 #define g_radius_masks ((const char **)ORIG_PTR(0x10118038)) /* per radius, (2r+1)^2 bytes */

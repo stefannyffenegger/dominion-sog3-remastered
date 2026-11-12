@@ -1,4 +1,4 @@
-/* The game logic, 0x10005bb1-0x100065c3: marker sprites, straight lines between units,
+/* The game logic, 0x10005bb1-0x100065c3: debug sprites, straight lines between units,
  * the message lines at the top of the screen, and the display process's timing. */
 #include "iso_core.h"
 #include "display.h"
@@ -11,24 +11,24 @@
 
 #define HSL I(void *, ISO_HSL)
 #define APP I(void *, ISO_APP)
-#define ISO_MARKERS 0x0eee /* four sprites */
+#define ISO_DEBUG_SPRITES 0x0eee /* four sprites (IsoSetDebugSprite) */
 
 /* 0x10005bb1 */
-void __cdecl marker_show(int i)
+void __cdecl debug_sprite_show(int i)
 {
     if (i < 4)
-        SpriteShow(HSL, I(void *, ISO_MARKERS + i * 4), 0, 1);
+        SpriteShow(HSL, I(void *, ISO_DEBUG_SPRITES + i * 4), 0, 1);
 }
 
 /* 0x10005bf1 */
-void __cdecl marker_hide(int i)
+void __cdecl debug_sprite_hide(int i)
 {
     if (i < 4)
-        SpriteSendMessage(HSL, I(void *, ISO_MARKERS + i * 4), 1, g_msg_hide);
+        SpriteSendMessage(HSL, I(void *, ISO_DEBUG_SPRITES + i * 4), 1, g_msg_hide);
 }
 
-/* 0x10005c34: would show a number (0-999) on a marker; the original jumps past its body */
-void __cdecl marker_number(int n, int i)
+/* 0x10005c34: would show a number (0-999) on a debug sprite; the original jumps past its body */
+void __cdecl debug_sprite_number(int n, int i)
 {
     (void)n, (void)i;
 }

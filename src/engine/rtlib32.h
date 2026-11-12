@@ -72,5 +72,11 @@ void __stdcall SpriteScroll(void *hsl, int dx, int dy, int blit);
 void __stdcall SpriteGetScrollPos(void *hsl, int32_t *pos);
 unsigned __cdecl RtRegisterCursorSprite(void *app, void *sprite);
 void __cdecl RtSetScrollBox(void *app, const int32_t *box);
+void __cdecl RtCaptureFrame(void *app, char *prefix, uint32_t n);
+unsigned __cdecl RtFadeIn(void *app, unsigned arg);
+unsigned __cdecl RtGetVar(void *app, int n);
+unsigned __cdecl RtSetPos(void *app, unsigned id, int x, int y);
+void __stdcall SpriteSetBlitFX(void *sprite, uint32_t fx, uint32_t arg);
+void __stdcall SpriteSetSync(void *hsl, uint32_t on);
 
 #endif

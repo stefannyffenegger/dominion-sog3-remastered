@@ -46,3 +46,9 @@ EXPORTS
     SpriteGetScrollPos@8
     SpriteScroll@16
     SpriteShow@16
+    RtCaptureFrame
+    RtFadeIn
+    RtGetVar
+    RtSetPos
+    SpriteSetBlitFX@12
+    SpriteSetSync@8
