@@ -1158,8 +1158,11 @@ int __stdcall res_copy_file(ResFile *rf, HMMIO dst, HMMIO src)
     return left == 0;
 }
 
-void __stdcall res_cache_file(ResFile *rf, int file)
+/* 0x10069c2f: copies a data file to the local cache. The original takes a third
+ * argument it never uses (the script built-in passes one). */
+void __stdcall res_cache_file(ResFile *rf, int file, uint32_t unused)
 {
+    (void)unused;
     char path[264];
     HMMIO f;
     if (!rf->data[file] || rf->cached[file])

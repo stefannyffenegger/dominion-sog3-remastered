@@ -1228,3 +1228,6 @@ PORTED(0x1000ee08, release_all)
 PORTED(0x1000eef7, cmd_controller_handler)
 PORTED(0x1000ef5a, controllers_focus)
 PORTED(0x1000efe3, controller_take)
+
+/* rt_builtins.c */
+PORTED(0x10003f6d, builtin_call)

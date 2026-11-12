@@ -37,6 +37,8 @@
 #define Collide ORIG(int(__stdcall *)(int, int, int, int, int, int, int, int), 0x1003dcd3)
 #define Distance ORIG(int(__stdcall *)(int, int, int, int), 0x1003deb1)
 #define SquareRoot ORIG(int(__stdcall *)(int), 0x1003df0b)
+#define AudioSetWaveSoundPriority ORIG(void(__stdcall *)(uint8_t *, U, U), 0x100402fa)
+#define RtSetScreenRes ORIG(U(__cdecl *)(uint8_t *, U, U, U), 0x1001d3b3) /* too short to hook */
 #define AudioGetWaveSoundTime ORIG(U(__stdcall *)(uint8_t *, U), 0x1003fbf5)
 
 static int32_t pop(void)
@@ -841,7 +843,474 @@ void __stdcall builtin_call(U fn, U argc)
             lstrcpynA(dst, src, n);
         break;
     }
-    default:
-        ORIG(void(__stdcall *)(U, U), 0x10003f6d)(fn, argc);
+    case 0x7:
+    case 0x8:
+    case 0x9:
+    case 0xa: /* volume of wave (1), MIDI (2), CD (3) or all (0) */
+        put16(c, 0xc6);
+        c[3] = fn == 0x9 ? 0 : fn == 0x7 ? 1 : fn == 0x8 ? 2 : 3;
+        c[2] = pop() < 0;
+        cmd_volume(c);
+        break;
+    case 0xd:
+        put16(c, 0xd);
+        c[6] = (uint8_t)pop();
+        put32(c + 2, popu());
+        cmd_break_loops(c);
+        break;
+    case 0x15:
+    case 0x10e: {
+        U b = argc == 4 || fn == 0x15 ? popu() : 0;
+        U a = argc >= 3 || fn == 0x15 ? popu() : 0;
+        U src = popu(), dst = popu();
+        ret(bitmap_merge_objects(dst, src, (int)a, (int)b, fn == 0x10e));
+        break;
+    }
+    case 0x1b:
+        cursor_set(popu());
+        break;
+    case 0x21:
+        put16(c, 0x10);
+        put32(c + 0x1a, popu());
+        put32(c + 0x16, popu());
+        put32(c + 0x12, popu());
+        put32(c + 0xe, popu());
+        click_cmd(c);
+        break;
+    case 0x24:
+        put16(c, 0x10);
+        c[0x1e] = 1;
+        click_cmd(c);
+        break;
+    case 0x27:
+        put16(c, 0x10);
+        put32(c + 2, popu());
+        click_cmd(c);
+        break;
+    case 0x2e:
+        put16(c, 0x10);
+        c[0x1e] = 1;
+        c[pop() ? 0x1f : 0x20] = 1;
+        click_cmd(c);
+        break;
+    case 0x2f:
+        put16(c, 0x10);
+        c[pop() ? 0x1f : 0x20] = 1;
+        put32(c + 0x1a, popu());
+        put32(c + 0x16, popu());
+        put32(c + 0x12, popu());
+        put32(c + 0xe, popu());
+        click_cmd(c);
+        break;
+    case 0x34:
+        put16(c, 0x10);
+        c[pop() ? 0x1f : 0x20] = 1;
+        put32(c + 2, popu());
+        click_cmd(c);
+        break;
+    case 0x7d:
+        put16(c, 0x10);
+        c[0x1e] = 1;
+        put32(c + 6, popu());
+        click_cmd(c);
+        break;
+    case 0x86:
+        put16(c, 0x10);
+        put32(c + 0xa, popu());
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        click_cmd(c);
+        break;
+    case 0x7e:
+        click_rects_handler(popu());
+        break;
+    case 0x7f:
+        click_objects_handler(popu());
+        break;
+    /* key commands; the record's number is left 0 */
+    case 0x25:
+        put32(c + 2, popu());
+        key_cmd(c);
+        break;
+    case 0x26:
+        c[0xc] = (uint8_t)pop();
+        c[0xd] = (uint8_t)pop();
+        put32(c + 2, popu());
+        key_cmd(c);
+        break;
+    case 0x32:
+        c[pop() ? 0xe : 0xf] = 1;
+        put32(c + 2, popu());
+        key_cmd(c);
+        break;
+    case 0x33:
+        c[pop() ? 0xe : 0xf] = 1;
+        c[0xc] = (uint8_t)pop();
+        c[0xd] = (uint8_t)pop();
+        put32(c + 2, popu());
+        key_cmd(c);
+        break;
+    case 0x81:
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        key_cmd(c);
+        break;
+    case 0x82:
+        put32(c + 6, popu());
+        c[0xc] = (uint8_t)pop();
+        c[0xd] = (uint8_t)pop();
+        put32(c + 2, popu());
+        key_cmd(c);
+        break;
+    case 0x28:
+        builtin_collide();
+        break;
+    case 0x87:
+        builtin_collide_ex();
+        break;
+    case 0x2d: {
+        U hide = popu(), id = popu();
+        ret((int32_t)cmd_set_queue(id, 0, (int)hide));
+        break;
+    }
+    case 0xba: {
+        U queue = popu(), id = popu();
+        ret((int32_t)cmd_set_queue(id, queue, 0));
+        break;
+    }
+    case 0x30:
+        put16(c, 0x60);
+        c[pop() ? 0xb : 0xc] = 1;
+        put32(c + 2, popu());
+        cmd_controller_device(c);
+        break;
+    case 0xb0: {
+        put16(c, 0x60);
+        put32(c + 6, popu());
+        U dev = popu();
+        c[0xa] = dev > 5 ? 2 : (uint8_t)dev;
+        put32(c + 2, popu());
+        cmd_controller_device(c);
+        break;
+    }
+    case 0x80:
+        put16(c, 0x61);
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        ret((int32_t)cmd_controller_handler(c));
+        break;
+    case 0x35:
+        put16(c, 0x2b);
+        c[0xe] = (uint8_t)pop();
+        put32(c + 2, popu());
+        drag_cmd(c);
+        break;
+    case 0x88:
+        put16(c, 0x2b);
+        put32(c + 0xa, popu());
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        drag_cmd(c);
+        break;
+    case 0x43:
+        builtin_date();
+        break;
+    case 0x53:
+        builtin_time();
+        break;
+    case 0x48:
+        builtin_intersect2();
+        break;
+    case 0xe0:
+        builtin_ray_to_rect2();
+        break;
+    case 0x4d: { /* a sprite's position */
+        int32_t *py = pop_ptr(), *px = pop_ptr();
+        U id = popu();
+        if (!obj_check_type(id, TYPE_SPRITE))
+            break;
+        uint8_t *s = sprite_of(id);
+        int32_t pos[2] = {0, 0};
+        if (s)
+            SpriteGetPosition(s, pos);
+        if (px)
+            *px = pos[0];
+        if (py)
+            *py = pos[1];
+        break;
+    }
+    case 0x51: { /* the bitmap ids of a sprite's (up to four) parts */
+        int32_t *p[4];
+        for (int i = 3; i >= 0; i--)
+            p[i] = pop_ptr();
+        U id = popu();
+        if (!obj_check_type(id, TYPE_SPRITE))
+            break;
+        for (int i = 0; i < 4; i++)
+            *p[i] = 0;
+        if (!obj_loaded(id, TYPE_SPRITE))
+            break;
+        uint32_t info[0x17];
+        SpriteGetInfo(sprite_of(id), info);
+        /* the original wrote past its four pointers for sprites of more parts */
+        for (U i = 0; i < info[0xb] && i < 4; i++)
+            if (info[1 + i])
+                *p[i] = *(int32_t *)(uintptr_t)(info[1 + i] + 0x1c);
+        break;
+    }
+    case 0xf1: { /* a sprite's bounds */
+        int32_t *b = pop_ptr(), *r = pop_ptr(), *t = pop_ptr(), *l = pop_ptr();
+        U id = popu();
+        if (!obj_check_type(id, TYPE_SPRITE))
+            break;
+        uint8_t *s = sprite_of(id);
+        if (s) {
+            RECT box;
+            SpriteGetBounds(hsl(), s, &box);
+            *l = box.left;
+            *t = box.top;
+            *r = box.right;
+            *b = box.bottom;
+        }
+        break;
+    }
+    case 0x6e: {
+        U id = popu();
+        timer_remove(id, id == 0xffffffffu);
+        break;
+    }
+    case 0xc5: {
+        uint8_t flag = pop() != 0;
+        U handler = popu(), interval = popu(), id = popu();
+        timer_set(id, handler, interval, flag);
+        break;
+    }
+    case 0x71:
+        put16(c, 0x71);
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        cmd_set_level(c);
+        break;
+    case 0x7c:
+        put16(c, 0x7c);
+        put32(c + 0xa, popu());
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        cmd_offset(c);
+        break;
+    case 0xb8:
+        put16(c, 0xb8);
+        put32(c + 0xa, popu());
+        put32(c + 6, popu());
+        put32(c + 2, popu());
+        cmd_set_position(c);
+        break;
+    case 0x7b:
+        AudioMute(audio(), pop() != 0);
+        break;
+    case 0xdd:
+        AudioMute(audio(), -1);
+        break;
+    case 0x83: {
+        U handler = popu();
+        ret((int32_t)RU(RT_MOUSE_HANDLER));
+        RU(RT_MOUSE_HANDLER) = handler;
+        break;
+    }
+    case 0x8e:
+        cmd_cd_track((uint8_t)pop());
+        break;
+    case 0x90:
+        builtin_play_midi();
+        break;
+    case 0x92:
+        builtin_play_wave();
+        break;
+    case 0x93:
+        builtin_play_wave_ex();
+        break;
+    case 0xcb: {
+        put16(c, 0x14);
+        c[6] = pop() != 0;
+        put32(c + 2, popu());
+        cmd_comp_to_background(c);
+        break;
+    }
+    case 0xd0: {
+        U destroy = pop() == 0;
+        U queue = popu(), to = popu(), from = popu();
+        sprite_transfer(from, to, queue, destroy);
+        break;
+    }
+    case 0xd2:
+        cd_stop();
+        break;
+    case 0xd3:
+        cmd_stop_midi(popu());
+        break;
+    case 0xd4: {
+        int32_t params[1] = {pop()};
+        cmd_stop_wave(popu(), params);
+        break;
+    }
+    case 0xe7:
+        R(uint8_t, 0x95fa) = (uint8_t)pop();
+        SpriteSetSync(hsl(), R(uint8_t, 0x95fa));
+        break;
+    case 0x109:
+        R(uint8_t, 0x95fa) = pop() == 0;
+        SpriteSetSync(hsl(), R(uint8_t, 0x95fa));
+        break;
+    case 0xe8: {
+        U unused = popu();
+        res_cache_file(R(ResFile *, RT_RES), pop(), unused);
+        break;
+    }
+    case 0xf2:
+        res_drop_cache(R(ResFile *, RT_RES), pop());
+        break;
+    case 0xe9:
+        RU(0x3e6f) = popu();
+        break;
+    case 0xec:
+        RU(0x3f2b) = popu();
+        break;
+    case 0xea:
+        scenes_trim();
+        break;
+    case 0xeb: {
+        U c3 = popu(), c2 = popu(), c1 = popu();
+        ret((int32_t)RtSetScreenRes(g_rt, c1, c2, c3));
+        break;
+    }
+    case 0xf0: { /* the full path of the current resource file */
+        char *out = string_var(popu());
+        if (out)
+            MakeFullPath(out, (char *)g_rt + 0x9a54, R(char *, 0x329b));
+        break;
+    }
+    case 0xf3: { /* move the mouse pointer */
+        RU(0x8d87) = popu();
+        RU(0x8d83) = popu();
+        SetCursorPos(RU(0x36c7) + RU(0x8d83), RU(0x36cb) + RU(0x8d87));
+        break;
+    }
+    case 0x100: {
+        U priority = popu(), id = popu();
+        if (obj_is(id, TYPE_WAVE))
+            AudioSetWaveSoundPriority(audio(), obj_entry(id)[0], priority);
+        break;
+    }
+    case 0x103:
+        ret((int32_t)(uintptr_t)FileExist(string_var(popu())));
+        break;
+    case 0x104: { /* 1 when this is the only copy of the game running */
+        U n = 0;
+        HWND w = NULL;
+        for (;;) {
+            const char *title = R(char, 0x9904) ? (char *)g_rt + 0x9904 : (char *)g_rt + 0x9d56;
+            w = FindWindowExA(NULL, w, "VIEW_CLASS", title);
+            if (!w)
+                break;
+            n++;
+        }
+        ret(n <= 1);
+        break;
+    }
+    case 0x105: {
+        U b = popu(), a = popu();
+        if (b && !obj_is(b, TYPE_SPRITE))
+            break;
+        if (!obj_is(a, TYPE_SPRITE))
+            break;
+        uint8_t *sb = b ? sprite_of(b) : NULL;
+        SpriteCompToSprite(hsl(), (U)(uintptr_t)sprite_of(a), (U)(uintptr_t)sb);
+        break;
+    }
+    case 0x106: { /* assert */
+        char *msg = pop_str();
+        if (!pop())
+            rt_script_error(0x76, (U)(uintptr_t)msg);
+        break;
+    }
+    case 0x107: { /* a message box */
+        char *msg = pop_str();
+        RtShowGDISurface(g_rt);
+        MessageBoxA(R(HWND, RT_HWND), msg, "Studio7", 0);
+        RtRestoreFromGDISurface(g_rt);
+        break;
+    }
+    case 0x108: { /* the background's size, or the screen's when there is none */
+        int32_t *h = pop_ptr(), *w = pop_ptr();
+        uint8_t *bg = R(uint8_t *, RT_BACKGROUND);
+        if (bg) {
+            if (w)
+                *w = P(int32_t, bg, 4);
+            if (h)
+                *h = P(int32_t, bg, 0xc);
+            ret(1);
+        } else {
+            if (w)
+                *w = R(int32_t, RT_SCREEN_W);
+            if (h)
+                *h = R(int32_t, RT_SCREEN_H);
+            ret(0);
+        }
+        break;
+    }
+    case 0x10a: {
+        U level = popu(), b = popu(), a = popu();
+        if (a && !obj_is(a, TYPE_SPRITE))
+            break;
+        if (b && !obj_is(b, TYPE_SPRITE))
+            break;
+        uint8_t *sa = a ? sprite_of(a) : NULL, *sb = b ? sprite_of(b) : NULL;
+        sprite_set_level_relative(hsl(), (U)(uintptr_t)sa, (U)(uintptr_t)sb, level);
+        break;
+    }
+    case 0x10b: {
+        U id = popu();
+        SpriteSetTopMost(hsl(), id ? sprite_of(id) : NULL);
+        break;
+    }
+    case 0x10c: /* seconds on the game clock */
+        ret((int32_t)((timeGetTime() - RU(0xb84)) / 1000));
+        break;
+    case 0x10d:
+        RU(0xb84) = timeGetTime() - popu() * 1000;
+        if (RU(0x3f3f))
+            RU(0xb80) = RU(0xb84) + RU(0xb7c);
+        break;
+    case 0x10f: { /* add a bitmap (or rendered text) to a sprite */
+        U bm = popu(), spr = popu();
+        U t = res_type(bm);
+        if ((t != 1 && t != 0x15) || res_type(spr) != TYPE_SPRITE || !obj_is(spr, TYPE_SPRITE))
+            break;
+        uint32_t *se = obj_entry(spr);
+        if (!se)
+            break;
+        uint32_t *e = obj_entry(bm);
+        if (!e)
+            break;
+        if (t == 0x15 && !e[0] &&
+            (!obj_is(bm, 0x15) || !text_render((uint8_t *)(uintptr_t)obj_entry(bm)[2])))
+            break;
+        e[1]++;
+        SpriteAppendBitmaps(hsl(), (uint8_t *)(uintptr_t)se[1], e, 1);
+        break;
+    }
+    /* numbers that do nothing */
+    case 0x4: case 0xe: case 0x10: case 0x11: case 0x13: case 0x14: case 0x17: case 0x1c:
+    case 0x23: case 0x2b: case 0x2c: case 0x31: case 0x36: case 0x3a: case 0x3e: case 0x3f:
+    case 0x40: case 0x42: case 0x54: case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c:
+    case 0x5e: case 0x60: case 0x61: case 0x63: case 0x65: case 0x68: case 0x6c: case 0x6d:
+    case 0x70: case 0x72: case 0x78: case 0x7a: case 0x8a: case 0x8f: case 0x91: case 0x95:
+    case 0x9a: case 0x9c: case 0x9f: case 0xa1: case 0xa2: case 0xa3: case 0xa4: case 0xa7:
+    case 0xa9: case 0xaf: case 0xb1: case 0xb7: case 0xc0: case 0xc2: case 0xc3: case 0xc4:
+    case 0xc6: case 0xc9: case 0xd9: case 0xda: case 0xdb: case 0xdc: case 0xde: case 0xe3:
+    case 0xe4: case 0xe6:
+        break;
+    default: /* numbers past the table do nothing */
+        break;
     }
 }

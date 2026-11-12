@@ -225,7 +225,7 @@ void __cdecl res_delete_cached_files(void);
 void __stdcall res_mark_cached(LPCSTR path, int cached);
 void __stdcall res_uncache(ResFile *rf, int file);
 void __stdcall res_cache_path(ResFile *rf, int file, char *out);
-void __stdcall res_cache_file(ResFile *rf, int file);
+void __stdcall res_cache_file(ResFile *rf, int file, uint32_t unused);
 int __stdcall res_copy_file(ResFile *rf, HMMIO dst, HMMIO src);
 void __stdcall res_drop_cache(ResFile *rf, int file);
 
