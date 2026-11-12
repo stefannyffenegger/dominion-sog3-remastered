@@ -9,77 +9,7 @@
 #include "orig.h"
 #include "crt.h"
 #include "audio.h"
-
-/* the audio context: 0x2fa bytes, fields at the original's (unaligned) offsets */
-#define F(type, ctx, off) (*(type *)((uint8_t *)(ctx) + (off)))
-#define A_WND 0x000           /* HWND for notifications */
-#define A_SERVICE 0x004       /* AudioServiceProc: proc, then its argument */
-#define A_SERVICE_ARG 0x008
-#define A_MUTED 0x00c
-#define A_PAUSED 0x010
-#define A_WAVES_PLAYING 0x020 /* short */
-#define A_WAVES_END 0x022     /* end of the wave sound list at 0xe6 */
-#define A_WAVEOUT 0x026       /* HWAVEOUT, 0 = closed */
-#define A_MIXING 0x02a        /* short */
-#define A_WAVES_ACTIVE 0x02c  /* short */
-#define A_PRIORITY 0x05a
-#define A_FORMAT 0x066
-#define A_WAVE_CHANNELS 0x060 /* short */
-#define A_FADE 0x076
-#define A_WAVES 0x0e6
-#define A_MIDI_CURRENT 0x27a
-#define A_MIDI_END 0x27e      /* end of the MIDI list at 0x2aa */
-#define A_MIDIOUT 0x292
-#define A_MIDI_PAUSED 0x2a2
-#define A_SIZE 0x2fa
-
-/* globals of the original */
-#define g_audio G(uint8_t *, 0x100884bc)      /* the context of the last call */
-#define g_audio_ready G(uint32_t, 0x100884c0)
-#define g_static_ctx ((uint8_t *)ORIG_PTR(0x100884c8))
-#define g_static_used G(uint32_t, 0x100887c4)
-#define g_cd_volume G(uint16_t, 0x1008840c)
-#define g_midi_volume G(uint16_t, 0x1008840e)
-#define g_wave_volume G(uint16_t, 0x10088410)
-#define g_wave_format_mask G(uint16_t, 0x1008840a)
-#define g_profile_cd G(uint32_t, 0x100883f0)
-#define g_no_wave_volume G(uint32_t, 0x100883f4)
-#define g_no_wave G(uint32_t, 0x100883f8)
-#define g_no_midi G(uint32_t, 0x100883fc)
-#define g_remap_drums G(uint32_t, 0x10088400)
-#define g_wave_sync G(uint32_t, 0x10088404)
-#define g_max_wave_buffers G(uint32_t, 0x10088408)
-#define g_wave_caps ((WAVEOUTCAPSA *)ORIG_PTR(0x10088412))
-#define g_midi_caps ((MIDIOUTCAPSA *)ORIG_PTR(0x10088446))
-#define g_cd_open G(uint32_t, 0x1008847a)
-#define g_cd_aux G(uint32_t, 0x1008847e)
-#define g_cd_aux_volume G(DWORD, 0x10088496)
-#define g_cd_owner G(HANDLE, 0x100884aa)
-#define g_cd_aux_found G(uint32_t, 0x100884ae)
-#define g_cd_profile G(uint32_t, 0x100884b2)
-
-/* original functions of the mixer, sequencer and CD player (see above) */
-#define wave_close ORIG(uint32_t(__cdecl *)(void), 0x10040420)
-#define wave_open ORIG(uint32_t(__stdcall *)(void *), 0x1004081f)
-#define wave_pause ORIG(void(__stdcall *)(int), 0x10041036)
-#define wave_apply_mute ORIG(void(__cdecl *)(void), 0x100407d5)
-#define wave_sounds_free ORIG(void(__cdecl *)(void), 0x10041920)
-#define wave_fade_step ORIG(void(__cdecl *)(void), 0x100447fb)
-#define wave_mix ORIG(int(__cdecl *)(void), 0x100449a3)
-#define wave_sound_timeout ORIG(void(__stdcall *)(void *), 0x10044d40)
-#define wave_sound_refill ORIG(void(__stdcall *)(void *), 0x100459c5)
-#define wave_sound_rewind ORIG(void(__stdcall *)(void *), 0x100458d5)
-#define wave_sound_started ORIG(void(__stdcall *)(void *), 0x1003f5e0)
-#define midi_close ORIG(uint32_t(__cdecl *)(void), 0x10043620)
-#define midi_open ORIG(uint32_t(__cdecl *)(void), 0x1004380f)
-#define midi_play_events ORIG(void(__stdcall *)(void *), 0x10044df0)
-#define midi_pause ORIG(void(__stdcall *)(int), 0x100439c9)
-#define midi_apply_mute ORIG(void(__cdecl *)(void), 0x100437bc)
-#define midi_sounds_free ORIG(void(__cdecl *)(void), 0x100414b0)
-#define cd_apply_mute ORIG(void(__cdecl *)(void), 0x10042cb0)
-#define cd_stop ORIG(int(__cdecl *)(void), 0x10042d6d)
-#define cd_close ORIG(void(__cdecl *)(void), 0x10042b13)
-#define wave_reset ORIG(void(__cdecl *)(void), 0x1004117d)
+#include "audio_int.h"
 
 /* ---- settings in dominion.ini [audio] ---- */
 
@@ -324,7 +254,7 @@ void __stdcall audio_waves_restart(int reset)
 int __stdcall AudioStopCD(uint8_t *a)
 {
     g_audio = a;
-    return g_cd_open ? cd_stop() : 0;
+    return g_cd_open ? cd_device_stop() : 0;
 }
 
 /* The game window lost (0) or got (1) the focus: devices are closed and reopened */
