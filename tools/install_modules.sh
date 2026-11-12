@@ -8,7 +8,7 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 DH=${DOMINION_HOME:-$HOME/.local/share/dominion-remastered}
-MODULES="BmpFont.r32 Smacker.r32 WAVEPLAY.R32 NETPLAY.R32 Rtlib32.dll"
+MODULES="BmpFont.r32 Smacker.r32 WAVEPLAY.R32 NETPLAY.R32 Rtlib32.dll ISO.R32"
 
 if [ "${1:-}" = --restore ]; then
     GAME=${2:-$DH/game}
@@ -19,7 +19,7 @@ if [ "${1:-}" = --restore ]; then
         cp -p "$orig" "$GAME/$name"
         echo "restored $name"
     done
-    rm -f "$GAME/WAVEPLAY_orig.R32" "$GAME/Rtlib32_orig.dll" "$GAME/Rtlib32_orig.dll.orig"
+    rm -f "$GAME/WAVEPLAY_orig.R32" "$GAME/Rtlib32_orig.dll" "$GAME/Rtlib32_orig.dll.orig" "$GAME/ISO_orig.dll"
     # the original WAVEPLAY needs the no-CD patch again
     python3 -I "$HERE/patch_game.py" "$GAME" >/dev/null
     exit 0
@@ -46,6 +46,12 @@ if [ -f "$BUILD/src/rtlib/Rtlib32.dll" ]; then
     install_one "$BUILD/src/rtlib/Rtlib32.dll" Rtlib32.dll
     cp -p "$GAME/Rtlib32.dll.orig" "$GAME/Rtlib32_orig.dll"
     python3 -I "$HERE/patch_game.py" "$GAME" palette | grep -v "already patched" || true
+fi
+
+# The game logic: ours wraps the original, which it loads as ISO_orig.dll.
+if [ -f "$BUILD/src/iso/ISO.R32" ]; then
+    install_one "$BUILD/src/iso/ISO.R32" ISO.R32
+    cp -p "$GAME/ISO.R32.orig" "$GAME/ISO_orig.dll" # a forward needs the .dll name
 fi
 
 if [ -f "$BUILD/src/waveplay/WAVEPLAY.R32" ]; then

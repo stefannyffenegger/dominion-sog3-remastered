@@ -14,6 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -543,3 +544,8 @@ Our `Rtlib32.dll` exports its own functions under the original's 430 names and o
 | Wave codec helpers whose callers are all ours (C versions in `codec.c`) | 20 | dead in the original, no hook needed |
 | C runtime | ~400 | not ported; replaced by the system's |
 
+## 6. ISO.R32 (in progress)
+The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibInit`) that the menu scripts call by name. A debug build: 325 named exports, about 2,560 functions (123,000 lines of decompiled C), 405 of them a statically linked C runtime. Only one source file name survives (`E:\dev\rtplugin\iso\src\PathTbl.cpp`, the path tables). It is replaced from the inside the same way as the engine:
+* **The shell** (`src/iso/`): our `ISO.R32` forwards all 325 exports to the original, installed as `ISO_orig.dll` (a forwarded export names its module without an extension, which Windows completes as `.dll`; `ISO_orig.R32` was not found). `hooks.c` patches each function listed in `ported.h` into a jump to ours. The original's globals stay its own while its code still runs.
+* `DOMINION_ISO_ORIGINAL` (names or `all`) and `DOMINION_ISO_TRACE` work as the engine's did.
+* Checked: the empty shell, menu tour and Human mission 1 (no change).

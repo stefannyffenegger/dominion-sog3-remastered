@@ -1,0 +1,16 @@
+# Our ISO.R32 (the game logic). Stage 1: forwards every export to the original (renamed
+# ISO_orig.dll) and patches in the functions we have rewritten (ported.h).
+set(ISO_ORIG_IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/libiso_orig.a)
+add_custom_command(
+    OUTPUT ${ISO_ORIG_IMPLIB}
+    COMMAND ${CMAKE_DLLTOOL} -k -d ${CMAKE_CURRENT_SOURCE_DIR}/iso_orig.def -l ${ISO_ORIG_IMPLIB}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iso_orig.def)
+add_custom_target(iso_orig_implib DEPENDS ${ISO_ORIG_IMPLIB})
+
+add_library(iso SHARED hooks.c iso.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+add_dependencies(iso iso_orig_implib)
+set_target_properties(iso PROPERTIES PREFIX "" OUTPUT_NAME "ISO" SUFFIX ".R32")
+target_compile_options(iso PRIVATE ${DOM_MODULE_FLAGS})
+# away from the original's preferred address (0x10000000) and from our Rtlib32.dll
+target_link_options(iso PRIVATE ${DOM_MODULE_LINK} -Wl,--image-base,0x61000000)
+target_link_libraries(iso PRIVATE ${ISO_ORIG_IMPLIB} kernel32 user32 gdi32 winmm gcc)

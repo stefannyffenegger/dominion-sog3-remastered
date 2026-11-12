@@ -1,0 +1,4 @@
+; The one import that makes the original game logic a load-time dependency of ours.
+LIBRARY ISO_orig.dll
+EXPORTS
+    RtLibInit
