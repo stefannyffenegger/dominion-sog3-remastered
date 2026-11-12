@@ -58,7 +58,6 @@
 #define fn_1002799a ORIG(void(__stdcall *)(int, int), 0x1002799a)
 #define fn_10027bbd ORIG(void(__stdcall *)(int), 0x10027bbd)
 #define fn_10028012 ORIG(void(__stdcall *)(int, int), 0x10028012)
-#define fn_1000ef5a ORIG(void(__stdcall *)(int), 0x1000ef5a)
 
 #define CLICKS ((RtArray *)(g_rt + RT_CLICK_RECTS))
 #define PAIRS ((RtArray *)(g_rt + RT_COLLIDE_PAIRS))
@@ -424,7 +423,7 @@ void __cdecl pause_toggle(void)
     }
     R(uint8_t, RT_PAUSED) = R(uint8_t, RT_PAUSED) == 0;
     plugins_pause(R(uint8_t, RT_PAUSED));
-    fn_1000ef5a((int8_t)R(uint8_t, RT_PAUSED));
+    controllers_focus((int8_t)R(uint8_t, RT_PAUSED));
 }
 
 /* 0x1000bfe9: a key went down */

@@ -46,7 +46,6 @@
 #define RT_NO_PAINT 0x95fa
 #define RT_WINDOW_BOX 0x9600
 
-#define controller_pause(on) C1(0x1000ef5a, on)
 
 /* 0x100268f0: fills the window with the background color (palette entry RT_BKG_INDEX,
  * black for 0) */
@@ -88,7 +87,7 @@ void __stdcall window_activate(HWND hwnd, U active_arg, U unused)
     U changed = RB(RT_APP_ACTIVE) != active;
     if (changed) {
         plugins_notify_18(active);
-        controller_pause(active == 0);
+        controllers_focus(active == 0);
         if (RU(RT_RES))
             AudioActivate(AUDIO, (int)active);
         if (RU(RT_ON_ACTIVATE)) {

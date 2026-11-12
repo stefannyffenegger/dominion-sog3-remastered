@@ -16,7 +16,6 @@
 /* x87 floating point: these stay the original's */
 #define GetAngle ORIG(int(__stdcall *)(int, int), 0x1003dad4)
 #define GetIntersect ORIG(int(__stdcall *)(int *, int, int, int, int, int, int, int, int), 0x1003e660)
-#define controller_event ORIG(void(__stdcall *)(U, U), 0x1000e208)
 
 #define g_dir_codes ((const uint8_t *)ORIG_PTR(0x10075340)) /* per quadrant, 4 bytes apart */
 

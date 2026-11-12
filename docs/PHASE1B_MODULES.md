@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,180 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,197 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -462,6 +462,12 @@ Resource type 0xd: a movie is a command list (show the next frame N times, wait,
 ### Engine core, part 26: built-ins on the script stack (`rt_builtin_misc.c`, 14 functions)
 Built-in functions that take their arguments from the script stack: points on curves and lines, where two lines meet, where a ray leaves a rectangle, the local date and time (hundredths of a second too), collision tests, list entries, and random and sequence script picks whose state is kept per list in a table that grows by 100.
 * Checked: menu tour and Human mission 1 (no change).
+
+### Engine core, part 27: the controller layer (`rt_controller.c`, 17 functions)
+Two players, each bound to a device slot (joysticks 1-2, keyboard sets 3-4, the mouse 5). Presses and releases fire the player's handler; directions pressed within a short time make a combination, matched against up to 50 entries per player (code under a mask, highest priority first) to fire the entry's handler, or kept for the script to read. Dominion never assigns a device, but the focus code runs on every window activation and pause.
+* The original's second combination list, when recording, copies the entry from the first list at the same place; kept as it was.
+* Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
+* With this, every engine-core function is ours except the 270 built-in script functions (one switch) and two exports too short to patch.
 
 ### What's left
 | Part | Functions | Decompiled lines |

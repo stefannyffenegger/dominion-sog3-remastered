@@ -36,7 +36,6 @@
 #define g_keymap ((uint8_t *)ORIG_PTR(0x100751d8))           /* 8 x {key, code} per player */
 #define g_dir_codes ((const uint8_t *)ORIG_PTR(0x100751f8))  /* by direction bits; 0x88 none */
 
-#define controller_event(player, code) C2(0x1000e208, player, code)
 #define dirs_changed(player) C1(0x100248f0, player)
 #define handler_fire(h) C1(0x10022ce9, h)
 
