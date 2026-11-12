@@ -7,7 +7,6 @@
 #include "rt.h"
 #include "rt_interp.h"
 
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
 #define RU(off) R(U, off)
 #define RB(off) R(uint8_t, off)
 #define F32(c, off) P(U, c, off)
@@ -125,7 +124,7 @@ void __stdcall script_message(const uint16_t *msg, U arg)
     RU(RT_MSG_ARG) = arg;
     switch (*msg) {
     case 0x13:
-        C1(0x10025130, F32(msg, 2));
+        sprite_extra_release((U)(F32(msg, 2)));
         break;
     case 0x14:
         PostMessageA(R(HWND, RT_HWND), 0x4c8, 0, 0);
@@ -162,7 +161,7 @@ U __stdcall cmd_exec(const uint8_t *c, int *len)
     case 0x14: cmdw_10016b8d(c); n = 8; break;
     case 0x17: ok = cmdw_10016bc9(c); n = 0x20; break;
     case 0x1a: case 0xca: cmdw_10017c6e(c); n = 0xc; break;
-    case 0x1b: C1(0x10025880, c[2]); n = 4; break;
+    case 0x1b: cursor_set(c[2]); n = 4; break;
     case 0x1c: cmdw_set_cursor_pos(c); n = 0xc; break;
     case 0x1e:
         if (RB(RT_SCRIPT_DEBUG))

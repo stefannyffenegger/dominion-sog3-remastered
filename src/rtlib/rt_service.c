@@ -7,10 +7,6 @@
 #include "rt_service.h"
 
 #define SET(rt) (g_rt = (uint8_t *)(rt))
-#define C0(a) ORIG(U(__cdecl *)(void), a)()
-#define C2(a, x, y) ORIG(U(__stdcall *)(U, U), a)((U)(x), (U)(y))
-#define C3(a, x, y, z) ORIG(U(__stdcall *)(U, U, U), a)((U)(x), (U)(y), (U)(z))
-#define C4(a, x, y, z, w) ORIG(U(__stdcall *)(U, U, U, U), a)((U)(x), (U)(y), (U)(z), (U)(w))
 #define RU(off) R(U, off)
 #define RB(off) R(uint8_t, off)
 /* a byte setter leaves the state block pointer in EAX with the byte in AL */
@@ -151,15 +147,15 @@ void __cdecl RtService(uint8_t *rt)
         return;
     SpriteAnimate(R(uint8_t *, RT_HSL));
     if (RU(RT_SVC_3F3F))
-        C0(0x10024db2);
+        delayed_event_service();
     if (RU(RT_SVC_3E57))
-        C0(0x10024e10);
+        timers_service();
     if (RU(RT_SVC_3E27))
-        C0(0x10024f1c);
+        ctimers_service();
     if (RU(RT_COLLIDE))
         collide_check();
     if (RU(RT_SVC_3E37))
-        C0(0x10015150);
+        movies_service();
     if (RU(RT_EVENTS))
         events_flush();
     if (RU(RT_PLUGINS))
@@ -177,9 +173,9 @@ void __cdecl RtDominionService(uint8_t *rt)
     if (RU(RT_PLUGINS))
         plugins_service();
     if (RU(RT_SVC_3E57))
-        C0(0x10024e10);
+        timers_service();
     if (RU(RT_SVC_3E27))
-        C0(0x10024f1c);
+        ctimers_service();
     if (RU(RT_COLLIDE))
         collide_check();
     if (RU(RT_EVENTS))
@@ -247,7 +243,7 @@ U __cdecl RtGetViewportOrg(uint8_t *rt) { SET(rt); return (U)(uintptr_t)(rt + RT
 U __cdecl RtIsPaused(uint8_t *rt) { SET(rt); return RB(RT_PAUSED); }
 U __cdecl RtIsRunning(uint8_t *rt) { SET(rt); return RB(RT_RUNNING); }
 U __cdecl RtIsTrackingRect(uint8_t *rt) { SET(rt); return RB(RT_TRACKING_RECT); }
-U __cdecl RtMessage(uint8_t *rt, U hwnd, U id, U arg) { SET(rt); return C3(0x10025da8, hwnd, id, arg); }
+U __cdecl RtMessage(uint8_t *rt, U hwnd, U id, U arg) { SET(rt); return (rt_message_box((HWND)(uintptr_t)(hwnd), (UINT)(id), (U)(arg)), (U)0); }
 
 U __cdecl RtProcessRunMsgs(uint8_t *rt)
 {
@@ -257,25 +253,25 @@ U __cdecl RtProcessRunMsgs(uint8_t *rt)
     return (U)(uintptr_t)g_rt;
 }
 
-U __cdecl RtSceneIn(uint8_t *rt, U scene, U arg) { SET(rt); return C2(0x100208b3, scene, arg); }
+U __cdecl RtSceneIn(uint8_t *rt, U scene, U arg) { SET(rt); return (U)scene_enter((char *)(uintptr_t)(scene), (U)(arg)); }
 U __cdecl RtSceneInCallback(uint8_t *rt, U scene, U arg, U fn, U data)
 {
     SET(rt);
-    return C4(0x10021387, scene, arg, fn, data);
+    return (U)scene_enter_cb((char *)(uintptr_t)(scene), (U)(arg), (U)(fn), (U)(data));
 }
-U __cdecl RtSceneOut(uint8_t *rt) { SET(rt); return C0(0x100215c5); }
+U __cdecl RtSceneOut(uint8_t *rt) { SET(rt); return (scene_exit(), (U)0); }
 
 /* leaves the scene and starts the first one again */
 U __cdecl RtSceneRestart(uint8_t *rt)
 {
     SET(rt);
-    C0(0x100215c5);
+    scene_exit();
     SpriteResetLibrary(R(uint8_t *, RT_HSL));
     RB(RT_WINDOW_BOX) = 1;
     RU(RT_BKG_INDEX) = 0;
     InvalidateRect(R(HWND, RT_HWND), NULL, TRUE);
     UpdateWindow(R(HWND, RT_HWND));
-    return C2(0x100208b3, g_rt + RT_START_SCENE, 1);
+    return (U)scene_enter((char *)(uintptr_t)(g_rt + RT_START_SCENE), (U)(1));
 }
 
 U __cdecl RtSetBkgIndex(uint8_t *rt, U v) { SET(rt); return RU(RT_BKG_INDEX) = v; }

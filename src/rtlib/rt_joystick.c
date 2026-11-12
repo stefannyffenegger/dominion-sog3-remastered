@@ -7,9 +7,6 @@
 #include "rt.h"
 #include "rt_joystick.h"
 
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
-#define C2(a, x, y) ORIG(U(__stdcall *)(U, U), a)((U)(x), (U)(y))
-#define C4(a, x, y, z, w) ORIG(U(__stdcall *)(U, U, U, U), a)((U)(x), (U)(y), (U)(z), (U)(w))
 #define RU(off) R(U, off)
 #define RB(off) R(uint8_t, off)
 
@@ -36,8 +33,8 @@
 #define g_keymap ((uint8_t *)ORIG_PTR(0x100751d8))           /* 8 x {key, code} per player */
 #define g_dir_codes ((const uint8_t *)ORIG_PTR(0x100751f8))  /* by direction bits; 0x88 none */
 
-#define dirs_changed(player) C1(0x100248f0, player)
-#define handler_fire(h) C1(0x10022ce9, h)
+#define dirs_changed(player) ctimer_remove((U)(player))
+#define handler_fire(h) (U)script_run((U)(h))
 
 #define SLOTS 0x11
 #define NO_DIR 0x88
@@ -335,7 +332,7 @@ U __stdcall key_filter_up(U key)
         uint8_t before = g_dir_codes[RB(RT_DIRS + player)];
         RB(RT_DIRS + player) &= (uint8_t)~(code >> 4);
         if (RB(RT_DIRS + player) && before != NO_DIR) {
-            C4(0x10024c69, player, 200, ORIG_PTR(0x10011195), 0);
+            ctimer_set((U)(player), (U)(200), (U)((void *)key_dir_settle), (uint8_t)(0));
             return 0;
         }
         dirs_changed(player);

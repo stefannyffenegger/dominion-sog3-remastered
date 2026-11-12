@@ -492,7 +492,7 @@ An export (hand-written assembly) that finds a string in a list of strings, with
 
 ### Cutting loose from the original, step 1: direct calls
 Goal: our `Rtlib32.dll` stands alone and `Rtlib32_orig.dll` goes. Steps: (1) calls to the original that now land in our code anyway become direct calls; (2) the C runtime functions still borrowed; (3) the x87 math, rewritten and checked bit for bit; (4) the two short exports; (5) the audio system; (6) the original's globals and tables become ours; (7) our DLL exports its own functions instead of forwarding, and the hooks go.
-* Step 1 done: 70 calls that went through the original's address to our hook now call our functions. `ExternalCall` takes any number of arguments (the original's own version handled more than 64). `RtCaptureFrame`'s second argument is a name prefix, not an id.
+* Step 1 done: 70 calls that went through the original's address to our hook now call our functions, and (after the audio port) another 60 through small per-file helpers, rewritten as typed calls from the functions' prototypes; callbacks handed to Windows and to the sprite library are ours too. `ExternalCall` takes any number of arguments (the original's own version handled more than 64). `RtCaptureFrame`'s second argument is a name prefix, not an id.
 * Exports whose function returns nothing (`RtShowGDISurface`, `RtPauseMovies`, `RtCursor`, ...) returned whatever was left in EAX; ours return 0. The game ignores these values.
 * Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
 

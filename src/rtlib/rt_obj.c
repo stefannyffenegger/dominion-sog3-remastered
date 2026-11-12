@@ -120,7 +120,7 @@ uint8_t *__stdcall obj_load(uint32_t id, uint32_t *size)
         return ResLoadResource(RES, id, size);
     int msgs = SpriteSetSendMsg(HSL, 0);
     load_progress();
-    void *old = ResSetCallBack(RES, (void(__stdcall *)(void))ORIG_PTR(0x1002635d), 0x2000);
+    void *old = ResSetCallBack(RES, (void(__stdcall *)(void))(void *)load_progress, 0x2000);
     uint8_t loading = R(uint8_t, RT_LOADING);
     R(uint8_t, RT_LOADING) = 1;
     uint32_t loading_id = R(uint32_t, RT_LOADING_ID);

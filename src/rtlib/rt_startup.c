@@ -8,10 +8,6 @@
 #include "rt_startup.h"
 
 typedef uint32_t U;
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
-#define C2(a, x, y) ORIG(U(__stdcall *)(U, U), a)((U)(x), (U)(y))
-#define C3(a, x, y, z) ORIG(U(__stdcall *)(U, U, U), a)((U)(x), (U)(y), (U)(z))
-#define C0(a) ORIG(U(__cdecl *)(void), a)()
 #define RU(off) R(U, off)
 
 #define g_static_rt ((uint8_t *)ORIG_PTR(0x1007cef8)) /* the first state block */
@@ -82,7 +78,7 @@ void __stdcall joystick_calibrate(int n)
 /* 0x1001df85: the full-screen window, its DC and the engine's seven cursors */
 U __stdcall window_create(U arg)
 {
-    if (!(uint16_t)C1(0x10026a57, arg))
+    if (!(uint16_t)(U)window_class_register((U)(arg)))
         return 0;
     HWND w = CreateWindowExA(WS_EX_APPWINDOW, "VIEW_CLASS", (LPCSTR)(g_rt + RT_APP_NAME), WS_POPUP | WS_VISIBLE, 0, 0,
                              GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, g_module, NULL);
@@ -104,21 +100,21 @@ U __stdcall window_create(U arg)
 /* 0x1001e1b6: sound, sprites (8 bits), resources, utilities, and the callbacks */
 U __cdecl libraries_init(void)
 {
-    RU(RT_AUDIO) = C2(0x1003ec6e, RU(RT_HWND), 0x400);
+    RU(RT_AUDIO) = (U)(uintptr_t)AudioInitLibrary((HWND)(uintptr_t)(RU(RT_HWND)), (uint32_t)(0x400));
     if (!RU(RT_AUDIO))
         return 0;
     RU(RT_DEPTH) = 8;
-    RU(RT_HSL) = C3(0x100554be, RU(RT_HWND), RU(RT_DC), RU(RT_DEPTH));
+    RU(RT_HSL) = (U)(uintptr_t)SpriteInitLibrary((HWND)(uintptr_t)(RU(RT_HWND)), (HDC)(uintptr_t)(RU(RT_DC)), (int)(RU(RT_DEPTH)));
     if (!RU(RT_HSL))
         return 0;
-    RU(RT_HRL) = C1(0x100699a2, g_module);
+    RU(RT_HRL) = (U)(uintptr_t)ResInitLibrary((HMODULE)(uintptr_t)(g_module));
     if (!RU(RT_HRL))
         return 0;
-    if (!C0(0x1003e97e))
+    if (!(U)UtilsInitLibrary())
         return 0;
-    C2(0x10054cb8, RU(RT_HSL), ORIG_PTR(0x10021fab));
-    C2(0x1005bfe2, RU(RT_HSL), ORIG_PTR(0x100159ec));
-    C3(0x1004d6e8, RU(RT_HSL), ORIG_PTR(0x10044600), RU(RT_AUDIO));
+    SpriteSetMessageProc((uint8_t *)(uintptr_t)(RU(RT_HSL)), (uint32_t)((void *)script_message));
+    SpriteSetMovieProc((uint8_t *)(uintptr_t)(RU(RT_HSL)), (uint32_t)((void *)movie_step));
+    SpriteSetServiceProc((uint8_t *)(uintptr_t)(RU(RT_HSL)), (SpriteServiceFn)((void *)AudioService), (uint32_t)(RU(RT_AUDIO)));
     return 1;
 }
 
@@ -141,7 +137,7 @@ uint8_t *__cdecl RtInit(U unused, U arg)
     LPCSTR app = (LPCSTR)(g_rt + RT_APP_NAME);
     R(uint8_t, RT_ALLOW_DD) = (uint8_t)GetPrivateProfileIntA("DirectDraw", "AllowDirectDraw", 1, "DOMINION.INI");
     GetViewportOrgEx(R(HDC, RT_DC), (POINT *)(g_rt + 0x36c7));
-    R(uint8_t, RT_95CB) = (uint8_t)C2(0x100412ed, RU(RT_AUDIO), 0);
+    R(uint8_t, RT_95CB) = (uint8_t)(U)AudioGetWaveDeviceInfo((uint8_t *)(uintptr_t)(RU(RT_AUDIO)), (uint32_t *)(uintptr_t)(0));
     R(uint8_t, RT_95FE) = 1;
     R(uint8_t, RT_BKG_SCROLLS) = R(uint8_t, RT_95FE);
     R(uint8_t, RT_PALETTE_DEVICE) = 1; /* original: (RASTERCAPS & RC_PALETTE) != 0 */
@@ -161,7 +157,7 @@ uint8_t *__cdecl RtInit(U unused, U arg)
     if (RU(RT_JOYSTICKS) > 1)
         joystick_calibrate(1);
     if (!R(uint8_t, RT_COMPONENT))
-        C0(0x100103c0);
+        joystick_capture();
     RU(RT_INPUT_TIMEOUT) = GetPrivateProfileIntA("Input", "Timeout", 200, "DOMINION.INI");
     return g_rt;
 }
@@ -179,14 +175,14 @@ U __cdecl RtFree(uint8_t *rt)
             memset(rec, 0, sizeof rec);
             P(U, rec, 2) = RU(RT_ON_EXIT);
             RU(RT_ON_EXIT) = 0;
-            C1(0x100220dd, rec);
+            handler_record_run((const uint8_t *)(uintptr_t)(rec));
         }
         if (R(uint8_t, RT_95E3))
-            C0(0x10010d00);
-        C0(0x10025ff9);
-        C1(0x10069990, 0);
-        C1(0x10055321, RU(RT_HSL));
-        C1(0x1003ebf1, RU(RT_AUDIO));
+            joystick_release();
+        flush_engine_messages();
+        ResExitLibrary((uint32_t)(0));
+        SpriteExitLibrary((uint8_t *)(uintptr_t)(RU(RT_HSL)));
+        AudioExitLibrary((uint8_t *)(uintptr_t)(RU(RT_AUDIO)));
         for (int i = 0; i < 7; i++)
             if (RU(CURSOR_FIELDS[i]))
                 DestroyCursor(R(HCURSOR, CURSOR_FIELDS[i]));
@@ -217,7 +213,7 @@ U __cdecl colors_check(void)
 /* 0x1001e512, 0x1001e583: subclass the window for input kinds 3 and 1 */
 U __cdecl input_hook_3(void)
 {
-    RU(RT_WNDPROC) = (U)SetWindowLongA(R(HWND, RT_HWND), GWL_WNDPROC, (LONG)(uintptr_t)ORIG_PTR(0x1001f190));
+    RU(RT_WNDPROC) = (U)SetWindowLongA(R(HWND, RT_HWND), GWL_WNDPROC, (LONG)(uintptr_t)(void *)saver_wndproc);
     if (!RU(RT_WNDPROC))
         return 0;
     SetWindowPos(R(HWND, RT_HWND), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -226,11 +222,11 @@ U __cdecl input_hook_3(void)
 
 U __cdecl input_hook_1(void)
 {
-    RU(RT_WNDPROC) = (U)SetWindowLongA(R(HWND, RT_HWND), GWL_WNDPROC, (LONG)(uintptr_t)ORIG_PTR(0x1002818a));
+    RU(RT_WNDPROC) = (U)SetWindowLongA(R(HWND, RT_HWND), GWL_WNDPROC, (LONG)(uintptr_t)(void *)wallpaper_wndproc);
     if (!RU(RT_WNDPROC))
         return 0;
     SetClassLongA(R(HWND, RT_HWND), GCL_STYLE, GetClassLongA(R(HWND, RT_HWND), GCL_STYLE) | CS_DBLCLKS);
-    C0(0x10027feb);
+    wallpaper_single();
     return 1;
 }
 
@@ -243,7 +239,7 @@ U __cdecl input_hook(void)
     case 3:
         return input_hook_3();
     case 2:
-        return C0(0x1002335d) & 0xff;
+        return (U)input_hook_2() & 0xff;
     }
     return 1;
 }
@@ -259,8 +255,8 @@ U __cdecl RtStartup(HMODULE module, U arg, LPCSTR cmdline)
     char *dot = crt_strrchr(path, '.');
     if (dot)
         lstrcpyA(dot, (LPCSTR)ORIG_PTR(0x10075560));
-    C2(0x1001e610, cmdline, path);
-    if (!colors_check() || !rt_measure_memory() || !input_hook() || !C2(0x100208b3, path, 0))
+    cmdline_parse((LPCSTR)(uintptr_t)(cmdline), (char *)(uintptr_t)(path));
+    if (!colors_check() || !rt_measure_memory() || !input_hook() || !(U)scene_enter((char *)(uintptr_t)(path), (U)(0)))
         PostMessageA(R(HWND, RT_HWND), WM_CLOSE, 0, 0);
     return (U)(uintptr_t)g_rt;
 }

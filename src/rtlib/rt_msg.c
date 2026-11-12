@@ -109,7 +109,7 @@ U __stdcall res_extract_to_file(LPSTR path, U id)
     HMMIO h = mmioOpenA(path, NULL, MMIO_CREATE | MMIO_WRITE);
     if (!h)
         return 0;
-    void *old = ResSetCallBack(RES, (void(__stdcall *)(void))ORIG_PTR(0x1002635d), 0x2000);
+    void *old = ResSetCallBack(RES, (void(__stdcall *)(void))(void *)load_progress, 0x2000);
     U r = (U)ResExtractFile(RES, id & 0xffff, h);
     ResSetCallBack(RES, (void(__stdcall *)(void))old, 0x2000);
     mmioClose(h, 0);

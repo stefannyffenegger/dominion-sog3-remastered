@@ -7,8 +7,6 @@
 #include "rt.h"
 #include "rt_scene.h"
 
-#define C0(a) ORIG(U(__cdecl *)(void), a)()
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
 #define RU(off) R(U, off)
 #define RB(off) R(uint8_t, off)
 #define HSL R(uint8_t *, RT_HSL)
@@ -62,8 +60,6 @@
 #define SCENE_SIZE 0x10c
 #define VARS_SIZE 0x4e24
 
-#define flush_messages(m) C1(0x100260b4, m)
-#define script_run(h) C1(0x10022ce9, h)
 
 static uint8_t *scene_entry(U i) { return R(uint8_t *, RT_SCENES) + i * SCENE_SIZE; }
 
@@ -205,7 +201,7 @@ U __stdcall scene_load(char *name, U progress, U cb, U arg)
     if (RB(RT_PLAYER) || RB(RT_COMPONENT))
         scene_names_load();
     if (progress)
-        ResSetCallBack(RES, (void(__stdcall *)(void))ORIG_PTR(0x1002635d), 0x2000);
+        ResSetCallBack(RES, (void(__stdcall *)(void))(void *)load_progress, 0x2000);
     scene_palette_load();
     RB(RT_LOADING) = 1;
     RB(RT_SHOWN) = 1;
@@ -322,7 +318,7 @@ U __stdcall scene_read(char *path)
                 return 0;
         }
         lstrcpyA((LPSTR)scene_entry(RU(RT_SCENE_COUNT)), name);
-        ResEnumVariables(RES, (int(__stdcall *)(uint32_t, uint32_t))ORIG_PTR(0x1001f550));
+        ResEnumVariables(RES, (int(__stdcall *)(uint32_t, uint32_t))(void *)scene_var_set);
         RU(RT_SCENE) = RU(RT_SCENE_COUNT);
         RU(RT_SCENE_COUNT)++;
     }
@@ -492,7 +488,7 @@ void __cdecl scene_exit(void)
         memset(rec, 0, sizeof rec);
         P(U, rec, 2) = RU(0x3e6f);
         RU(0x3e6f) = 0;
-        C1(0x100220dd, rec);
+        handler_record_run((const uint8_t *)(uintptr_t)(rec));
     }
     if (!RB(RT_DIRECTDRAW))
         paint_black(R(HDC, RT_DC));

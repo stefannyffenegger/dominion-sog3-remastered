@@ -10,7 +10,6 @@
 #define RES R(ResFile *, RT_RES)
 #define RT_TOPMOST 0x0cd4
 #define RT_FIRST_COPY 0x3dfb
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
 
 /* SpriteGetInfo's block (0x5c bytes): +4 the images, +0x2c their number */
 #define INFO_SIZE 0x5c
@@ -96,7 +95,7 @@ U __stdcall sprite_images_take(U id, const uint8_t *info)
         ids[i] = image_id(info_image(info, i));
         obj_entry(ids[i])[1]++;
         if (ResGetType(RES, ids[i]) == 0xd)
-            C1(0x100167d0, obj_entry(ids[i])[2]);
+            movie_stop_if((Movie *)(uintptr_t)(obj_entry(ids[i])[2]));
         if (R(uint8_t *, RT_TOPMOST) == s && !SpriteAppendBitmap(HSL, s, (U)(uintptr_t)info_image(info, i)))
             return 0;
     }

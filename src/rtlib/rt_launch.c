@@ -137,7 +137,7 @@ U __cdecl watch_poll(void)
 /* 0x1002335d: run mode 2 (/k): subclass the window */
 U __cdecl input_hook_2(void)
 {
-    RU(RT_WNDPROC) = (U)SetWindowLongA(R(HWND, RT_HWND), GWL_WNDPROC, (LONG)(uintptr_t)ORIG_PTR(0x10023612));
+    RU(RT_WNDPROC) = (U)SetWindowLongA(R(HWND, RT_HWND), GWL_WNDPROC, (LONG)(uintptr_t)(void *)kiosk_wndproc);
     return RU(RT_WNDPROC) != 0;
 }
 

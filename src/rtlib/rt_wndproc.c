@@ -5,7 +5,6 @@
 #include "rt.h"
 #include "rt_wndproc.h"
 
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
 #define RU(off) R(U, off)
 #define RB(off) R(uint8_t, off)
 #define HSL R(uint8_t *, RT_HSL)
@@ -142,7 +141,7 @@ ATOM __stdcall window_class_register(U skip)
         UnregisterClassA("VIEW_CLASS", inst);
     memset(&wc, 0, sizeof wc);
     wc.style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
-    wc.lpfnWndProc = (WNDPROC)ORIG_PTR(0x10026b17);
+    wc.lpfnWndProc = (WNDPROC)(void *)window_proc;
     wc.hInstance = inst;
     wc.hIcon = LoadIconA(inst, MAKEINTRESOURCEA(1000));
     wc.hCursor = LoadCursorA(NULL, IDC_ARROW);

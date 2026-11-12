@@ -72,7 +72,7 @@ U __stdcall movie_read_run(Movie *m)
 int __stdcall movie_read_data(Movie *m)
 {
     SpriteSetSendMsg(HSL, 0);
-    void *old = ResSetCallBack(RES, (void(__stdcall *)(void))ORIG_PTR(0x1002635d), 0x2000);
+    void *old = ResSetCallBack(RES, (void(__stdcall *)(void))(void *)load_progress, 0x2000);
     MovieBuf *b = m->read_buf;
     int r = ResReadResourceData(RES, m->id_data + 1, b->data + b->fill, (int)m->read_size, (int)m->read_offset);
     b->fill += m->read_size;
