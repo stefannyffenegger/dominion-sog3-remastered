@@ -491,10 +491,12 @@ An export (hand-written assembly) that finds a string in a list of strings, with
 * Checked: the comparison above and the menu tour (no change).
 
 ### What's left
-| Part | Functions | Decompiled lines |
+| Part | Functions | Status |
 |---|---|---|
-| Application core and script interpreter (`Rt*`) | ~600 | 21,400 |
-| Sprites and blitters (`Sprite*`, partly hand-written assembly) | ~190 | 12,300 |
-| Audio mixer, MIDI, CD (unused by Dominion, see above) | ~170 | 4,800 |
-| C runtime (not ported; replaced by the system's) | ~430 | |
+| Engine core, resources, utilities, sprites, display | 1,206 | **ours** |
+| Math with x87 floating point (`GetAngle`, `GetIntersect`, `Collide`, `Distance`, `SquareRoot`) | 5 | kept original on purpose: game logic may depend on their exact results |
+| Exports too short to hook (`RtEnableDirectDraw`, `RtSetScreenRes`) | 2 | original |
+| Sprite assembly routines whose callers are all ours (C versions in `blit.c`) | 14 | dead in the original, no hook needed |
+| Audio mixer, MIDI, CD (unused by Dominion, see above) | ~190 | original |
+| C runtime | ~400 | not ported; replaced by the system's |
 
