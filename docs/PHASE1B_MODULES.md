@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,138 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,166 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -452,6 +452,11 @@ A device bitmap becomes a sprite bitmap, its colors added to the palette (most u
 
 ### Engine core, part 24: geometry built-ins and mouse steering (`rt_geom.c`, 9 functions)
 The script built-ins for angles, sine and cosine, where two lines meet, and where a ray from a point leaves a rectangle; and the unused controller layer's mouse steering (the mouse as a joystick: a dead zone of 40 pixels around the centre, held within 60, the direction from the angle). `GetAngle` and `GetIntersect`, which use x87 floating point, stay the original's.
+* Checked: menu tour and Human mission 1 (no change).
+
+### Engine core, part 25: the engine's movies (`rt_movie.c`, 28 functions)
+Resource type 0xd: a movie is a command list (show the next frame N times, wait, start the sound, timing on or off, run a script command), a frame table and the frame data. Frames (full or changes) and sound are read from the resource file into ten 65,000-byte buffers ahead of playing, and the movie is shown as a sprite's image. A movie more than half a second behind drops change frames; `RtPauseMovies` stops the clocks. Up to four play at once. A trace during the tests showed Dominion never opens one (its videos are Smacker files), so this is an untested port.
+* The command runner (0x10015e27) takes the sprite as an unused second argument, which the decompile had dropped.
 * Checked: menu tour and Human mission 1 (no change).
 
 ### What's left

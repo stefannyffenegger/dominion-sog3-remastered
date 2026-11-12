@@ -35,6 +35,7 @@
 #include "rt_wallpaper.h"
 #include "rt_print.h"
 #include "rt_geom.h"
+#include "rt_movie.h"
 #include "rt_script.h"
 #include "rt_input.h"
 #include "rt_fade.h"
