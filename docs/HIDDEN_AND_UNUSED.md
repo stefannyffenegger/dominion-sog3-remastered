@@ -47,6 +47,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** Tile debugging leftovers: the tile engine can build a tile-shaped test pattern (edges in color 10, the upper half filled with 125, the lower with 115, the middle rows 225 and 230; 0x1005c010), draw any rectangle of a tile (0x1005c99a) and draw a frame in color 9 (0x1005df6e). Nothing calls them.
 
 ## The engine's own sound system, unused
+**code.** Its `.wav` reader and writer know a second format besides PCM: RIFF type "WAV7" instead of "WAVE", 7th Level's own compressed wave (a 10-byte header, then 4-bit IMA ADPCM). The engine can save 16-bit sounds in it.
+
 **traced.** The engine has a complete sound system of about 200 functions: a software wave mixer on `waveOut` (with priorities, loops, fades and resampling), a MIDI sequencer (with a `RemapMidiDrums` option) and CD audio over MCI. Dominion never opens any of these devices. All its sound and music go through `WAVEPLAY.R32` (DirectSound and MCI CD audio), which only uses the engine's audio for a per-frame hook. Only 11 of the 200 functions ran.
 
 ## Multiplayer

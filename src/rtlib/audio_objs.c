@@ -239,13 +239,6 @@ uint32_t __stdcall AudioDestroyWave(uint8_t *a, uint8_t *s)
 
 /* ---- a MIDI sound from a file ---- */
 
-/* a file source (0x14 bytes): the file, position, ?, in memory, the data */
-typedef struct FileSource {
-    HMMIO f;
-    uint32_t pos, unused, in_memory;
-    uint8_t *data;
-} FileSource;
-
 /* 0x100420e5 */
 void *__stdcall file_source_close(FileSource *s)
 {

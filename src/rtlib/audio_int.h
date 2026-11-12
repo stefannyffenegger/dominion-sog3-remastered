@@ -160,7 +160,12 @@ void __cdecl midi_sounds_free(void);
 
 /* audio_objs.c */
 struct Source;
-struct FileSource;
+/* a file source (0x14 bytes): the file, position, packed (WAV7), in memory, the data */
+typedef struct FileSource {
+    HMMIO f;
+    uint32_t pos, packed, in_memory;
+    uint8_t *data;
+} FileSource;
 int __stdcall midi_source_close(uint8_t *m);
 uint8_t *__stdcall midi_sound_remove(uint8_t *m);
 void __stdcall midi_sound_free(uint8_t *m);
@@ -176,13 +181,26 @@ uint8_t *__cdecl wave_sound_alloc(void);
 int __stdcall wave_sound_load(uint8_t *s, const struct Source *src, const uint8_t *info);
 uint8_t *__stdcall AudioCreateWave(uint8_t *a, const struct Source *src, const uint8_t *info);
 uint32_t __stdcall AudioDestroyWave(uint8_t *a, uint8_t *s);
-void *__stdcall file_source_close(struct FileSource *s);
-void __stdcall file_source_close_cb(struct FileSource *s);
-uint32_t __stdcall file_source_read(struct FileSource *s, void *buf, uint32_t n);
-int __stdcall file_source_rewind(struct FileSource *s);
-struct FileSource *__stdcall file_source_open(LPSTR path);
+void *__stdcall file_source_close(FileSource *s);
+void __stdcall file_source_close_cb(FileSource *s);
+uint32_t __stdcall file_source_read(FileSource *s, void *buf, uint32_t n);
+int __stdcall file_source_rewind(FileSource *s);
+FileSource *__stdcall file_source_open(LPSTR path);
 LONG __stdcall mmio_size(HMMIO f);
 uint8_t *__stdcall midi_create_from_file(uint8_t *a, LPSTR path, uint32_t unused);
+
+/* audio_files.c */
+int __stdcall wave_file_riff(FileSource *fs);
+int __stdcall wave_file_format(HMMIO f, WAVEFORMAT *fmt);
+DWORD __stdcall wave_file_data(HMMIO f);
+int __stdcall wave_file_info(FileSource *fs, uint8_t *info);
+uint8_t *__stdcall AudioCreateWaveFileSound(uint8_t *a, LPSTR path, uint8_t flags);
+int __stdcall wave_file_unpack(HMMIO f, int16_t *out, const uint8_t *fmt);
+uint8_t *__stdcall wave_file_read(HMMIO f, int packed, uint8_t *out);
+uint8_t *__stdcall wave_file_load(LPSTR path, uint8_t *out);
+int __stdcall wave_file_write_cb(uint32_t f, void *buf, uint32_t n);
+int __stdcall wave_file_write_packed(HMMIO f, const int16_t *data, uint32_t n, const uint8_t *fmt);
+int __stdcall wave_file_save(LPSTR path, const uint8_t *fmt, const int16_t *data, uint32_t size, int pack);
 
 /* not ported yet */
 #define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
