@@ -565,3 +565,7 @@ The power bar (its frame and the "<n>% total power" text), the scroll box for th
 * Original quirks kept: the radar check compares the box's new y with the stored one before negating it, so it reports a move nearly every time; the scroll box is left unset for screen widths other than 640, 800, 1024 and 1280 (ours takes 640's).
 * The radar box divides with the x87 at the precision the game sets, as the original did (`long double` in our code), and truncates the way `__ftol` does.
 * Checked: menu tour, Human mission 1 (no change), Alt+F4 at the main menu, and a key-scrolling run with `KeyboardScrolling=1` (identical to the original).
+### Part 4: markers, straight lines, chat lines, display timing (`display.c`, 10 functions, 0x10005bb1-0x100065c3)
+Four marker sprites (show, hide), the direction from one unit to another when it lies on one of the eight straight lines, and whether the way along it is clear (it gives up after 20 empty cells). The multiplayer chat lines: up to five of the newest at the top left, drawn with BmpFont in the sender's colours, dropped when they expire. A lookup in the game's 2D tables, and the display process's frame delay.
+* `BF_BlastText` is still called through the original's import (which reaches our BmpFont); the text is copied into the engine's buffer of a string resource first, as the original does.
+* Checked: menu tour, Human mission 1 (no change), Alt+F4 at the main menu, and a two-player match with two chat lines (`work/chat.sh`): the lines look the same as the original's and disappear.
