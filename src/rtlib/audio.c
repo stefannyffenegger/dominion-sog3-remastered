@@ -193,7 +193,7 @@ void __stdcall AudioService(uint8_t *a)
     if (F(void *, a, A_SERVICE))
         F(ServiceFn, a, A_SERVICE)(F(void *, a, A_SERVICE_ARG));
     if (!F(HWAVEOUT, a, A_WAVEOUT) ||
-        (F(int16_t, a, A_MIXING) == 0 && F(int16_t, a, A_WAVES_PLAYING) == 0)) {
+        (F(int16_t, a, A_WAVE_COUNT) == 0 && F(int16_t, a, A_WAVES_PLAYING) == 0)) {
         timeGetTime(); /* original: result unused */
         return;
     }

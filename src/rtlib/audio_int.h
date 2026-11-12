@@ -14,7 +14,7 @@
 #define A_WAVES_PLAYING 0x020 /* short */
 #define A_WAVES_END 0x022     /* end of the wave sound list at 0xe6 */
 #define A_WAVEOUT 0x026       /* HWAVEOUT, 0 = closed */
-#define A_MIXING 0x02a        /* short */
+#define A_WAVE_COUNT 0x02a    /* wave sounds made (short) */
 #define A_WAVES_ACTIVE 0x02c  /* short */
 #define A_PRIORITY 0x05a
 #define A_FORMAT 0x066
@@ -47,6 +47,7 @@
 #define A_BUFFERS 0x086       /* 8 slots of 0xc bytes: WAVEHDR *, data, bytes used */
 #define A_PAUSE_TIME 0x276
 #define A_MIDIS 0x2aa         /* MIDI sound list, to A_MIDI_END */
+#define A_MIDI_COUNT 0x29e    /* (short) */
 
 /* a MIDI sound */
 #define M_LOOPS_LEFT 0x2c
@@ -67,6 +68,7 @@
 #define W_RESAMPLED 0x87
 #define W_NO_PRIORITY 0x89
 #define W_REPEAT 0x8a         /* plays again after a random delay */
+#define W_IN_MEMORY 0x86      /* read whole, else streamed */
 #define W_SHIFT 0x8e
 #define W_VOLUME 0x8f         /* 0-16 */
 #define W_FADE_VOLUME 0x90
@@ -156,17 +158,42 @@ void __stdcall AudioSetWaveFormats(uint8_t *a, uint16_t formats);
 void __stdcall AudioSetWaveVolume(uint8_t *a, uint32_t v);
 void __cdecl midi_sounds_free(void);
 
+/* audio_objs.c */
+struct Source;
+struct FileSource;
+int __stdcall midi_source_close(uint8_t *m);
+uint8_t *__stdcall midi_sound_remove(uint8_t *m);
+void __stdcall midi_sound_free(uint8_t *m);
+uint8_t *__cdecl midi_sound_alloc(void);
+int __stdcall midi_sound_load(uint8_t *m, const struct Source *src, const uint32_t *info);
+uint8_t *__stdcall AudioCreateMidi(uint8_t *a, const struct Source *src, const uint32_t *info);
+uint32_t __stdcall AudioDestroyMidi(uint8_t *a, uint8_t *m);
+void __stdcall wave_source_close(uint8_t *s);
+uint8_t *__stdcall wave_sound_remove(uint8_t *s);
+void __stdcall wave_sound_free(uint8_t *s);
+void __cdecl wave_sounds_free(void);
+uint8_t *__cdecl wave_sound_alloc(void);
+int __stdcall wave_sound_load(uint8_t *s, const struct Source *src, const uint8_t *info);
+uint8_t *__stdcall AudioCreateWave(uint8_t *a, const struct Source *src, const uint8_t *info);
+uint32_t __stdcall AudioDestroyWave(uint8_t *a, uint8_t *s);
+void *__stdcall file_source_close(struct FileSource *s);
+void __stdcall file_source_close_cb(struct FileSource *s);
+uint32_t __stdcall file_source_read(struct FileSource *s, void *buf, uint32_t n);
+int __stdcall file_source_rewind(struct FileSource *s);
+struct FileSource *__stdcall file_source_open(LPSTR path);
+LONG __stdcall mmio_size(HMMIO f);
+uint8_t *__stdcall midi_create_from_file(uint8_t *a, LPSTR path, uint32_t unused);
+
 /* not ported yet */
-#define midi_sound_free ORIG(void(__stdcall *)(uint8_t *), 0x10041514)
+#define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
+#define AudioPrepareMidiData ORIG(uint8_t *(__stdcall *)(void *, uint32_t, uint32_t *), 0x10043bd0)
 #define midi_stop_playing ORIG(void(__cdecl *)(void), 0x10044fa2)
 #define midi_all_notes_off ORIG(void(__cdecl *)(void), 0x10043a33)
 #define midi_channel_off ORIG(void(__stdcall *)(uint32_t), 0x10043a96)
 #define resample_setup ORIG(uint32_t(__stdcall *)(void *, void *, void *, uint32_t), 0x100452e0)
-#define wave_sounds_free ORIG(void(__cdecl *)(void), 0x10041920)
 #define wave_fade_step ORIG(void(__cdecl *)(void), 0x100447fb)
 #define wave_mix ORIG(int(__cdecl *)(void), 0x100449a3)
 #define wave_sound_timeout ORIG(void(__stdcall *)(void *), 0x10044d40)
-#define wave_sound_refill ORIG(void(__stdcall *)(void *), 0x100459c5)
 #define wave_sound_rewind ORIG(void(__stdcall *)(void *), 0x100458d5)
 #define midi_close ORIG(uint32_t(__cdecl *)(void), 0x10043620)
 #define midi_open ORIG(uint32_t(__cdecl *)(void), 0x1004380f)
