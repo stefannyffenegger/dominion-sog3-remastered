@@ -1,4 +1,0 @@
-; The one import that makes the original engine a load-time dependency of ours.
-LIBRARY Rtlib32_orig.dll
-EXPORTS
-    RtEnableDirectDraw

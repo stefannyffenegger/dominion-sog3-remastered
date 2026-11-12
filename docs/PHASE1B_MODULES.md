@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,384 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -173,17 +173,18 @@ Details that matter:
 * The host quits during a 3-player match: both others see "HOST HAS BEEN DEFEATED!" and keep playing.
 * Not yet tested: separate machines, a full match to the end, map transfer.
 
-## 5. Rtlib32.dll (in progress)
+## 5. Rtlib32.dll (done)
 The engine is 7th Level's "Runtime Player 1.2" (1996), which Dominion inherited when Ion Storm took the game over from 7th Level; see `HIDDEN_AND_UNUSED.md`. It is far bigger than the other modules: 430 exports and about 1,800 functions (73,000 lines of decompiled C, part of it a statically linked C runtime). Only 112 exports are used from outside; the menu script, the interpreter and most of the engine run inside it. So it is replaced function by function from the inside, the way re3 (GTA III) and DevilutionX started:
 
-* **The shell** (`src/rtlib/`): our `Rtlib32.dll` loads the original as `Rtlib32_orig.dll` and forwards all 430 exports to it (`rtlib32.def`).
-* **Rewrites** are listed in `ported.h` with the original's address. At load time `hooks.c` patches the first bytes of each original function into a jump to ours. Outside callers and the engine's own internal calls then both run our code.
-* Our functions keep the original's calling convention (mostly stdcall, read from each function's `ret` instruction) and its data layouts. The rest of the original still reads the same structures.
-* Original globals and not-yet-rewritten functions are reached through `orig.h`: `G(type, address)` and `ORIG(type, address)`. Addresses are the original's own, as in the decompiled code.
-* **A/B testing:** `DOMINION_ORIGINAL=ResOpenFile,ResLoadResource` (or `all`) leaves those functions original. The log says how many were switched in ("RTLIB: 86 functions rewritten").
-* **Finding the code that runs:** `DOMINION_TRACE=<file>` (a Windows path, e.g. `Z:\home\...`) takes a list of original addresses, one per line with an optional name. Each listed function logs `RTLIB: first call <address> <name>` the first time it runs, then runs normally. The lists come from the Ghidra function list (in `work/`, not published).
-* **Install:** `install_modules.sh` copies the unpatched original to `Rtlib32_orig.dll` and applies the `palette` byte patches to that copy (`patch_game.py` patches `Rtlib32_orig.dll` when it exists). `--restore` puts the original back.
-* When every function is rewritten, the exports point to ours and the original is no longer loaded.
+How it was done (stage 1, until step 7 below):
+* **The shell** (`src/rtlib/`): our `Rtlib32.dll` loaded the original as `Rtlib32_orig.dll` and forwarded all 430 exports to it.
+* **Rewrites** are listed in `ported.h` with the original's address. At load time `hooks.c` patched the first bytes of each original function into a jump to ours, so outside callers and the engine's own internal calls both ran our code.
+* Our functions keep the original's calling convention (mostly stdcall, read from each function's `ret` instruction) and its data layouts.
+* Original globals and not-yet-rewritten functions were reached through `orig.h`: `G(type, address)` and `ORIG(type, address)`, with the original's own addresses as in the decompiled code.
+* **A/B testing:** `DOMINION_ORIGINAL=ResOpenFile,ResLoadResource` (or `all`) left those functions original; `DOMINION_TRACE=<file>` logged the first call of listed original functions. Both went with the shell (they are in the history, `hooks.c`).
+
+Now (step 7): our `Rtlib32.dll` exports its own functions under the original's names and ordinals (`rtlib32.def`, generated from the original's export table and `ported.h`) and doesn't import the original. `main.c` maps the original (`Rtlib32_orig.dll`) as data, without resolving its imports or calling its entry point; it provides the starting values of the engine's globals (copied into our memory, still named by the original's addresses through `G()`), the strings and tables they point to, and the engine's resources. `ported.h` remains the map from original addresses to our functions.
+* **Install:** `install_modules.sh` copies the unpatched original to `Rtlib32_orig.dll` (and still applies the old `palette` byte patches to that copy, now without effect: they are in code that no longer runs). `--restore` puts the original back.
 
 ### Resource files (done, `res.c`, 86 functions)
 `DOMINION.bin` is the main resource file; `DOMINION.000` holds its data. Layout (also in `res.h`):
@@ -527,6 +528,11 @@ Dominion never opens the engine's wave, MIDI or CD devices (it plays everything 
 Our code still names the engine's globals by the original's addresses (`G()`, `ORIG_PTR()`), about 130 of them. They now resolve into our own copy of the original's data section, taken over at load time as the original left it after its entry point (which stores its module handle and sets up its C library). No original data enters the repository; the values come from the player's own copy. A test run with those globals overwritten in the original showed nothing of the original still uses them. With `DOMINION_ORIGINAL` (A/B runs with original code) both keep sharing the original's.
 * Still from the original's memory at load time: the module handle, the pointers its data holds (to its strings and code), and its resources (strings, cursors, icons). Step 7 has to provide these once the original is no longer loaded: the tables and resources from the original file as data.
 * Checked: menu tour, Human mission 1 (no change), Alt+F4 at the main menu, and the run with the original's globals overwritten.
+### Cutting loose, step 7: our own exports, the original as data
+Our `Rtlib32.dll` exports its own functions under the original's 430 names and ordinals (checked identical) and no longer imports the original; the patching shell (`hooks.c`) is gone. `main.c` maps `Rtlib32_orig.dll` with `DONT_RESOLVE_DLL_REFERENCES`: no imports, no entry point, none of its code runs. It is the source of the globals' starting values (our copy of its data section), of the strings and tables they point to, and of the engine's resources; our code sets the module handle the original's entry point used to set. The 61 pointers in its data section that lead to its code belong to its C runtime and the resampler's old table, none of which our code uses.
+* The original's `RtEnableDirectDraw` and `RtSetScreenRes` (empty) are now ours too.
+* `DOMINION_ORIGINAL` A/B runs and `DOMINION_TRACE` went with the shell; comparisons use the saved screenshots of all-original runs, and `install_modules.sh --restore` brings the original engine back.
+* Checked: menu tour, Human mission 1 (no change; rerun twice), and Alt+F4 at the main menu.
 
 ### What's left
 | Part | Functions | Status |
