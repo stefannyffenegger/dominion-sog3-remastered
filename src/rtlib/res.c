@@ -6,9 +6,12 @@
 #include "utils.h"
 #include "compress.h"
 #include "blit.h"
+#include "audio.h"
 
 /* ---- original engine functions we call (not rewritten yet) ---- */
-#define AudioCreateMidi ORIG(void *(__stdcall *)(uint32_t, void *, void *), 0x100416e6)
+/* audio sounds are kept as 32-bit values */
+#define AUDIO_PTR(v) ((uint8_t *)(uintptr_t)(v))
+#define AudioCreateMidi(a, src, info) AudioCreateMidi(AUDIO_PTR(a), (const struct Source *)(src), (const uint32_t *)(info))
 
 /* globals of the original */
 #define g_res_module G(HMODULE, 0x1008f900)

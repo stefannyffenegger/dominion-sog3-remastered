@@ -136,18 +136,6 @@ void __cdecl wave_check_error(const char *what);
 uint32_t __cdecl wave_close(void);
 uint32_t __stdcall AudioResampleWave(const WaveFormat *out_fmt, const WaveFormat *in_fmt, uint32_t len, uint8_t *dst,
                                      const uint8_t *src);
-void __stdcall AudioBreakMidiLoops(uint8_t *a, uint8_t *id);
-int __stdcall AudioPlayMidi(uint8_t *a, uint8_t *id, const uint8_t *params);
-void __stdcall AudioSetMidi(uint8_t *a, uint8_t *id, const uint8_t *set);
-void __stdcall AudioStopMidi(uint8_t *a, uint8_t *id);
-void __stdcall AudioBreakWaveLoops(uint8_t *a, uint8_t *id);
-void __stdcall AudioClearNotifications(uint8_t *a);
-int __stdcall AudioGetWaveSoundInfo(uint8_t *a, uint8_t *id, uint32_t *out);
-uint32_t __stdcall AudioGetWaveSoundTime(uint8_t *a, uint8_t *id);
-int __stdcall AudioPlayWave(uint8_t *a, uint8_t *id, const uint8_t *params);
-void __stdcall AudioSetWaveSoundPriority(uint8_t *a, uint8_t *id, int16_t priority);
-int __stdcall AudioSetWaveSoundVolume(uint8_t *a, uint8_t *id, uint8_t volume);
-void __stdcall AudioStopWave(uint8_t *a, uint8_t *id, const uint32_t *params);
 
 /* audio_wave.c */
 uint32_t __cdecl wave_buffers_free(void);
@@ -162,12 +150,6 @@ uint32_t __stdcall wave_device_open(const WAVEFORMATEX *f);
 uint32_t __stdcall wave_open(const WAVEFORMATEX *f);
 void __stdcall wave_pause(int pause);
 void __cdecl wave_reset(void);
-void __stdcall AudioCloseWave(uint8_t *a);
-uint32_t __stdcall wave_device_format(uint8_t *unused, uint32_t *out);
-uint32_t __stdcall AudioGetWaveVolume(uint8_t *a);
-void __stdcall AudioOpenWave(uint8_t *a, const WAVEFORMATEX *f);
-void __stdcall AudioSetWaveFormats(uint8_t *a, uint16_t formats);
-void __stdcall AudioSetWaveVolume(uint8_t *a, uint32_t v);
 void __cdecl midi_sounds_free(void);
 
 /* audio_objs.c */
@@ -183,16 +165,12 @@ uint8_t *__stdcall midi_sound_remove(uint8_t *m);
 void __stdcall midi_sound_free(uint8_t *m);
 uint8_t *__cdecl midi_sound_alloc(void);
 int __stdcall midi_sound_load(uint8_t *m, const struct Source *src, const uint32_t *info);
-uint8_t *__stdcall AudioCreateMidi(uint8_t *a, const struct Source *src, const uint32_t *info);
-uint32_t __stdcall AudioDestroyMidi(uint8_t *a, uint8_t *m);
 void __stdcall wave_source_close(uint8_t *s);
 uint8_t *__stdcall wave_sound_remove(uint8_t *s);
 void __stdcall wave_sound_free(uint8_t *s);
 void __cdecl wave_sounds_free(void);
 uint8_t *__cdecl wave_sound_alloc(void);
 int __stdcall wave_sound_load(uint8_t *s, const struct Source *src, const uint8_t *info);
-uint8_t *__stdcall AudioCreateWave(uint8_t *a, const struct Source *src, const uint8_t *info);
-uint32_t __stdcall AudioDestroyWave(uint8_t *a, uint8_t *s);
 void *__stdcall file_source_close(FileSource *s);
 void __stdcall file_source_close_cb(FileSource *s);
 uint32_t __stdcall file_source_read(FileSource *s, void *buf, uint32_t n);
@@ -206,7 +184,6 @@ int __stdcall wave_file_riff(FileSource *fs);
 int __stdcall wave_file_format(HMMIO f, WAVEFORMAT *fmt);
 DWORD __stdcall wave_file_data(HMMIO f);
 int __stdcall wave_file_info(FileSource *fs, uint8_t *info);
-uint8_t *__stdcall AudioCreateWaveFileSound(uint8_t *a, LPSTR path, uint8_t flags);
 int __stdcall wave_file_unpack(HMMIO f, int16_t *out, const uint8_t *fmt);
 uint8_t *__stdcall wave_file_read(HMMIO f, int packed, uint8_t *out);
 uint8_t *__stdcall wave_file_load(LPSTR path, uint8_t *out);
@@ -222,20 +199,12 @@ int __stdcall cd_set_volume(DWORD v);
 void __cdecl cd_apply_mute(void);
 int __cdecl cd_device_stop(void);
 uint32_t __cdecl cd_position(void);
-uint32_t __stdcall AudioGetCDPosition(uint8_t *a);
 int __cdecl cd_open(void);
-uint32_t __stdcall AudioGetCDTracks(uint8_t *a);
-uint32_t __stdcall AudioGetCDVolume(uint8_t *a);
 uint32_t __stdcall cd_track_length(uint8_t track);
-uint32_t __stdcall AudioGetCDTrackLengths(uint8_t *a, uint8_t from, uint8_t to, uint32_t *out);
-int __stdcall AudioIsCDPlaying(uint8_t *a);
 void __cdecl cd_sync(void);
 void __cdecl cd_profile(void);
 uint32_t __stdcall cd_play(uint32_t from, uint32_t to);
-int __stdcall AudioPlayCD(uint8_t *a, uint32_t from, uint32_t to);
 uint32_t __stdcall cd_play_tracks(uint8_t from, uint8_t to);
-int __stdcall AudioPlayCDTrack(uint8_t *a, uint8_t track);
-int __stdcall AudioSetCDVolume(uint8_t *a, DWORD v);
 
 /* audio_midi.c */
 void __stdcall midi_report_error(const char *what);
@@ -245,12 +214,9 @@ void __stdcall midi_channel_off(uint8_t ch);
 void __cdecl midi_all_notes_off(void);
 uint32_t __cdecl midi_close(void);
 int __cdecl midi_device_open(void);
-uint32_t __stdcall AudioGetMidiVolume(uint8_t *a);
 void __cdecl midi_apply_mute(void);
 uint32_t __cdecl midi_open(void);
 void __stdcall midi_pause(int pause);
-HMIDIOUT __stdcall AudioOpenMidiDevice(uint8_t *a, uint32_t *remap_drums);
-void __stdcall AudioSetMidiVolume(uint8_t *a, DWORD v);
 
 /* audio_mix.c */
 void __cdecl wave_fade_up(void);
@@ -266,10 +232,18 @@ void __cdecl midi_stop_playing(void);
 void __stdcall midi_play_events(uint8_t *m);
 void CALLBACK AudioTimerProc(UINT id, UINT msg, DWORD_PTR user, DWORD_PTR dw1, DWORD_PTR dw2);
 
-/* not ported yet */
-#define wave_volume_step ORIG(uint32_t(__stdcall *)(uint32_t, int, int, uint32_t), 0x10045b80)
-#define mix_sound16 ORIG(uint32_t(__stdcall *)(uint8_t *, int16_t *, uint32_t, uint32_t), 0x10045d96)
-#define mix_sound8 ORIG(uint32_t(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10045c30)
-#define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
-#define wave_sound_rewind ORIG(void(__stdcall *)(void *), 0x100458d5)
+/* audio_stream.c */
+int __stdcall wave_source_rewind(uint8_t *s);
+int __stdcall wave_sound_refill(uint8_t *s);
+void __stdcall wave_sound_rewind(uint8_t *s);
+int __stdcall wave_sound_loop(uint8_t *s);
+uint32_t __stdcall wave_fetch_size(uint8_t *s, uint32_t want);
+int __stdcall wave_unpack_room(uint8_t *s, uint32_t n);
+int __stdcall wave_convert_room(uint8_t *s, uint32_t n);
+void __stdcall wave_sound_fetch(uint8_t *s, uint32_t want);
+uint32_t __stdcall volume_step16(uint32_t v, int16_t d, uint32_t limit);
+uint32_t __stdcall wave_volume_step(uint32_t v, int16_t dl, int16_t dr, uint32_t limit);
+uint32_t __stdcall mix_sound8(uint8_t *s, uint8_t *out, uint32_t n, uint32_t index);
+uint32_t __stdcall mix_sound16(uint8_t *s, int16_t *out, uint32_t n, uint32_t index);
+
 #endif

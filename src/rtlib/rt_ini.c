@@ -20,7 +20,9 @@
 #define RT_SECTION 0x9904      /* the game's INI section, or empty */
 #define RT_APP_NAME 0x9d56     /* otherwise this */
 
-#define AudioStopWave ORIG(void(__stdcall *)(uint8_t *, uint32_t, int32_t *), 0x100403b5)
+/* audio sounds are kept as 32-bit values */
+#define AUDIO_PTR(v) ((uint8_t *)(uintptr_t)(v))
+#define AudioStopWave(a, s, p) AudioStopWave(a, AUDIO_PTR(s), (const uint32_t *)(p))
 
 static char g_value[0x401]; /* 0x1007cae0 */
 

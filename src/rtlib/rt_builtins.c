@@ -31,8 +31,10 @@
 #define g_stack ((int32_t *)ORIG_PTR(0x1007c408))
 #define REG_PATH "Software\\7th Level, Inc."
 
-#define AudioSetWaveSoundPriority ORIG(void(__stdcall *)(uint8_t *, U, U), 0x100402fa)
-#define AudioGetWaveSoundTime ORIG(U(__stdcall *)(uint8_t *, U), 0x1003fbf5)
+/* audio sounds are kept as 32-bit values */
+#define AUDIO_PTR(v) ((uint8_t *)(uintptr_t)(v))
+#define AudioSetWaveSoundPriority(a, s, p) AudioSetWaveSoundPriority(a, AUDIO_PTR(s), (int16_t)(p))
+#define AudioGetWaveSoundTime(a, s) AudioGetWaveSoundTime(a, AUDIO_PTR(s))
 
 static int32_t pop(void)
 {

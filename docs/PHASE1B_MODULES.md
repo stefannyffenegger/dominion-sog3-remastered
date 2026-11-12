@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,372 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,384 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -520,13 +520,16 @@ Dominion never opens the engine's wave, MIDI or CD devices (it plays everything 
 * Part 6 (`audio_midi.c`, `midi_prepare.c`, 25 functions, 0x10043620-0x100445f8): the MIDI device (opening, volume, mute, pause, notes off) and turning a Standard MIDI File (format 0 or 1, not SMPTE timing) into the sequencer's event list: (time, message) pairs from all tracks, merged and sorted, then the times turned into waits in ms (at most 5 s each, else the file is refused). `tests/midi_compare.sh` checks the preparation against the original on 20,000 random files: all identical. Original quirks kept: meta and SysEx lengths are read as one byte rather than a variable-length number, and the delta times of meta events other than tempo changes are lost (tempo changes keep their own clock).
 * Part 7 (`audio_mix.c`, 12 functions, 0x100447fb-0x1004504c): the mixer's main loop (take back finished buffers, mix every playing sound into the next free 8 KB buffer at 8 or 16 bits, hand it to waveOut), whole-device fades in 200 ms steps, end-of-sound messages, and the MIDI sequencer: events sent up to the next wait, the wait done by a one-shot multimedia timer of at least 3 ms, loops, channel 9 moved to 15 with `RemapMidiDrums`, notes kept off muted channels.
 * Part 8 (`resample.c`, 17 functions of hand-written assembly, 0x1004504c-0x10045480 and 0x10045f08-0x10046250): converting PCM between 8 and 16 bits, mono and stereo, and sample rates. Rates change only by whole factors: down by averaging (the sum shifted by 1 for a factor of 2, else by 2, so a factor of 3 comes out at 3/4 of the level and of 5 at 5/4), up by linear steps (shifted the same way, so other factors than 2 and 4 under- or overshoot). Stereo to mono keeps the left channel. Only the two entry points are hooked; the helpers pass state in registers and have no other callers. `tests/resample_compare.sh` runs 20,000 random conversions through the original's `AudioResampleWave` and ours: all identical.
+* Part 9 (`audio_stream.c`, 12 functions, 0x10045480-0x10045f08): a wave sound's data as the mixer takes it (moved to the front of its buffer and refilled from the source, looped, unpacked from IMA ADPCM, converted to the device format), the device volume steps, and mixing one sound into a buffer with its volume and fades (8-bit sums clipped to 0-255, 16-bit to ±32,767). Original quirk kept: 8-bit samples are scaled by the volume with their 128 offset still in, so a quieter 8-bit sound also shifts towards silence's low end.
+* With part 9 the whole audio library is ours (the 20 functions at 0x100468d4-0x10048522 belong to the wave codec, whose callers are all ours in `codec.c`). Our engine code now calls it directly instead of through the original's addresses.
+* Checked after each part: menu tour and Human mission 1 (no change) or the exit test, plus the byte-exact tests of parts 6 and 8.
 
 ### What's left
 | Part | Functions | Status |
 |---|---|---|
-| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,372 | **ours** |
+| Engine core, resources, utilities, sprites, display, audio | 1,384 | **ours** |
 | Exports too short to hook (`RtEnableDirectDraw`, `RtSetScreenRes`) | 2 | original |
 | Sprite assembly routines whose callers are all ours (C versions in `blit.c`) | 14 | dead in the original, no hook needed |
-| Audio mixer, MIDI, CD (unused by Dominion, see above) | ~190 | original |
+| Wave codec helpers whose callers are all ours (C versions in `codec.c`) | 20 | dead in the original, no hook needed |
 | C runtime | ~400 | not ported; replaced by the system's |
 

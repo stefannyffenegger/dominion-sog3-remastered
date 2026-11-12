@@ -22,9 +22,11 @@
 #define BUF_SIZE 65000
 #define WAVE_SIZE 0x18000
 
-#define AudioCreateWave ORIG(void *(__stdcall *)(uint8_t *, void *, const void *), 0x10041b73)
-#define AudioPlayWave ORIG(U(__stdcall *)(uint8_t *, void *, void *), 0x1003fc7b)
-#define AudioDestroyWave ORIG(void(__stdcall *)(uint8_t *, void *), 0x10041f23)
+/* audio sounds are kept as 32-bit values */
+#define AUDIO_PTR(v) ((uint8_t *)(uintptr_t)(v))
+#define AudioCreateWave(a, src, info) AudioCreateWave(a, (const struct Source *)(src), (const uint8_t *)(info))
+#define AudioPlayWave(a, s, p) AudioPlayWave(a, AUDIO_PTR(s), (const uint8_t *)(p))
+#define AudioDestroyWave(a, s) AudioDestroyWave(a, AUDIO_PTR(s))
 
 /* frame table entries, 10 bytes */
 #define F_TYPE(m, i) ((m)->frames[(i) * 10])     /* 0 full frame, 1 change, 2 sound */

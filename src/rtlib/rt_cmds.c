@@ -1,3 +1,5 @@
+/* audio sounds are kept as 32-bit values */
+#define AUDIO_PTR(v) ((uint8_t *)(uintptr_t)(v))
 /* Engine core, 0x10018ea0-0x10019a62: script command handlers (sprites, time and date,
  * conditions, keys, sound, random numbers). They get the command record with its
  * variable fields already resolved (rt_cmdargs.c). Rewritten from the original. */
@@ -26,10 +28,9 @@
 #define RT_CD_PLAYING 0x95d2
 #define RT_COMPOSE_OWNS 0x95dc
 
-#define AudioClearNotifications ORIG(void(__stdcall *)(uint8_t *), 0x1003fa9d)
-#define AudioPlayMidi ORIG(void(__stdcall *)(uint8_t *, uint32_t, const void *), 0x1003f2dd)
-#define AudioPlayWave ORIG(void(__stdcall *)(uint8_t *, uint32_t, int32_t *), 0x1003fc7b)
-#define AudioPlayCDTrack ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x1004343e)
+#define AudioPlayMidi(a, m, p) AudioPlayMidi(a, AUDIO_PTR(m), (const uint8_t *)(p))
+#define AudioPlayWave(a, s, p) AudioPlayWave(a, AUDIO_PTR(s), (const uint8_t *)(p))
+#define AudioPlayCDTrack(a, t) AudioPlayCDTrack(a, (uint8_t)(t))
 
 /* 0x10018ea0: lets a sprite's script loops finish (+2 sprite, +6 how) */
 void __stdcall cmd_break_loops(const uint8_t *c)
@@ -290,13 +291,7 @@ void __stdcall cmd_random(const uint8_t *c)
 #define list_run handler_run_at
 #define wave_save res_extract_to_file
 #define file_saved wallpaper_set
-#define AudioStopMidi ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x1003f57c)
-#define AudioGetWaveVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1004137a)
-#define AudioSetWaveVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x10041446)
-#define AudioGetCDVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10042fe6)
-#define AudioSetCDVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x1004359c)
-#define AudioGetMidiVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x10043aca)
-#define AudioSetMidiVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x10043b7a)
+#define AudioStopMidi(a, m) AudioStopMidi(a, AUDIO_PTR(m))
 #define AUDIO R(uint8_t *, RT_AUDIO)
 
 /* A random index below n, not the one at *last unless n is 1 */

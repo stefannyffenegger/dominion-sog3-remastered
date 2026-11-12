@@ -1411,3 +1411,17 @@ PORTED(0x10044ff4, AudioTimerProc)
  * other callers) */
 PORTED(0x100452e0, resample_setup)
 PORTED(0x10045394, resample)
+
+/* audio_stream.c */
+PORTED(0x10045480, wave_sound_fetch)
+PORTED(0x10045669, wave_unpack_room)
+PORTED(0x100456ef, wave_convert_room)
+PORTED(0x10045764, wave_sound_loop)
+PORTED(0x100457ff, wave_fetch_size)
+PORTED(0x100458d5, wave_sound_rewind)
+PORTED(0x10045992, wave_source_rewind)
+PORTED(0x100459c5, wave_sound_refill)
+PORTED(0x10045b80, wave_volume_step)
+PORTED(0x10045bd1, volume_step16)
+PORTED(0x10045c30, mix_sound8)
+PORTED(0x10045d96, mix_sound16)

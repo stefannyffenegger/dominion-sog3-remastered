@@ -10,7 +10,6 @@
 
 typedef uint32_t U;
 #define SET(rt) (g_rt = (uint8_t *)(rt))
-#define C2(a, x, y) ORIG(U(__stdcall *)(U, U), a)((U)(x), (U)(y))
 #define RB(off) ((U)R(uint8_t, off))
 #define RU(off) R(U, off)
 #define HSLU RU(RT_HSL)
@@ -159,7 +158,11 @@ U __cdecl RtGetVars(uint8_t *rt, int first, int n, void *out)
 
 U __cdecl RtGetVariableString(uint8_t *rt, U id) { SET(rt); return (U)(uintptr_t)string_var(id); }
 /* (the one export that doesn't set the state block) */
-U __cdecl RtGetWaveDeviceFormat(uint8_t *rt, U out) { (void)rt; return C2(0x10041299, RU(RT_AUDIO), out); }
+U __cdecl RtGetWaveDeviceFormat(uint8_t *rt, U out)
+{
+    (void)rt;
+    return wave_device_format(R(uint8_t *, RT_AUDIO), (uint32_t *)(uintptr_t)out);
+}
 U __cdecl RtGetWindow(uint8_t *rt) { SET(rt); return RU(RT_HWND); }
 U __cdecl RtGetWindowBox(uint8_t *rt) { SET(rt); return RB(RT_BKG_SCROLLS); }
 U __cdecl RtIsDirectDraw(uint8_t *rt) { SET(rt); return RB(RT_DIRECTDRAW); }

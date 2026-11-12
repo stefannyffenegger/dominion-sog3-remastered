@@ -1,11 +1,10 @@
 /* The engine's audio library: setup, settings, focus/mute/pause and the service call.
  * Rewritten from the original (0x1003ea50-0x10044600, the parts the game runs).
  *
- * The library also has a software wave mixer on waveOut, a MIDI sequencer and CD audio
- * over MCI (about 180 more functions). Traced with DOMINION_TRACE through the menus and
- * a mission, Dominion never opens a wave, MIDI or CD device here: all its sound and music
- * goes through WAVEPLAY.R32, which hooks into AudioService. Those parts stay original for
- * now and are reached through ORIG(); they only run once a device is open. */
+ * The rest of the library is in audio_*.c: a software wave mixer on waveOut, a MIDI
+ * sequencer and CD audio over MCI. Traced with DOMINION_TRACE through the menus and a
+ * mission, Dominion never opens a wave, MIDI or CD device here: all its sound and music
+ * goes through WAVEPLAY.R32, which hooks into AudioService. */
 #include "orig.h"
 #include "crt.h"
 #include "audio.h"

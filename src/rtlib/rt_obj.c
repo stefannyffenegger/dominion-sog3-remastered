@@ -45,8 +45,10 @@
 
 #define g_releasing_all G(uint32_t, 0x1007c598)
 
-#define AudioDestroyMidi ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x100418ef)
-#define AudioDestroyWave ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10041f23)
+/* audio sounds are kept as 32-bit values */
+#define AUDIO_PTR(v) ((uint8_t *)(uintptr_t)(v))
+#define AudioDestroyMidi(a, m) AudioDestroyMidi(AUDIO_PTR(a), AUDIO_PTR(m))
+#define AudioDestroyWave(a, s) AudioDestroyWave(AUDIO_PTR(a), AUDIO_PTR(s))
 /* movies (type 0xd) and text objects (0x15) are kept in the table as 32-bit values */
 #define PTR(type, v) ((type *)(uintptr_t)(v))
 #define VAL(p) ((uint32_t)(uintptr_t)(p))
@@ -658,7 +660,7 @@ int __stdcall load_wave(uint32_t id)
     if (!e[0]) {
         stop_cd();
         e[0] = ResCreateWaveEvent(RES, R(uint32_t, RT_AUDIO), id,
-                                  ORIG(uint32_t(__stdcall *)(uint32_t, void *, void *), 0x10041b73));
+                                  (uint32_t(__stdcall *)(uint32_t, void *, void *))(void *)AudioCreateWave);
     }
     return 1;
 }
