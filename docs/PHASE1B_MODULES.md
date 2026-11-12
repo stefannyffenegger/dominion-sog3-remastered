@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,204 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,205 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -480,6 +480,11 @@ The script's 204 built-in functions are one switch on the function number (0x100
 ### Resource files, part 2: loading many bitmaps at once (`res_batch.c`, 6 functions)
 When an object needs several bitmaps, the engine sorts them by data file and offset and reads neighbours with one disk read of up to 64,000 bytes, then hands each bitmap on. Also the run-length expander for coded bitmaps (0x1006a588, hand-written assembly), now in `blit.c` and checked byte for byte against the original on 20,000 random bitmaps by `tests/blit_compare.sh`.
 * Checked: menu tour and Human mission 1 (no change).
+
+### Sprites: the DirectDraw background (`display.c`, 1 function)
+`set_background` (0x10049a02): in DirectDraw mode the background is a fill color or a bitmap copied (or run-length expanded) into an offscreen video-memory surface made on first use, centred on the screen. The menu tour sets it 7 times (**traced**).
+* The original carried on after a failed surface lock and wrote through a null pointer; ours stops.
+* Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
 
 ### What's left
 | Part | Functions | Decompiled lines |

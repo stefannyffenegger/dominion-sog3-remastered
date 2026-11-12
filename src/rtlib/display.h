@@ -98,6 +98,7 @@ void __stdcall palette_set_painting(uint8_t *hsl, int painting, int apply);
 uint32_t __stdcall mode_list_add(const uint8_t *desc, uint32_t unused);
 uint32_t __cdecl dd_state_free(void);
 uint32_t __stdcall desktop_mode_from_registry(uint32_t *w, uint32_t *h, uint32_t *bpp);
+void __cdecl set_background(void *bg);
 void __stdcall dib_copy_out_asm(uint8_t *dst, int32_t pitch, uint32_t src, uint32_t w, uint32_t h, int dx, int dy,
                                 int sx, int sy);
 

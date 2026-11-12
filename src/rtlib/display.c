@@ -14,6 +14,7 @@
 #include "display.h"
 #include "view.h"
 #include "utils.h"
+#include "res.h"
 #include <ddraw.h>
 
 #define g_hsl G(uint8_t *, 0x10089e24)
@@ -110,7 +111,6 @@ _Static_assert(sizeof(DisplayDD) == 0xb4, "DisplayDD");
 /* original functions not rewritten yet */
 #define g_static_low ((PALETTEENTRY *)ORIG_PTR(0x1007b148))  /* Windows' static colors 0-9 */
 #define g_static_high ((PALETTEENTRY *)ORIG_PTR(0x1007b170)) /* 246-255 */
-#define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
 
 
 /* Restores a lost surface (the window lost the screen) */
@@ -1384,6 +1384,76 @@ int __stdcall display_activate(uint8_t *hsl, int active)
     }
     H(uint32_t, HSL_INACTIVE) = !active;
     return 1;
+}
+
+/* 0x10049a02: the background in DirectDraw mode: -1 for none, a palette index (a value
+ * below 0x10000) for a color, else a bitmap, copied into an offscreen surface (made on
+ * first use) and centred on the screen */
+void __cdecl set_background(void *bg)
+{
+    DisplayDD *d = DD();
+    if (!d)
+        return;
+    H(uint32_t, HSL_BG_X) = H(uint32_t, HSL_BG_Y) = 0;
+    if (bg == (void *)-1) {
+        H(int32_t, HSL_FILL) = -1;
+        d->fx.dwFillColor = 0;
+        d->fx.dwSize = sizeof d->fx;
+        return;
+    }
+    if (!((uintptr_t)bg >> 16)) {
+        H(uint32_t, HSL_FILL) = (uintptr_t)bg & 0xff;
+        d->fx.dwFillColor = H(uint32_t, HSL_FILL);
+        d->fx.dwSize = sizeof d->fx;
+        return;
+    }
+    DDSURFACEDESC desc;
+    memset(&desc, 0, sizeof desc);
+    desc.dwSize = sizeof desc;
+    if (!d->background) {
+        desc.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH;
+        desc.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_VIDEOMEMORY;
+        desc.dwWidth = H(uint32_t, HSL_WIDTH);
+        desc.dwHeight = H(uint32_t, HSL_HEIGHT);
+        if (IDirectDraw2_CreateSurface(d->dd2, &desc, &d->background, NULL) != DD_OK)
+            return;
+    }
+    if (!d->background)
+        return;
+    HRESULT r;
+    for (;;) {
+        memset(&desc, 0, sizeof desc);
+        desc.dwSize = sizeof desc;
+        r = IDirectDrawSurface_Lock(d->background, NULL, &desc, DDLOCK_WAIT, NULL);
+        if (r != DDERR_SURFACELOST)
+            break;
+        if (IDirectDrawSurface_Restore(d->background) != DD_OK)
+            return;
+    }
+    if (r != DD_OK) /* the original went on and wrote through a null pointer */
+        return;
+    const ResDib *b = bg;
+    H(const void *, HSL_BACKGROUND) = bg;
+    SetRect(&d->bg_rect, 0, 0, (int)b->pitch, (int)b->height);
+    H(uint32_t, HSL_BG_X) = (H(uint32_t, HSL_WIDTH) - b->pitch) >> 1;
+    H(uint32_t, HSL_BG_Y) = (H(uint32_t, HSL_HEIGHT) - b->height) >> 1;
+    if (b->flags & DIB_RLE) {
+        ResDib screen;
+        memset(&screen, 0, sizeof screen);
+        screen.width = desc.lPitch;
+        screen.pitch = (uint32_t)desc.lPitch;
+        screen.bits = desc.lpSurface;
+        screen.flags = 0x40; /* rows top-down */
+        dib_merge((uint32_t)(uintptr_t)&screen, (uint32_t)(uintptr_t)b, (int)b->pitch, (int)b->height, 0, 0,
+                  0, 0, 0, 0);
+    } else {
+        dib_copy_out_asm(desc.lpSurface, desc.lPitch, (uint32_t)(uintptr_t)b, b->pitch, b->height, 0, 0, 0, 0);
+    }
+    for (;;) {
+        r = IDirectDrawSurface_Unlock(d->background, NULL);
+        if (r != DDERR_SURFACELOST || IDirectDrawSurface_Restore(d->background) != DD_OK)
+            break;
+    }
 }
 
 /* ---- palette (0x100517c0-0x100524c0) ---- */

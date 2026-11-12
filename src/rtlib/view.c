@@ -68,7 +68,6 @@
 
 /* original functions not rewritten yet */
 #define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
-#define set_background ORIG(void(__cdecl *)(void *), 0x10049a02)
 
 
 
