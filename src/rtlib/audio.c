@@ -2,7 +2,7 @@
  * Rewritten from the original (0x1003ea50-0x10044600, the parts the game runs).
  *
  * The rest of the library is in audio_*.c: a software wave mixer on waveOut, a MIDI
- * sequencer and CD audio over MCI. Traced with DOMINION_TRACE through the menus and a
+ * sequencer and CD audio over MCI. Traced (first-call logging) through the menus and a
  * mission, Dominion never opens a wave, MIDI or CD device here: all its sound and music
  * goes through WAVEPLAY.R32, which hooks into AudioService. */
 #include "orig.h"
