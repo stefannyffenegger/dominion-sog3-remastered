@@ -37,6 +37,6 @@ DWORD __cdecl display_change(void *mode);
 uint32_t __stdcall display_mode_set(DWORD w, DWORD h, uint32_t bpp);
 int __cdecl windows_has_display_modes(void);
 int __cdecl screen_is(int w, int h);
-void __cdecl RtCaptureFrame(uint8_t *rt, uint32_t id, uint32_t arg);
+void __cdecl RtCaptureFrame(uint8_t *rt, char *prefix, uint32_t n);
 
 #endif

@@ -129,7 +129,6 @@
 #define MAX_SPRITES 4000
 
 /* original functions not rewritten yet */
-#define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 /* pixel test of a bitmap: > 3 is a drawn pixel */
 
 typedef uint32_t(__stdcall *DoneProc)(uint8_t *, uint32_t);

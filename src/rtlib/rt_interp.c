@@ -25,8 +25,6 @@
 #define RT_NEXT_SCENE 0x9703
 #define RT_MSG_ARG 0x8db3
 
-#define rt_fatal ORIG(void(__stdcall *)(U, U), 0x10025b0f)
-#define rt_script_error ORIG(U(__stdcall *)(U, U), 0x100260f6)
 
 #define MAX_DEPTH 30
 

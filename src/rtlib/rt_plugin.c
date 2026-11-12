@@ -32,10 +32,8 @@
 #define PL_20 0x20
 #define PL_PALETTE 0x24
 
-#define rt_script_error ORIG(int(__stdcall *)(uint32_t, const char *), 0x100260f6)
-#define rt_fatal ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10025b0f)
 #define RtSetScreenRes ORIG(void(__cdecl *)(uint8_t *, uint32_t, uint32_t, uint32_t), 0x1001d3b3)
-#define fn_10025ff9 ORIG(void(__cdecl *)(void), 0x10025ff9)
+#define fn_10025ff9 flush_engine_messages
 
 #define PLUGIN(i) (R(uint8_t **, RT_PLUGINS)[i])
 
@@ -225,7 +223,7 @@ uint32_t __cdecl plugins_load(void)
         if (!FileExist(path)) {
             MakeFullPath(path, (char *)(g_rt + RT_DATA_DIR), file);
             if (!FileExist(path)) {
-                rt_script_error(0x79, file);
+                rt_script_error(0x79, (U)(uintptr_t)file);
                 return 0; /* (the name list is not freed) */
             }
         }
@@ -237,7 +235,7 @@ uint32_t __cdecl plugins_load(void)
         SetErrorMode(mode);
         if ((uintptr_t)dll <= 0x20) {
             if (R(uint8_t, RT_SCRIPT_DEBUG))
-                rt_script_error(0x7a, file);
+                rt_script_error(0x7a, (U)(uintptr_t)file);
             else
                 rt_fatal(0x3f2, 0);
             return 0;
@@ -258,7 +256,7 @@ uint32_t __cdecl plugins_load(void)
         ok = plugins_bind_functions();
         if (!ok) {
             if (R(uint8_t, RT_SCRIPT_DEBUG))
-                rt_script_error(0x7c, NULL);
+                rt_script_error(0x7c, 0);
             else
                 rt_fatal(0x3f4, 0);
         }

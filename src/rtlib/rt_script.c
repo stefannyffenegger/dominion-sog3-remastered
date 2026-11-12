@@ -26,9 +26,6 @@
 #define SP R(int32_t, RT_SP)
 #define TOP g_stack[SP - 1]
 
-#define rt_script_error ORIG(int32_t(__stdcall *)(uint32_t, uint32_t), 0x100260f6)
-#define rt_fatal ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10025b0f)
-#define script_run ORIG(int(__stdcall *)(uint32_t), 0x10022ce9)
 
 /* 0x1000b390: where variable n lives */
 int32_t *__cdecl script_var(uint32_t n)
@@ -240,11 +237,7 @@ void __stdcall script_call(const int32_t *args)
 uint32_t __stdcall ExternalCall(void *fn, uint32_t ctx, const uint32_t *args, uint32_t argc, uint32_t unused)
 {
     (void)unused;
-    uint32_t a[65];
-    if (argc > 64) {
-        uint32_t o[5] = {(uint32_t)(uintptr_t)fn, ctx, (uint32_t)(uintptr_t)args, argc, 0};
-        return orig_stdcall_unsafe(ORIG_PTR(0x1003d861), 5, o);
-    }
+    uint32_t a[argc + 1];
     a[0] = ctx;
     for (uint32_t i = 0; i < argc; i++)
         a[i + 1] = args[i];

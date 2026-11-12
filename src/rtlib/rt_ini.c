@@ -19,10 +19,7 @@
 #define RT_SECTION 0x9904      /* the game's INI section, or empty */
 #define RT_APP_NAME 0x9d56     /* otherwise this */
 
-#define string_get ORIG(char *(__stdcall *)(uint32_t), 0x100259a6)
-#define paint_black ORIG(void(__stdcall *)(HDC), 0x100268f0)
 #define AudioStopWave ORIG(void(__stdcall *)(uint8_t *, uint32_t, int32_t *), 0x100403b5)
-#define string_by_id ORIG(void(__stdcall *)(char *, uint32_t, uint32_t, uint32_t), 0x100278d0)
 
 static char g_value[0x401]; /* 0x1007cae0 */
 
@@ -484,11 +481,11 @@ uint32_t __stdcall display_mode_set(DWORD w, DWORD h, uint32_t bpp)
 
 /* RtCaptureFrame (0x1001c110): starts saving every frame, to files named after the
  * string resource */
-void __cdecl RtCaptureFrame(uint8_t *rt, uint32_t id, uint32_t arg)
+void __cdecl RtCaptureFrame(uint8_t *rt, char *prefix, uint32_t n)
 {
     char name[256];
     g_rt = rt;
-    string_by_id(name, id, 0x100, arg);
+    capture_name(name, prefix, 0x100, n);
     if (lstrlenA(name))
         SpriteInitScreenCapture(R(uint8_t *, RT_HSL), name);
 }

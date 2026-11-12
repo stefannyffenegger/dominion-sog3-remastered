@@ -67,7 +67,6 @@
 #define REDRAW_ALL 0x80000000u
 
 /* original functions not rewritten yet */
-#define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 
 
 

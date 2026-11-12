@@ -16,9 +16,6 @@
 #define RT_SCRIPT_DEBUG 0x95d8
 #define RT_LAUNCHED 0x95e9
 
-#define rt_fatal ORIG(void(__stdcall *)(U, U), 0x10025b0f)
-#define rt_script_error ORIG(U(__stdcall *)(U, U), 0x100260f6)
-#define event_send ORIG(U(__stdcall *)(U, U, U), 0x10025e97)
 
 /* the windows seen while a launched program runs; 0x10c bytes each */
 typedef struct Watched {

@@ -10,9 +10,6 @@
 #include "rt_cmdargs.h"
 
 #define RES R(ResFile *, RT_RES)
-#define script_run ORIG(int(__stdcall *)(uint32_t), 0x10022ce9)
-#define event_send ORIG(int(__stdcall *)(uint32_t, uint32_t, uint32_t), 0x10025e97)
-#define handler_record_run ORIG(int(__stdcall *)(uint8_t *), 0x100220dd)
 #define CALL1(addr) ORIG(uint32_t(__stdcall *)(uint8_t *), addr)
 
 /* 0x10016800: v itself, or the value of variable v when flagged */
@@ -179,7 +176,7 @@ uint32_t __stdcall cmdw_if_loaded(const uint8_t *c)
 /* 0x100172ce */
 void __stdcall cmdw_100172ce(const uint8_t *c)
 {
-    ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10024a04)(FIELD(c, 2), c[6]);
+    timer_remove(FIELD(c, 2), c[6]);
 }
 
 /* 0x100173a9: commands 0x75 (load an object) and its partner (release it) */
@@ -282,7 +279,7 @@ uint32_t __stdcall cmdw_10017a9e(const uint8_t *c)
 void __stdcall cmdw_10017bf8(const uint8_t *c)
 {
     uint32_t v = c[0xe] ? VAL(10, 0x10) : FIELD(c, 10);
-    ORIG(void(__stdcall *)(uint32_t, uint32_t, uint32_t, uint32_t), 0x10024b2c)(FIELD(c, 2), VAL(6, 0xf), v, c[0x11]);
+    timer_set(FIELD(c, 2), VAL(6, 0xf), v, c[0x11]);
 }
 
 /* 0x10017cb2, 0x10017cdd */
@@ -314,5 +311,5 @@ uint32_t __stdcall cmdw_10017d0f(const uint8_t *c)
 void __stdcall cmdw_10017da2(const uint8_t *c)
 {
     uint32_t a3 = VAL(10, 0x11), a2 = VAL(6, 0x10), a1 = VAL(2, 0xf);
-    ORIG(void(__stdcall *)(uint32_t, uint32_t, uint32_t, uint32_t), 0x1002524b)(a1, a2, a3, c[0xe]);
+    sprite_transfer(a1, a2, a3, c[0xe]);
 }

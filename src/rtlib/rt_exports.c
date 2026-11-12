@@ -9,14 +9,11 @@
 
 typedef uint32_t U;
 #define SET(rt) (g_rt = (uint8_t *)(rt))
-#define C1(a, x) ORIG(U(__stdcall *)(U), a)((U)(x))
 #define C2(a, x, y) ORIG(U(__stdcall *)(U, U), a)((U)(x), (U)(y))
-#define C3(a, x, y, z) ORIG(U(__stdcall *)(U, U, U), a)((U)(x), (U)(y), (U)(z))
-#define C4(a, x, y, z, w) ORIG(U(__stdcall *)(U, U, U, U), a)((U)(x), (U)(y), (U)(z), (U)(w))
-#define C5(a, x, y, z, w, v) ORIG(U(__stdcall *)(U, U, U, U, U), a)((U)(x), (U)(y), (U)(z), (U)(w), (U)(v))
 #define RB(off) ((U)R(uint8_t, off))
 #define RU(off) R(U, off)
 #define HSLU RU(RT_HSL)
+#define HSL R(uint8_t *, RT_HSL)
 
 #define RT_AUDIO 0x0c90
 #define RT_HRL 0x0cc4
@@ -39,10 +36,9 @@ typedef uint32_t U;
 #define RT_PALETTE_REALIZED 0x95ee
 #define RT_PAUSED 0x95f1
 
-#define handler_record_run(p) C1(0x100220dd, p)
 
 U __cdecl RtCopy(uint8_t *rt, U id) { SET(rt); return obj_copy(id); }
-U __cdecl RtCursor(uint8_t *rt, uint8_t id) { SET(rt); return C1(0x10025880, id); }
+U __cdecl RtCursor(uint8_t *rt, uint8_t id) { SET(rt); cursor_set(id); return 0; }
 U __cdecl RtDeviceBitmapToDibData(uint8_t *rt, U bm, int8_t a, uint8_t b, uint8_t c)
 {
     SET(rt);
@@ -61,22 +57,22 @@ U __cdecl RtDelete(uint8_t *rt, U id)
 U __cdecl RtDirectDrawRect(uint8_t *rt, U a, U b, U c, U d)
 {
     SET(rt);
-    return R(uint8_t, RT_DIRECTDRAW) ? C5(0x1004ac90, HSLU, a, b, c, d) : 0;
+    return R(uint8_t, RT_DIRECTDRAW) ? (U)display_set_border(HSL, (int)a, (int)b, (int)c, (int)d) : 0;
 }
 
 /* a new resource of `type` with data at its entry */
 U __cdecl RtDynamicResource(uint8_t *rt, int8_t type, U data)
 {
     SET(rt);
-    U id = C3(0x1006709c, RU(RT_RES), type, 0);
+    U id = ResDynamicResource(R(ResFile *, RT_RES), (uint8_t)type, 0);
     if (!id)
         return 0;
     obj_entry(id)[0] = data;
     return id;
 }
 
-U __cdecl RtFlipPages(uint8_t *rt) { SET(rt); return R(uint8_t, RT_DIRECTDRAW) ? C1(0x1004af58, HSLU) : 0; }
-U __cdecl RtGetAllocatedMemSize(uint8_t *rt) { SET(rt); return ORIG(U(__cdecl *)(void), 0x1003e284)(); }
+U __cdecl RtFlipPages(uint8_t *rt) { SET(rt); return R(uint8_t, RT_DIRECTDRAW) ? (U)SpriteFlipPages(HSL) : 0; }
+U __cdecl RtGetAllocatedMemSize(uint8_t *rt) { SET(rt); return MemMgrSize(); }
 U __cdecl RtGetBkgColor(uint8_t *rt) { SET(rt); return RU(RT_BKG_COLOR); }
 U __cdecl RtGetComponent(uint8_t *rt) { SET(rt); return RB(RT_COMPONENT); }
 
@@ -91,16 +87,18 @@ U __cdecl RtGetCurrentScript(uint8_t *rt, LPSTR name, char *text)
         *text = 0;
     if (RU(RT_SCRIPT_TEXT) && RU(RT_SCRIPT_NAME)) {
         if (name)
-            r = (U)(uintptr_t)lstrcpyA(name, (LPCSTR)(uintptr_t)C1(0x100259a6, RU(RT_SCRIPT_NAME)));
-        if (text)
-            r = C2(0x1003d82c, text, R(uint32_t *, RT_SCRIPT_OFFSETS)[RU(RT_SCRIPT_INDEX)] + RU(RT_SCRIPT_TEXT));
+            r = (U)(uintptr_t)lstrcpyA(name, string_get(RU(RT_SCRIPT_NAME)));
+        if (text) {
+            CopyHugeStr(text, (const char *)(uintptr_t)(R(uint32_t *, RT_SCRIPT_OFFSETS)[RU(RT_SCRIPT_INDEX)] + RU(RT_SCRIPT_TEXT)));
+            r = 0; /* the original returned what its copy left in EAX */
+        }
     }
     return r;
 }
 
 U __cdecl RtGetDC(uint8_t *rt) { SET(rt); return RU(RT_DC); }
 U __cdecl RtGetDirectDrawMode(uint8_t *rt) { SET(rt); return RB(RT_DIRECTDRAW); }
-U __cdecl RtGetDirectDrawStats(uint8_t *rt, U a, U b, U c) { SET(rt); return C4(0x1004cc3b, HSLU, a, b, c); }
+U __cdecl RtGetDirectDrawStats(uint8_t *rt, U a, U b, U c) { SET(rt); return (U)display_get_memory(HSL, (uint32_t *)(uintptr_t)a, (uint32_t *)(uintptr_t)b, (uint32_t *)(uintptr_t)c); }
 
 U __cdecl RtGetDisplayMode(uint8_t *rt, int *w, int *h, int *bpp, U *dd)
 {
@@ -133,7 +131,7 @@ U __cdecl RtGetModulePath(uint8_t *rt, LPSTR out, int size)
     return (U)lstrlenA(out);
 }
 
-U __cdecl RtGetNumSprites(uint8_t *rt) { SET(rt); return C1(0x1004f0bb, HSLU); }
+U __cdecl RtGetNumSprites(uint8_t *rt) { SET(rt); return SpriteGetNumSprites(HSL); }
 U __cdecl RtGetNoFade(uint8_t *rt) { SET(rt); return RB(RT_NO_FADE); }
 U __cdecl RtGetPaletteRealized(uint8_t *rt) { SET(rt); return RB(RT_PALETTE_REALIZED); }
 
@@ -148,7 +146,7 @@ U __cdecl RtGetResource(uint8_t *rt, U id)
 
 U __cdecl RtGetSceneName(uint8_t *rt) { SET(rt); return RU(RT_SCENES); }
 U __cdecl RtGetShadowTable(uint8_t *rt) { SET(rt); return (U)(uintptr_t)ORIG_PTR(0x1007b7e8); }
-U __cdecl RtGetString(uint8_t *rt, U id) { SET(rt); return C1(0x100259a6, id); }
+U __cdecl RtGetString(uint8_t *rt, U id) { SET(rt); return (U)(uintptr_t)string_get(id); }
 U __cdecl RtGetVar(uint8_t *rt, int n) { SET(rt); return RU(RT_GLOBALS + n * 4); }
 U __cdecl RtGetVarPtr(uint8_t *rt) { SET(rt); return (U)(uintptr_t)(rt + RT_GLOBALS); }
 
@@ -159,13 +157,13 @@ U __cdecl RtGetVars(uint8_t *rt, int first, int n, void *out)
     return (U)(uintptr_t)out;
 }
 
-U __cdecl RtGetVariableString(uint8_t *rt, U id) { SET(rt); return C1(0x10025a6a, id); }
+U __cdecl RtGetVariableString(uint8_t *rt, U id) { SET(rt); return (U)(uintptr_t)string_var(id); }
 /* (the one export that doesn't set the state block) */
 U __cdecl RtGetWaveDeviceFormat(uint8_t *rt, U out) { (void)rt; return C2(0x10041299, RU(RT_AUDIO), out); }
 U __cdecl RtGetWindow(uint8_t *rt) { SET(rt); return RU(RT_HWND); }
 U __cdecl RtGetWindowBox(uint8_t *rt) { SET(rt); return RB(RT_BKG_SCROLLS); }
 U __cdecl RtIsDirectDraw(uint8_t *rt) { SET(rt); return RB(RT_DIRECTDRAW); }
-U __cdecl RtIsIncrementalRepaint(uint8_t *rt) { SET(rt); return C1(0x1004ad61, HSLU); }
+U __cdecl RtIsIncrementalRepaint(uint8_t *rt) { SET(rt); return display_get_b5c(HSL); }
 
 U __cdecl RtLevel(uint8_t *rt, U id, int level)
 {
@@ -188,7 +186,8 @@ U __cdecl RtMapPoint(uint8_t *rt, POINT *pt)
 U __cdecl RtOffsetAuxillaryScrollPos(uint8_t *rt, int dx, int dy)
 {
     SET(rt);
-    U r = C3(0x10050dab, HSLU, dx, dy);
+    U r = 0;
+    SpriteOffsetAuxillaryScrollPos(HSL, dx, dy);
     if (RU(RT_CALL_HOOK)) {
         U a[2] = {0xbe, RU(RT_CALL_HOOK_ARG)};
         r = orig_stdcall_unsafe(R(void *, RT_CALL_HOOK), 2, a);
@@ -197,16 +196,17 @@ U __cdecl RtOffsetAuxillaryScrollPos(uint8_t *rt, int dx, int dy)
 }
 
 U __cdecl RtPause(uint8_t *rt, uint8_t on) { SET(rt); R(uint8_t, RT_PAUSED) = on; return on; }
-U __cdecl RtPauseMovies(uint8_t *rt, uint8_t on) { SET(rt); return C1(0x100166eb, on); }
-U __cdecl RtPauseTimers(uint8_t *rt, uint8_t on) { SET(rt); return C1(0x10025037, on); }
-U __cdecl RtPost(uint8_t *rt, U handler, U id, U arg) { SET(rt); return C3(0x10025e97, handler, id, arg); }
-U __cdecl RtPostMsg(uint8_t *rt, U msg) { SET(rt); return C1(0x10025f5d, msg); }
+U __cdecl RtPauseMovies(uint8_t *rt, uint8_t on) { SET(rt); movies_pause(on); return 0; }
+U __cdecl RtPauseTimers(uint8_t *rt, uint8_t on) { SET(rt); timers_pause(on); return 0; }
+U __cdecl RtPost(uint8_t *rt, U handler, U id, U arg) { SET(rt); return event_send(handler, id, arg); }
+U __cdecl RtPostMsg(uint8_t *rt, U msg) { SET(rt); return event_post((const uint8_t *)(uintptr_t)msg); }
 
 U __cdecl RtRegisterCursorSprite(uint8_t *rt, U s)
 {
     SET(rt);
     RU(RT_CURSOR_SPRITE) = s;
-    return C2(0x10057eed, HSLU, s);
+    set_b60(HSL, s);
+    return 0;
 }
 
 U __cdecl RtResLoaded(uint8_t *rt, U id) { SET(rt); return obj_loaded(id, ResGetType(R(ResFile *, RT_RES), id)); }
@@ -236,15 +236,15 @@ U __cdecl RtRunMsg(uint8_t *rt, uint8_t *rec)
 }
 
 U __cdecl RtSetBkgColor(uint8_t *rt, U color) { SET(rt); RU(RT_BKG_COLOR) = color; return color; }
-U __cdecl RtSetBlitLookupTable(uint8_t *rt, int which, U table) { SET(rt); return C3(0x1005bbf7, HSLU, which, table); }
-U __cdecl RtSetBriefingScreenStatus(uint8_t *rt, int on) { SET(rt); return C2(0x1004fac5, HSLU, on); }
+U __cdecl RtSetBlitLookupTable(uint8_t *rt, int which, U table) { SET(rt); set_fx_table(HSL, which, table); return 0; }
+U __cdecl RtSetBriefingScreenStatus(uint8_t *rt, int on) { SET(rt); sprite_set_interface(HSL, on); return 0; }
 U __cdecl RtSetComponent(uint8_t *rt, uint8_t v) { SET(rt); R(uint8_t, RT_COMPONENT) = v; return v; }
 
 U __cdecl RtSetComposeCallback(uint8_t *rt, U a, U b, U c, int d, int e, int f)
 {
     SET(rt);
-    U args[7] = {HSLU, a, b, c, (U)d, (U)e, (U)f};
-    return orig_stdcall_unsafe(ORIG_PTR(0x10055c7e), 7, args);
+    set_screen_mode(HSL, a, b, c, d, e, f);
+    return 0;
 }
 
 /* ---- second batch: RtSetDisplayMode to RtGetPalette ---- */
@@ -300,7 +300,7 @@ U __cdecl RtSetDisplayMode(uint8_t *rt, U w, U h, int depth, int full, int windo
         screen_size_from_desktop(R(uint8_t *, RT_HSL));
         R(uint8_t, RT_DIRECTDRAW) = (uint8_t)dd;
         palette_get_b80_2(HSLU, 0); /* (it ignores its arguments) */
-        ORIG(void(__cdecl *)(void), 0x1001f599)();
+        scene_palette_load();
         GetViewportOrgEx(R(HDC, RT_DC), (POINT *)(rt + RT_VIEW_ORG));
         R(uint8_t, RT_SMALL_SCREEN) = GetSystemMetrics(SM_CXSCREEN) < 0x281;
         R(uint8_t, RT_95DE) = R(uint8_t, RT_PALETTE_DEVICE) == 0;
@@ -386,7 +386,7 @@ U __cdecl RtSetText(uint8_t *rt, U id, LPCSTR s)
     if (!s)
         return 0;
     wsprintfA((LPSTR)(t + 0x52), s);
-    return C1(0x10023ba4, t) & 0xff;
+    return text_render(t) & 0xff;
 }
 
 U __cdecl RtSetVar(uint8_t *rt, int n, U v) { SET(rt); return RU(RT_GLOBALS + n * 4) = v; }
@@ -407,9 +407,9 @@ U __cdecl RtSetViewPortOrg(uint8_t *rt, const int32_t *pt)
 }
 
 U __cdecl RtSetQueue(uint8_t *rt, U id, U queue, uint8_t hide) { SET(rt); return cmd_set_queue(id, queue, hide); }
-U __cdecl RtShowGDISurface(uint8_t *rt) { SET(rt); return ORIG(U(__cdecl *)(U), 0x1004ca08)(HSLU); }
-U __cdecl RtRestoreFromGDISurface(uint8_t *rt) { SET(rt); return ORIG(U(__cdecl *)(U), 0x1004cb4c)(HSLU); }
-U __cdecl RtSpriteTransfer(uint8_t *rt, U a, U b, U c, uint8_t d) { SET(rt); return C4(0x1002524b, a, b, c, d); }
+U __cdecl RtShowGDISurface(uint8_t *rt) { SET(rt); display_lost_focus(R(uint8_t *, RT_HSL)); return 0; }
+U __cdecl RtRestoreFromGDISurface(uint8_t *rt) { SET(rt); display_got_focus(R(uint8_t *, RT_HSL)); return 0; }
+U __cdecl RtSpriteTransfer(uint8_t *rt, U a, U b, U c, uint8_t d) { SET(rt); return sprite_transfer(a, b, c, d); }
 
 U __cdecl RtUnload(uint8_t *rt, U id)
 {

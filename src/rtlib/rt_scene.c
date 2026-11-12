@@ -62,8 +62,6 @@
 #define VARS_SIZE 0x4e24
 
 #define flush_messages(m) C1(0x100260b4, m)
-#define paint_black ORIG(void(__stdcall *)(HDC), 0x100268f0)
-#define rt_script_error ORIG(U(__stdcall *)(U, U), 0x100260f6)
 #define script_run(h) C1(0x10022ce9, h)
 
 static uint8_t *scene_entry(U i) { return R(uint8_t *, RT_SCENES) + i * SCENE_SIZE; }

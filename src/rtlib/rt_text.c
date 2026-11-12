@@ -12,7 +12,6 @@
 #define RT_FOCUS_TEXT 0x3e77
 #define RT_PAUSED 0x95f1
 
-#define string_get ORIG(const char *(__stdcall *)(U), 0x100259a6)
 
 /* A text object, 0x277 bytes */
 #define T_ID 0x00
@@ -308,8 +307,7 @@ U __stdcall text_set_color(const uint8_t *c)
 #define T_LEAD_PENDING 0x4c /* a double-byte character's first byte came */
 #define T_LEAD_BYTE 0x50
 #define RT_EDIT_SAVED 0x9b55 /* the text before editing, for cancel */
-#define event_send ORIG(U(__stdcall *)(U, U, U), 0x10025e97)
-#define flush_messages(m) ORIG(U(__stdcall *)(U), 0x100260b4)(m)
+#define flush_messages(m) flush_messages(m)
 
 /* 0x10024560 */
 uint8_t *__stdcall text_of(U id) { return (uint8_t *)(uintptr_t)obj_entry(id)[2]; }

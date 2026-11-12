@@ -52,12 +52,10 @@
 #define RT_95FE 0x95fe
 #define RT_ZOOMED 0x9601
 
-#define event_send ORIG(int(__stdcall *)(uint32_t, uint32_t, uint32_t), 0x10025e97) /* handler, id, arg */
-#define handler_record_run ORIG(void(__stdcall *)(uint8_t *), 0x100220dd)
-#define mouse_filter ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x10014dc0)
-#define fn_1002799a ORIG(void(__stdcall *)(int, int), 0x1002799a)
-#define fn_10027bbd ORIG(void(__stdcall *)(int), 0x10027bbd)
-#define fn_10028012 ORIG(void(__stdcall *)(int, int), 0x10028012)
+#define mouse_filter mouse_controller
+#define fn_1002799a band_start
+#define fn_10027bbd band_end
+#define fn_10028012 band_move
 
 #define CLICKS ((RtArray *)(g_rt + RT_CLICK_RECTS))
 #define PAIRS ((RtArray *)(g_rt + RT_COLLIDE_PAIRS))

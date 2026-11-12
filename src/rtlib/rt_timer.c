@@ -21,8 +21,6 @@
 #define RT_SCRIPT_DEBUG 0x95d8
 
 #define g_timer_iter G(int, 0x100871a8) /* the timer being serviced */
-#define rt_fatal ORIG(void(__stdcall *)(U, U), 0x10025b0f)
-#define rt_script_error ORIG(U(__stdcall *)(U, U), 0x100260f6)
 
 static uint8_t *timer(U i) { return g_rt + RT_TIMERS + i * TIMER_SIZE; }
 static uint8_t *ctimer(U i) { return g_rt + RT_CTIMERS + i * CTIMER_SIZE; }
@@ -125,7 +123,6 @@ void __stdcall ctimer_set(U key, U interval, U callback, uint8_t flag)
 #define RT_DELAYED_DUE 0x0b80
 #define RT_PAUSE_TIME 0x0b78
 #define RT_TIMERS_PAUSED 0x95f0
-#define event_send ORIG(U(__stdcall *)(U, U, U), 0x10025e97)
 
 /* 0x10024db2: sends the delayed event when its time has come */
 void __cdecl delayed_event_service(void)

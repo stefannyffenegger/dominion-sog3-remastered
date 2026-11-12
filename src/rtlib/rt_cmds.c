@@ -25,9 +25,6 @@
 #define RT_CD_PLAYING 0x95d2
 #define RT_COMPOSE_OWNS 0x95dc
 
-#define script_run ORIG(int(__stdcall *)(uint32_t), 0x10022ce9)
-#define event_send ORIG(int(__stdcall *)(uint32_t, uint32_t, uint32_t), 0x10025e97)
-#define string_get ORIG(const char *(__stdcall *)(uint32_t), 0x100259a6)
 #define crt_rand ORIG(int(__cdecl *)(void), 0x10028850)
 #define AudioClearNotifications ORIG(void(__stdcall *)(uint8_t *), 0x1003fa9d)
 #define AudioPlayMidi ORIG(void(__stdcall *)(uint8_t *, uint32_t, const void *), 0x1003f2dd)
@@ -289,12 +286,10 @@ void __stdcall cmd_random(const uint8_t *c)
 
 /* ---- second batch: 0x10019a62-0x1001aa0b ---- */
 
-#define list_count ORIG(uint32_t(__stdcall *)(uint32_t), 0x10021960)
-#define list_run ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x10022e5c)
-#define wave_save ORIG(int(__stdcall *)(LPSTR, uint32_t), 0x100258e9)
-#define file_saved ORIG(void(__stdcall *)(LPSTR, uint32_t), 0x10027eba)
-#define rt_script_error ORIG(int(__stdcall *)(uint32_t, uint32_t), 0x100260f6)
-#define rt_fatal ORIG(void(__stdcall *)(uint32_t, uint32_t), 0x10025b0f)
+#define list_count handler_count
+#define list_run handler_run_at
+#define wave_save res_extract_to_file
+#define file_saved wallpaper_set
 #define AudioStopMidi ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x1003f57c)
 #define AudioGetWaveVolume ORIG(uint32_t(__stdcall *)(uint8_t *), 0x1004137a)
 #define AudioSetWaveVolume ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x10041446)

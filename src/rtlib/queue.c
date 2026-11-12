@@ -58,7 +58,6 @@
 typedef void(__stdcall *MsgProc)(void *, uint32_t);
 
 /* original functions not rewritten yet */
-#define sprite_reposition ORIG(void(__stdcall *)(uint8_t *), 0x100560d0)
 
 /* value at off with its flag byte at flag */
 #define VAL(c, off, flag) (uint32_t) sprite_delay(C(int32_t, c, off), C(char, c, flag))
