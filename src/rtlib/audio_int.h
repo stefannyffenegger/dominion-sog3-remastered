@@ -202,6 +202,29 @@ int __stdcall wave_file_write_cb(uint32_t f, void *buf, uint32_t n);
 int __stdcall wave_file_write_packed(HMMIO f, const int16_t *data, uint32_t n, const uint8_t *fmt);
 int __stdcall wave_file_save(LPSTR path, const uint8_t *fmt, const int16_t *data, uint32_t size, int pack);
 
+/* audio_cd.c */
+int __stdcall cd_command(UINT msg, DWORD_PTR flags, DWORD_PTR parms);
+uint32_t __cdecl cd_close(void);
+DWORD __cdecl cd_get_volume(void);
+int __stdcall cd_set_volume(DWORD v);
+void __cdecl cd_apply_mute(void);
+int __cdecl cd_device_stop(void);
+uint32_t __cdecl cd_position(void);
+uint32_t __stdcall AudioGetCDPosition(uint8_t *a);
+int __cdecl cd_open(void);
+uint32_t __stdcall AudioGetCDTracks(uint8_t *a);
+uint32_t __stdcall AudioGetCDVolume(uint8_t *a);
+uint32_t __stdcall cd_track_length(uint8_t track);
+uint32_t __stdcall AudioGetCDTrackLengths(uint8_t *a, uint8_t from, uint8_t to, uint32_t *out);
+int __stdcall AudioIsCDPlaying(uint8_t *a);
+void __cdecl cd_sync(void);
+void __cdecl cd_profile(void);
+uint32_t __stdcall cd_play(uint32_t from, uint32_t to);
+int __stdcall AudioPlayCD(uint8_t *a, uint32_t from, uint32_t to);
+uint32_t __stdcall cd_play_tracks(uint8_t from, uint8_t to);
+int __stdcall AudioPlayCDTrack(uint8_t *a, uint8_t track);
+int __stdcall AudioSetCDVolume(uint8_t *a, DWORD v);
+
 /* not ported yet */
 #define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
 #define AudioPrepareMidiData ORIG(uint8_t *(__stdcall *)(void *, uint32_t, uint32_t *), 0x10043bd0)
@@ -218,8 +241,5 @@ int __stdcall wave_file_save(LPSTR path, const uint8_t *fmt, const int16_t *data
 #define midi_play_events ORIG(void(__stdcall *)(void *), 0x10044df0)
 #define midi_pause ORIG(void(__stdcall *)(int), 0x100439c9)
 #define midi_apply_mute ORIG(void(__cdecl *)(void), 0x100437bc)
-#define cd_apply_mute ORIG(void(__cdecl *)(void), 0x10042cb0)
-#define cd_device_stop ORIG(int(__cdecl *)(void), 0x10042d6d)
-#define cd_close ORIG(void(__cdecl *)(void), 0x10042b13)
 #define resample ORIG(uint32_t(__stdcall *)(void *, void *, uint32_t, void *, uint32_t, void *), 0x10045394)
 #endif

@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,297 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,318 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -516,11 +516,12 @@ Dominion never opens the engine's wave, MIDI or CD devices (it plays everything 
 * Part 2 (`audio_wave.c`, 19 functions, 0x10040555-0x10041514): the waveOut device: the format (the sound's own, the same in 8 bits, or the first of the twelve standard formats the device and the `WaveFormatMask` setting allow), opening, eight 8 KB buffers, volume, fades in 200 ms steps, mute, pause and reset. The original's "no format found" test compared a 16-bit value with 0xffffffff and so never fired (it would have read entry 65,535 of a 12-entry table); ours gives up. Its volume setter checks the previous call's error instead of its own; kept.
 * Part 3 (`audio_objs.c`, 22 functions, 0x10041514-0x1004226a): making and freeing MIDI sounds (up to 20) and wave sounds (up to 100). A sound reads its data through a source of three callbacks (read, rewind, close); a wave longer than the buffers (8 × 8 KB) streams, a shorter one is read whole. Also a MIDI sound made from a `.mid` file, which nothing calls.
 * Part 4 (`audio_files.c`, 11 functions, 0x1004226a-0x10042ac0): `.wav` files: a wave sound streamed from a file, loading one whole, saving one. Besides plain PCM it reads and writes "WAV7" files, 7th Level's own compressed waves (a 10-byte header, then 4-bit IMA ADPCM, through the codec of `compress.c`).
+* Part 5 (`audio_cd.c`, 21 functions, 0x10042b13-0x100435e1): CD audio over MCI, its volume through the mixer's CD line. Positions are kept as track, minutes, seconds, frames from the high byte down (MCI's TMSF the other way round). The first play measures whether the drive reports the start position for a while; if it does, later plays wait up to a second for it to start. `AudioGetCDTrackLengths` closes the drive afterwards when it was open before rather than when it opened it itself, and doesn't set the context; kept.
 
 ### What's left
 | Part | Functions | Status |
 |---|---|---|
-| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,297 | **ours** |
+| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,318 | **ours** |
 | Exports too short to hook (`RtEnableDirectDraw`, `RtSetScreenRes`) | 2 | original |
 | Sprite assembly routines whose callers are all ours (C versions in `blit.c`) | 14 | dead in the original, no hook needed |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~190 | original |
