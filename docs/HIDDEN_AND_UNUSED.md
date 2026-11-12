@@ -71,6 +71,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[Dominion] NumStartUnits` | 10 | multiplayer starting units (`MultiMen` and `MultiMat` next to it are listed) |
 | `[Dominion] CinePlaybackMethod` | 2 | cutscene scaling (0 original, 1 doubled, 2 smoothed, 3 interlaced) |
 | `[Dominion] SoundBuffers` | | number of sound channels (8-20) |
+| `[Dominion] KeyboardScrolling` | 0 | **tested**: 1 scrolls the map with the arrow keys and Home, End, Page Up, Page Down (diagonals); not while Alt or Ctrl is held |
 | `[audio] CdVolume`, `MidiVolume`, `WaveVolume` | 0x7fff | the engine's own volumes |
 | `[audio] WaveFormatMask`, `MaxWaveBuffers`, `DisableWaveVolume`, `RemapMidiDrums`, `ProfileCD` | | the unused sound system |
 | `[utils] Pentium` | 1 | treat a Pentium as a Pentium (processor detection) |

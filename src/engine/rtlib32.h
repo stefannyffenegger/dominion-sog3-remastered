@@ -58,6 +58,7 @@ int __stdcall SpriteRealizePalette2(void *hsl, int force);
 unsigned __cdecl RtCopy(void *app, unsigned id);
 unsigned __cdecl RtDelete(void *app, unsigned id);
 unsigned __cdecl RtLoad(void *app, unsigned id);
+int __cdecl RtRunMsg(void *app, void *rec);
 
 /* Sprites: msg is a list of count 32-bit values */
 void __stdcall SpriteEmptyQueue(void *hsl, void *sprite);
@@ -66,5 +67,10 @@ void __stdcall SpritePostMessage(void *hsl, void *sprite, uint32_t count, const 
 void __stdcall SpriteSendMessage(void *hsl, void *sprite, uint32_t count, const uint32_t *msg);
 void __stdcall SpriteSetLevel(void *hsl, void *sprite, int32_t level);
 void __cdecl SpriteSetProcessMsgs(void *hsl, void *sprite, int on);
+void __stdcall SpriteShow(void *hsl, void *sprite, uint32_t cel, int redraw);
+void __stdcall SpriteScroll(void *hsl, int dx, int dy, int blit);
+void __stdcall SpriteGetScrollPos(void *hsl, int32_t *pos);
+unsigned __cdecl RtRegisterCursorSprite(void *app, void *sprite);
+void __cdecl RtSetScrollBox(void *app, const int32_t *box);
 
 #endif

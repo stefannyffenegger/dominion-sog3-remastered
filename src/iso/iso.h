@@ -5,5 +5,6 @@
 
 #include "orig.h"
 #include "power.h"
+#include "view.h"
 
 #endif

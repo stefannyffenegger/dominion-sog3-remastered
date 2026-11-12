@@ -13,6 +13,7 @@
 
 /* state fields */
 #define ISO_HAVE_SPRITES 0x0154   /* sprites are shown (not a dedicated server run) */
+#define ISO_FLAGS 0x0174           /* byte: power hints given (1 low, 8 none, 0x10 back); 0x80 scrolled by keys */
 #define ISO_APP 0x180e            /* the engine's app (rt) */
 #define ISO_HSL 0x181e            /* the engine's sprite state */
 #define ISO_MAP 0x1904            /* map cells: 32 bits, row y at (y << ISO_MAP_SHIFT) */
@@ -20,6 +21,7 @@
 #define ISO_MAP_W 0x1a9c
 #define ISO_MAP_SHIFT 0x1aa0
 #define ISO_UNIT_COUNT 0x1b43     /* entries in the unit list */
+#define ISO_LOCAL_PLAYER 0x1b65
 #define ISO_PLAYERS 0x1b69        /* per player, 0x1461 bytes */
 #define ISO_PLAYER_SIZE 0x1461
 #define ISO_UNITS 0xd656          /* unit pointers by id */

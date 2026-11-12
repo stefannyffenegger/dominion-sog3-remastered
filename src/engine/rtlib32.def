@@ -41,3 +41,8 @@ EXPORTS
     SpriteSendMessage@16
     SpriteSetLevel@12
     SpriteSetProcessMsgs
+    RtRegisterCursorSprite
+    RtSetScrollBox
+    SpriteGetScrollPos@8
+    SpriteScroll@16
+    SpriteShow@16

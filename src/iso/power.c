@@ -4,6 +4,7 @@
  * player keeps a list of up to 128 grids. Rewritten from the original. */
 #include "iso_core.h"
 #include "power.h"
+#include "view.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define relay_add ORIG(void(__cdecl *)(uint32_t), 0x10010ca9)
@@ -11,7 +12,6 @@
 #define unit_distance ORIG(int(__cdecl *)(int, int, int, int), 0x10067620)
 #define alert_add ORIG(void(__cdecl *)(uint32_t, int, int, int), 0x100e42a6)
 #define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
-#define power_bar_set ORIG(void(__cdecl *)(int, uint32_t), 0x10004067)
 #define unit_power_state ORIG(void(__cdecl *)(uint32_t, int), 0x100ed2ba)
 #define hint_show ORIG(void(__cdecl *)(int, int, int, int, int), 0x1001bbfc)
 #define unit_anim_playing ORIG(int(__cdecl *)(int16_t, int), 0x100f3951)
@@ -20,8 +20,6 @@
 #define iso_message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
 #define IsoPauseGame ORIG(void(__stdcall *)(uint8_t *, int, int), 0x1008dac1)
 
-#define ISO_LOCAL_PLAYER 0x1b65
-#define ISO_POWER_HINTS 0x0174 /* byte: hints given (1 low power, 8 no power, 0x10 restored) */
 #define ISO_ICONS 0xcf5c       /* 128 power icons of 0xe bytes: sprite, flags (bit 0 used) */
 
 /* the unit type table: `off` of type t */
@@ -338,9 +336,9 @@ uint32_t __cdecl power_check(int16_t id)
             if (left < 0x32) {
                 icon = 0;
                 alert_add(P(uint8_t, u, U_PLAYER), 6, id, 0);
-                if (!(I(uint8_t, ISO_POWER_HINTS) & 1)) {
+                if (!(I(uint8_t, ISO_FLAGS) & 1)) {
                     player_announce(P(uint8_t, u, U_PLAYER), 0x25, 1);
-                    I(uint8_t, ISO_POWER_HINTS) |= 1;
+                    I(uint8_t, ISO_FLAGS) |= 1;
                 }
             }
         }
@@ -538,9 +536,9 @@ void __cdecl power_grid_sum(uint16_t player)
     }
     if (I(int32_t, ISO_LOCAL_PLAYER) == (int16_t)player)
         power_bar_set(uses_total, gives_total);
-    I(uint8_t, ISO_POWER_HINTS) &= 0xfe;
-    I(uint8_t, ISO_POWER_HINTS) &= 0xf7;
-    I(uint8_t, ISO_POWER_HINTS) &= 0xef;
+    I(uint8_t, ISO_FLAGS) &= 0xfe;
+    I(uint8_t, ISO_FLAGS) &= 0xf7;
+    I(uint8_t, ISO_FLAGS) &= 0xef;
 }
 
 /* 0x1000258e: rebuilds the player's grids */
@@ -589,11 +587,11 @@ void __cdecl power_unit_update(uint32_t id)
     if (r == (int16_t)0x8002) {
         unit_power_state(id, 0);
         if (local) {
-            I(uint8_t, ISO_POWER_HINTS) &= 0xfe;
-            I(uint8_t, ISO_POWER_HINTS) &= 0xf7;
-            if (!(I(uint8_t, ISO_POWER_HINTS) >> 4 & 1) && P(uint32_t, u, 0x46)) {
+            I(uint8_t, ISO_FLAGS) &= 0xfe;
+            I(uint8_t, ISO_FLAGS) &= 0xf7;
+            if (!(I(uint8_t, ISO_FLAGS) >> 4 & 1) && P(uint32_t, u, 0x46)) {
                 player_announce(P(uint8_t, u, U_PLAYER), 0x44, 1);
-                I(uint8_t, ISO_POWER_HINTS) |= 0x10;
+                I(uint8_t, ISO_FLAGS) |= 0x10;
                 hint_show(0xc, 0, 0, 0, 1);
             }
             P(uint32_t, u, 0x46) = 0;
@@ -605,18 +603,18 @@ void __cdecl power_unit_update(uint32_t id)
         unit_power_state(id, P(int32_t, u, U_CLASS) == 0x5c ? 2 : 1);
         if (local) {
             if (P(int16_t, u, U_POWER) == -1) {
-                if (!(I(uint8_t, ISO_POWER_HINTS) >> 3 & 1)) {
+                if (!(I(uint8_t, ISO_FLAGS) >> 3 & 1)) {
                     player_announce(P(uint8_t, u, U_PLAYER), 0x43, 1);
-                    I(uint8_t, ISO_POWER_HINTS) |= 8;
+                    I(uint8_t, ISO_FLAGS) |= 8;
                     P(uint32_t, u, 0x46) = 1;
                     hint_show(0xb, 0, 0, 0, 1);
                 }
                 if ((P(uint8_t, u, U_FLAGS) & 1) &&
                     !unit_anim_playing(P(int16_t, u, 0x4e), 6 - !(P(uint32_t, u, U_FLAGS) >> 1 & 1)))
                     unit_anim_start((uint16_t)id, P(uint32_t, u, U_FLAGS) >> 1 & 1, 1, 0);
-            } else if (!(I(uint8_t, ISO_POWER_HINTS) & 1)) {
+            } else if (!(I(uint8_t, ISO_FLAGS) & 1)) {
                 player_announce(P(uint8_t, u, U_PLAYER), 0x25, 1);
-                I(uint8_t, ISO_POWER_HINTS) |= 1;
+                I(uint8_t, ISO_FLAGS) |= 1;
             }
         }
     }
@@ -638,9 +636,9 @@ void __cdecl power_mark_all(uint32_t on)
         if (id && iso_unit(id))
             P(uint32_t, iso_unit(id), U_FLAGS) = (P(uint32_t, iso_unit(id), U_FLAGS) & 0xffffffdf) | (on & 1) << 5;
     }
-    I(uint8_t, ISO_POWER_HINTS) &= 0xfe;
-    I(uint8_t, ISO_POWER_HINTS) &= 0xf7;
-    I(uint8_t, ISO_POWER_HINTS) &= 0xef;
+    I(uint8_t, ISO_FLAGS) &= 0xfe;
+    I(uint8_t, ISO_FLAGS) &= 0xf7;
+    I(uint8_t, ISO_FLAGS) &= 0xef;
 }
 
 /* 0x100033fd: a debug box with the selected structure's power figures */
