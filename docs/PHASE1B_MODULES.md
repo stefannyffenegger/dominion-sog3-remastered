@@ -469,6 +469,12 @@ Two players, each bound to a device slot (joysticks 1-2, keyboard sets 3-4, the 
 * Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
 * With this, every engine-core function is ours except the 270 built-in script functions (one switch) and two exports too short to patch.
 
+### Engine core, part 28: the built-in script functions, first half (`rt_builtins.c`)
+The script's ~200 built-in functions are one switch on the function number (0x10003f6d, 66 of its 270 numbers do nothing). Arguments come off the script stack, the result replaces the function number below them; many built-ins just pack their arguments into a script command record and run it. Ported from the assembly, since the decompile of a function this size is wrong in places (it has the absolute value falling through to nothing). This part does 125 numbers: strings (compare, length, find, copy, characters, to number), arrays (read, write, dimensions), fixed-point arithmetic, min, max, random, angles, distances, sprite messages, hit tests and clip boxes, scrolling, background and palette commands, hover and click regions, scene changes, registry and INI settings, the user name, running programs, the debug print. Numbers not yet ported still go to the original switch.
+* A trace showed the game calls 15 built-ins in the menu tour and mission 1 (copies, arrays, random numbers, strings, sprite messages, visibility), all in this part.
+* The debug print formatted into 340 bytes (`wvsprintf` writes up to 1,024); ours has room, and passes the text to the debug output as text rather than as a format.
+* Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
+
 ### What's left
 | Part | Functions | Decompiled lines |
 |---|---|---|

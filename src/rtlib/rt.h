@@ -38,6 +38,7 @@
 #include "rt_movie.h"
 #include "rt_builtin_misc.h"
 #include "rt_controller.h"
+#include "rt_builtins.h"
 #include "rt_script.h"
 #include "rt_input.h"
 #include "rt_fade.h"

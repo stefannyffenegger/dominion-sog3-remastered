@@ -219,7 +219,7 @@ int32_t __stdcall script_eval(const uint8_t *code)
 
 /* 0x10003ea5: calls function number stack[top - argc]. args: the caller's frame size in
  * variables, then the argument count. Built-in functions are in the original's big
- * switch (0x10003f6d). */
+ * switch (0x10003f6d, rt_builtins.c). */
 void __stdcall script_call(const int32_t *args)
 {
     int32_t frame = args[0], argc = args[1];
@@ -232,7 +232,7 @@ void __stdcall script_call(const int32_t *args)
     if (R(uint32_t, RT_BUILTINS) < fn)
         script_extern_call(fn, argc);
     else
-        ORIG(void(__stdcall *)(uint32_t, int32_t), 0x10003f6d)(fn, argc);
+        builtin_call(fn, (U)argc);
     R(uint32_t, RT_FRAME) += frame * 4;
 }
 
