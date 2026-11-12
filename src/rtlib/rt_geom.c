@@ -4,6 +4,7 @@
  * Rewritten from the original. */
 #include "rtcore.h"
 #include "rt.h"
+#include "math87.h"
 #include "rt_geom.h"
 
 #define RT_PAUSED 0x95f1
@@ -13,9 +14,6 @@
 #define RT_MOUSE_X 0x8d83
 #define RT_MOUSE_Y 0x8d87
 
-/* x87 floating point: these stay the original's */
-#define GetAngle ORIG(int(__stdcall *)(int, int), 0x1003dad4)
-#define GetIntersect ORIG(int(__stdcall *)(int *, int, int, int, int, int, int, int, int), 0x1003e660)
 
 #define g_dir_codes ((const uint8_t *)ORIG_PTR(0x10075340)) /* per quadrant, 4 bytes apart */
 

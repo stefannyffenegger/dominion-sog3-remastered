@@ -101,6 +101,13 @@ PORTED(0x1006a588, res_expand_rle)
 /* Utilities (utils.c) */
 PORTED(0x1003d800, CopyHugeBytes)
 PORTED(0x1003d8b4, LinearSearch)
+
+/* Utilities: floating-point math (math87.c) */
+PORTED(0x1003dad4, GetAngle)
+PORTED(0x1003dcd3, Collide)
+PORTED(0x1003deb1, Distance)
+PORTED(0x1003df0b, SquareRoot)
+PORTED(0x1003e660, GetIntersect)
 PORTED(0x1003d82c, CopyHugeStr)
 PORTED(0x1003d848, HugeStrLen)
 PORTED(0x1003d95e, BinarySearch)

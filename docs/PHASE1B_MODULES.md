@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,206 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,211 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -502,11 +502,15 @@ The engine borrowed `rand`, `srand`, `atoi`, `strstr`, `strrchr`, `isalpha`, `ab
 * A failed engine assertion showed the debug C library's Abort/Retry/Ignore box; ours writes it to the debug output and goes on.
 * Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
 
+### Cutting loose, step 3: the floating-point math (`math87.c`, 5 functions)
+`GetAngle`, `GetIntersect`, `Collide`, `Distance` and `SquareRoot` used x87 floating point through the original's C library. Ours run the same x87 operations in the same order (`long double` where the original keeps values on the FPU stack, `double` stores where it stores them, `atan2` and `sqrt` at full precision as the C library did, truncation through a 64-bit store as `__ftol`), so results match bit for bit. `tests/math_compare.sh` checks every vector from -1024 to 1023 for `GetAngle`, 3 million square roots and millions of random cases for the rest, at both 53- and 64-bit FPU precision: all identical.
+* The engine converts radians to tenths of a degree with π = 3.1415 (1800 / 3.1415 = 572.97 instead of 572.96).
+* Checked: the comparison above, menu tour, Human mission 1 (no change, rerun twice), and Alt+F4 at the main menu.
+
 ### What's left
 | Part | Functions | Status |
 |---|---|---|
-| Engine core, resources, utilities, sprites, display | 1,206 | **ours** |
-| Math with x87 floating point (`GetAngle`, `GetIntersect`, `Collide`, `Distance`, `SquareRoot`) | 5 | kept original on purpose: game logic may depend on their exact results |
+| Engine core, resources, utilities, sprites, display | 1,211 | **ours** |
 | Exports too short to hook (`RtEnableDirectDraw`, `RtSetScreenRes`) | 2 | original |
 | Sprite assembly routines whose callers are all ours (C versions in `blit.c`) | 14 | dead in the original, no hook needed |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~190 | original |

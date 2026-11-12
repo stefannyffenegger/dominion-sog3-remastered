@@ -8,7 +8,8 @@
  * DOMINION_ORIGINAL=ResOpenFile,ResCloseFile (or "all") leaves those functions original,
  * for comparing behavior. */
 #include "orig.h"
-#include "rt.h" /* prototypes of everything in ported.h */
+#include "rt.h"
+#include "math87.h" /* prototypes of everything in ported.h */
 #include <stdarg.h>
 
 uint8_t *g_orig;

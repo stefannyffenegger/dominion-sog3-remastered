@@ -7,6 +7,7 @@
 #include "rtcore.h"
 #include "crt.h"
 #include "rt.h"
+#include "math87.h"
 #include "rt_builtins.h"
 
 #define RU(off) R(U, off)
@@ -30,11 +31,6 @@
 #define g_stack ((int32_t *)ORIG_PTR(0x1007c408))
 #define REG_PATH "Software\\7th Level, Inc."
 
-/* the x87 math the original keeps */
-#define GetAngle ORIG(int(__stdcall *)(int, int), 0x1003dad4)
-#define Collide ORIG(int(__stdcall *)(int, int, int, int, int, int, int, int), 0x1003dcd3)
-#define Distance ORIG(int(__stdcall *)(int, int, int, int), 0x1003deb1)
-#define SquareRoot ORIG(int(__stdcall *)(int), 0x1003df0b)
 #define AudioSetWaveSoundPriority ORIG(void(__stdcall *)(uint8_t *, U, U), 0x100402fa)
 #define RtSetScreenRes ORIG(U(__cdecl *)(uint8_t *, U, U, U), 0x1001d3b3) /* too short to hook */
 #define AudioGetWaveSoundTime ORIG(U(__stdcall *)(uint8_t *, U), 0x1003fbf5)
@@ -181,7 +177,8 @@ void __stdcall builtin_call(U fn, U argc)
         int32_t v[8];
         for (int i = 7; i >= 0; i--)
             v[i] = pop();
-        Collide(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+        Collide(v[0], v[1], v[2], v[3], (int *)(uintptr_t)(U)v[4], (int *)(uintptr_t)(U)v[5],
+                (int *)(uintptr_t)(U)v[6], (int *)(uintptr_t)(U)v[7]);
         break;
     }
     case 0x16: {

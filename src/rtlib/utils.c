@@ -2,9 +2,8 @@
  * (angles in tenths of a degree, 0-3599; results scaled by 10000).
  * Rewritten from the original (0x1003d800-0x1003e9b7).
  *
- * Not rewritten: GetAngle, Collide, Distance, SquareRoot, GetIntersect (x87 floating
- * point through the C runtime; game logic may depend on their exact results).
- * ExternalCall is in rt_script.c. */
+ * The floating-point math (GetAngle, Collide, Distance, SquareRoot, GetIntersect) is in
+ * math87.c, ExternalCall in rt_script.c. */
 #include "orig.h"
 #include "utils.h"
 #include <stdarg.h>

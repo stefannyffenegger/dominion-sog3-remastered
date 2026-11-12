@@ -4,6 +4,7 @@
  * that remember their state per script. Rewritten from the original. */
 #include "rtcore.h"
 #include "rt.h"
+#include "math87.h"
 #include "rt_builtin_misc.h"
 
 #define RU(off) R(U, off)
@@ -13,7 +14,6 @@
 #define RT_PICK_ROOM 0x3e33
 
 #define g_stack ((int32_t *)ORIG_PTR(0x1007c408))
-#define GetIntersect ORIG(int(__stdcall *)(int *, int, int, int, int, int, int, int, int), 0x1003e660)
 
 static int32_t pop(void)
 {
