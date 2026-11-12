@@ -8,5 +8,6 @@
 #include "view.h"
 #include "display.h"
 #include "loop.h"
+#include "screen.h"
 
 #endif

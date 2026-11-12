@@ -5,11 +5,11 @@
 #include "view.h"
 #include "display.h"
 #include "loop.h"
+#include "screen.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define IsoBriefingScreen ORIG(void(__cdecl *)(uint8_t *, int), 0x1005b438)
 #define IsoShowObjects ORIG(void(__stdcall *)(uint8_t *, int), 0x100ae0ae)
-#define IsoHideUnitNamePopup ORIG(void(__cdecl *)(uint8_t *), 0x10008c7d)
 #define IsoSetMouseCursorState ORIG(void(__stdcall *)(uint8_t *, uint32_t, int), 0x10012486)
 #define IsoNetWindow ORIG(void(__stdcall *)(uint8_t *, int, int, int), 0x10046d25)
 #define IsoSetFollowUnit ORIG(void(__cdecl *)(uint8_t *, int), 0x10055f9f)
@@ -25,7 +25,6 @@
 #define radar_update ORIG(int(__cdecl *)(void), 0x100a25d0)
 #define view_follow ORIG(void(__cdecl *)(int, int), 0x100549b0)
 #define objectives_window ORIG(void(__cdecl *)(int), 0x10047656)
-#define window_cd8a ORIG(void(__cdecl *)(void), 0x10008f27)
 #define unit_shade ORIG(int(__cdecl *)(uint16_t), 0x10076ca3)
 #define unit_shade_done ORIG(int(__cdecl *)(uint16_t), 0x10076af2)
 #define structure_shade ORIG(int(__cdecl *)(uint16_t), 0x10076e53)
@@ -260,7 +259,7 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
     if (I(int, 0xbe71))
         objectives_window(I(uint32_t, 0xbec1) < I(uint32_t, 0x17dd));
     if (I(int, 0xcd8a))
-        window_cd8a();
+        countdown_draw();
     return 1;
 }
 

@@ -52,3 +52,8 @@ EXPORTS
     RtSetPos
     SpriteSetBlitFX@12
     SpriteSetSync@8
+    RtUnload
+    SpriteGetBounds@12
+    SpriteRefreshInterfaceArea@8
+    SpriteRefreshRect@8
+    SpriteSetScrollPos@12
