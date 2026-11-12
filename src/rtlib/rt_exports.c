@@ -46,7 +46,7 @@ U __cdecl RtCursor(uint8_t *rt, uint8_t id) { SET(rt); return C1(0x10025880, id)
 U __cdecl RtDeviceBitmapToDibData(uint8_t *rt, U bm, int8_t a, uint8_t b, uint8_t c)
 {
     SET(rt);
-    return C4(0x10017f60, bm, a, b, c);
+    return (U)(uintptr_t)dib_from_bitmap((HBITMAP)(uintptr_t)bm, (uint8_t)a, b, c);
 }
 
 /* deletes a resource: run-time copies are removed, the others only released */

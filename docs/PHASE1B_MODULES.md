@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,111 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,129 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -444,6 +444,11 @@ The engine window's procedure: activation (switching away pauses the game unless
 Run mode 1 (`/w`): the window procedure that keeps the engine behind all other windows, the rubber band for choosing a screen area, saving it as the Windows wallpaper, and screen captures to numbered `.bmp` files (see `HIDDEN_AND_UNUSED.md`). Dominion uses none of it: untested ports.
 * Checked: menu tour and Human mission 1 (no change).
 * With this, every engine-core function that runs in Dominion is ours except the 270 built-in script functions (one 29 KB switch).
+
+### Engine core, part 23: bitmaps into sprites, icons, printing (`rt_print.c`, 18 functions)
+A device bitmap becomes a sprite bitmap, its colors added to the palette (most used first, up to the free entries, then the nearest one). A file's icon (a `.ico`, or an icon of a program) can be drawn into a sprite, and a bitmap resource can be printed on the default printer (see `HIDDEN_AND_UNUSED.md`). Dominion uses none of it: untested ports.
+* The original crashed when no default printer was set (it cut the `device` entry of `WIN.INI` at commas without checking); ours then reports failure.
+* Checked: menu tour and Human mission 1 (no change).
 
 ### What's left
 | Part | Functions | Decompiled lines |

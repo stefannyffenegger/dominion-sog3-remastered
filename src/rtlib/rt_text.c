@@ -13,7 +13,6 @@
 #define RT_PAUSED 0x95f1
 
 #define string_get ORIG(const char *(__stdcall *)(U), 0x100259a6)
-#define dib_from_bitmap ORIG(U *(__stdcall *)(HBITMAP, U, U, U), 0x10017f60)
 
 /* A text object, 0x277 bytes */
 #define T_ID 0x00
@@ -165,7 +164,7 @@ U *__stdcall text_bitmap(uint8_t *t)
         return NULL;
     HGDIOBJ old = P(U, t, T_FONT) ? SelectObject(dc, P(HGDIOBJ, t, T_FONT)) : NULL;
     HBITMAP bm = text_draw_bitmap(t, dc);
-    U *bits = bm ? dib_from_bitmap(bm, 0, 0, 0) : NULL;
+    U *bits = bm ? (U *)dib_from_bitmap(bm, 0, 0, 0) : NULL;
     if (bits && !RB(RT_PALETTE_DEVICE)) {
         memset(g_color_map + 1, (int)P(U, t, T_COLOR), 0xff);
         g_color_map[0] = 0;
