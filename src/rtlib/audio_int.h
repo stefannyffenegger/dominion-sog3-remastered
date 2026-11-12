@@ -4,6 +4,7 @@
 
 #include "orig.h"
 #include "midi_prepare.h"
+#include "resample.h"
 
 /* the audio context: 0x2fa bytes, fields at the original's (unaligned) offsets */
 #define F(type, ctx, off) (*(type *)((uint8_t *)(ctx) + (off)))
@@ -133,7 +134,8 @@ int __stdcall wave_sound_play(uint8_t *s, const uint8_t *params);
 void __stdcall wave_report_error(const char *what);
 void __cdecl wave_check_error(const char *what);
 uint32_t __cdecl wave_close(void);
-uint32_t __stdcall AudioResampleWave(void *dst_fmt, void *src_fmt, uint32_t len, void *src, void *dst);
+uint32_t __stdcall AudioResampleWave(const WaveFormat *out_fmt, const WaveFormat *in_fmt, uint32_t len, uint8_t *dst,
+                                     const uint8_t *src);
 void __stdcall AudioBreakMidiLoops(uint8_t *a, uint8_t *id);
 int __stdcall AudioPlayMidi(uint8_t *a, uint8_t *id, const uint8_t *params);
 void __stdcall AudioSetMidi(uint8_t *a, uint8_t *id, const uint8_t *set);
@@ -269,7 +271,5 @@ void CALLBACK AudioTimerProc(UINT id, UINT msg, DWORD_PTR user, DWORD_PTR dw1, D
 #define mix_sound16 ORIG(uint32_t(__stdcall *)(uint8_t *, int16_t *, uint32_t, uint32_t), 0x10045d96)
 #define mix_sound8 ORIG(uint32_t(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10045c30)
 #define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
-#define resample_setup ORIG(uint32_t(__stdcall *)(void *, void *, void *, uint32_t), 0x100452e0)
 #define wave_sound_rewind ORIG(void(__stdcall *)(void *), 0x100458d5)
-#define resample ORIG(uint32_t(__stdcall *)(void *, void *, uint32_t, void *, uint32_t, void *), 0x10045394)
 #endif

@@ -1406,3 +1406,8 @@ PORTED(0x10044df0, midi_play_events)
 PORTED(0x10044f43, midi_loop)
 PORTED(0x10044fa2, midi_stop_playing)
 PORTED(0x10044ff4, AudioTimerProc)
+
+/* resample.c (its assembly helpers 0x1004504c-0x1004523c, 0x10045f08-0x100461f6 have no
+ * other callers) */
+PORTED(0x100452e0, resample_setup)
+PORTED(0x10045394, resample)

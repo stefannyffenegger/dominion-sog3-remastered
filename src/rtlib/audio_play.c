@@ -10,16 +10,17 @@
 
 static const uint8_t g_midi_defaults[8]; /* 0x100887c8: no loops, no notification */
 
-/* Converts len bytes of src (format src_fmt) to dst_fmt; returns the converted size.
- * Without buffers only the size. */
-uint32_t __stdcall AudioResampleWave(void *dst_fmt, void *src_fmt, uint32_t len, void *src, void *dst)
+/* Converts len bytes of src (format in_fmt) into dst (out_fmt); returns the size
+ * written. Without buffers only the size it would be. */
+uint32_t __stdcall AudioResampleWave(const WaveFormat *out_fmt, const WaveFormat *in_fmt, uint32_t len, uint8_t *dst,
+                                     const uint8_t *src)
 {
-    void *state = LocalAlloc(LMEM_FIXED, 9);
+    uint8_t *state = LocalAlloc(LMEM_FIXED, 9);
     if (!state)
         return 0;
-    uint32_t n = resample_setup(state, dst_fmt, src_fmt, len);
-    if (src && dst)
-        n = resample(state, src, n, dst, len, NULL);
+    uint32_t n = resample_setup(state, out_fmt, in_fmt, len);
+    if (dst && src)
+        n = resample(state, dst, n, src, len, NULL);
     LocalFree(state);
     return n;
 }
@@ -364,7 +365,7 @@ int __stdcall wave_sound_play(uint8_t *s, const uint8_t *params)
     if (s[W_RESAMPLED])
         DebugStr("Audio: %04x is resampled", s);
     if (s[W_RESAMPLED])
-        resample_setup(s + 0x93, g_audio + A_FORMAT, s + W_FORMAT, F(uint32_t, s, W_LENGTH) << (s[W_SHIFT] & 0x1f));
+        resample_setup(s + 0x93, (const WaveFormat *)(g_audio + A_FORMAT), (const WaveFormat *)(s + W_FORMAT), F(uint32_t, s, W_LENGTH) << (s[W_SHIFT] & 0x1f));
     if (F(uint32_t, g_audio, A_FADE)) {
         F(uint32_t, g_audio, A_FADE) = 0;
         wave_set_device_volume(F(uint32_t, g_audio, 0x42));
