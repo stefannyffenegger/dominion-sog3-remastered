@@ -14,6 +14,7 @@
 #include <stdarg.h>
 
 uint8_t *g_orig;
+uint8_t *g_odata;
 
 /* Makes Rtlib32_orig.dll a load-time dependency, so it is loaded (and its C runtime
  * initialized) before our DllMain runs. */
@@ -232,6 +233,17 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved)
         if (!g_orig) {
             MessageBoxA(NULL, "Rtlib32_orig.dll (the original engine) is missing.", "Dominion", 0);
             return FALSE;
+        }
+        /* The engine's globals move to our own block, taken over as the original left
+         * them after loading (its entry point sets a few). With DOMINION_ORIGINAL some
+         * original code runs, so both keep sharing the original's. */
+        if (GetEnvironmentVariableA("DOMINION_ORIGINAL", NULL, 0)) {
+            g_odata = g_orig + (ORIG_DATA - ORIG_BASE);
+        } else {
+            g_odata = VirtualAlloc(NULL, ORIG_DATA_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (!g_odata)
+                return FALSE;
+            memcpy(g_odata, g_orig + (ORIG_DATA - ORIG_BASE), ORIG_DATA_SIZE);
         }
         install_hooks();
         {

@@ -523,6 +523,10 @@ Dominion never opens the engine's wave, MIDI or CD devices (it plays everything 
 * Part 9 (`audio_stream.c`, 12 functions, 0x10045480-0x10045f08): a wave sound's data as the mixer takes it (moved to the front of its buffer and refilled from the source, looped, unpacked from IMA ADPCM, converted to the device format), the device volume steps, and mixing one sound into a buffer with its volume and fades (8-bit sums clipped to 0-255, 16-bit to ±32,767). Original quirk kept: 8-bit samples are scaled by the volume with their 128 offset still in, so a quieter 8-bit sound also shifts towards silence's low end.
 * With part 9 the whole audio library is ours (the 20 functions at 0x100468d4-0x10048522 belong to the wave codec, whose callers are all ours in `codec.c`). Our engine code now calls it directly instead of through the original's addresses.
 * Checked after each part: menu tour and Human mission 1 (no change) or the exit test, plus the byte-exact tests of parts 6 and 8.
+### Cutting loose, step 6a: the engine's globals in our own memory
+Our code still names the engine's globals by the original's addresses (`G()`, `ORIG_PTR()`), about 130 of them. They now resolve into our own copy of the original's data section, taken over at load time as the original left it after its entry point (which stores its module handle and sets up its C library). No original data enters the repository; the values come from the player's own copy. A test run with those globals overwritten in the original showed nothing of the original still uses them. With `DOMINION_ORIGINAL` (A/B runs with original code) both keep sharing the original's.
+* Still from the original's memory at load time: the module handle, the pointers its data holds (to its strings and code), and its resources (strings, cursors, icons). Step 7 has to provide these once the original is no longer loaded: the tables and resources from the original file as data.
+* Checked: menu tour, Human mission 1 (no change), Alt+F4 at the main menu, and the run with the original's globals overwritten.
 
 ### What's left
 | Part | Functions | Status |
