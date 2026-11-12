@@ -3,6 +3,7 @@
 #define DOMINION_RTLIB_AUDIO_INT_H
 
 #include "orig.h"
+#include "midi_prepare.h"
 
 /* the audio context: 0x2fa bytes, fields at the original's (unaligned) offsets */
 #define F(type, ctx, off) (*(type *)((uint8_t *)(ctx) + (off)))
@@ -48,6 +49,13 @@
 #define A_PAUSE_TIME 0x276
 #define A_MIDIS 0x2aa         /* MIDI sound list, to A_MIDI_END */
 #define A_MIDI_COUNT 0x29e    /* (short) */
+#define A_MIDI_VOLUME_DEVICE 0x286 /* as found, restored at close */
+#define A_MIDI_VOLUME_NOW 0x28a
+#define A_MIDI_VOLUME_SAVED 0x28e /* while muted */
+#define A_MIDI_DEVICE_ID 0x296
+#define A_MIDI_TIMER 0x29a    /* the playing timer event */
+#define A_MIDI_ERROR 0x2a0    /* the last midiOut result (short) */
+#define A_MIDI_VOLUME_SET 0x2a6
 
 /* a MIDI sound */
 #define M_LOOPS_LEFT 0x2c
@@ -225,21 +233,29 @@ uint32_t __stdcall cd_play_tracks(uint8_t from, uint8_t to);
 int __stdcall AudioPlayCDTrack(uint8_t *a, uint8_t track);
 int __stdcall AudioSetCDVolume(uint8_t *a, DWORD v);
 
+/* audio_midi.c */
+void __stdcall midi_report_error(const char *what);
+void __cdecl midi_check_error(const char *what);
+void __stdcall midi_set_device_volume(DWORD v);
+void __stdcall midi_channel_off(uint8_t ch);
+void __cdecl midi_all_notes_off(void);
+uint32_t __cdecl midi_close(void);
+int __cdecl midi_device_open(void);
+uint32_t __stdcall AudioGetMidiVolume(uint8_t *a);
+void __cdecl midi_apply_mute(void);
+uint32_t __cdecl midi_open(void);
+void __stdcall midi_pause(int pause);
+HMIDIOUT __stdcall AudioOpenMidiDevice(uint8_t *a, uint32_t *remap_drums);
+void __stdcall AudioSetMidiVolume(uint8_t *a, DWORD v);
+
 /* not ported yet */
 #define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
-#define AudioPrepareMidiData ORIG(uint8_t *(__stdcall *)(void *, uint32_t, uint32_t *), 0x10043bd0)
 #define midi_stop_playing ORIG(void(__cdecl *)(void), 0x10044fa2)
-#define midi_all_notes_off ORIG(void(__cdecl *)(void), 0x10043a33)
-#define midi_channel_off ORIG(void(__stdcall *)(uint32_t), 0x10043a96)
 #define resample_setup ORIG(uint32_t(__stdcall *)(void *, void *, void *, uint32_t), 0x100452e0)
 #define wave_fade_step ORIG(void(__cdecl *)(void), 0x100447fb)
 #define wave_mix ORIG(int(__cdecl *)(void), 0x100449a3)
 #define wave_sound_timeout ORIG(void(__stdcall *)(void *), 0x10044d40)
 #define wave_sound_rewind ORIG(void(__stdcall *)(void *), 0x100458d5)
-#define midi_close ORIG(uint32_t(__cdecl *)(void), 0x10043620)
-#define midi_open ORIG(uint32_t(__cdecl *)(void), 0x1004380f)
 #define midi_play_events ORIG(void(__stdcall *)(void *), 0x10044df0)
-#define midi_pause ORIG(void(__stdcall *)(int), 0x100439c9)
-#define midi_apply_mute ORIG(void(__cdecl *)(void), 0x100437bc)
 #define resample ORIG(uint32_t(__stdcall *)(void *, void *, uint32_t, void *, uint32_t, void *), 0x10045394)
 #endif

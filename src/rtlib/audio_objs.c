@@ -310,7 +310,7 @@ uint8_t *__stdcall midi_create_from_file(uint8_t *a, LPSTR path, uint32_t unused
     mmioClose(fs->f, 0);
     fs->f = NULL;
     uint32_t info[2] = {0, 0};
-    fs->data = AudioPrepareMidiData(raw, size, info);
+    fs->data = (uint8_t *)AudioPrepareMidiData(raw, size, info);
     winfree(raw);
     if (!fs->data)
         return file_source_close(fs);

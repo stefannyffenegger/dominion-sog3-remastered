@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,318 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,343 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -517,11 +517,12 @@ Dominion never opens the engine's wave, MIDI or CD devices (it plays everything 
 * Part 3 (`audio_objs.c`, 22 functions, 0x10041514-0x1004226a): making and freeing MIDI sounds (up to 20) and wave sounds (up to 100). A sound reads its data through a source of three callbacks (read, rewind, close); a wave longer than the buffers (8 × 8 KB) streams, a shorter one is read whole. Also a MIDI sound made from a `.mid` file, which nothing calls.
 * Part 4 (`audio_files.c`, 11 functions, 0x1004226a-0x10042ac0): `.wav` files: a wave sound streamed from a file, loading one whole, saving one. Besides plain PCM it reads and writes "WAV7" files, 7th Level's own compressed waves (a 10-byte header, then 4-bit IMA ADPCM, through the codec of `compress.c`).
 * Part 5 (`audio_cd.c`, 21 functions, 0x10042b13-0x100435e1): CD audio over MCI, its volume through the mixer's CD line. Positions are kept as track, minutes, seconds, frames from the high byte down (MCI's TMSF the other way round). The first play measures whether the drive reports the start position for a while; if it does, later plays wait up to a second for it to start. `AudioGetCDTrackLengths` closes the drive afterwards when it was open before rather than when it opened it itself, and doesn't set the context; kept.
+* Part 6 (`audio_midi.c`, `midi_prepare.c`, 25 functions, 0x10043620-0x100445f8): the MIDI device (opening, volume, mute, pause, notes off) and turning a Standard MIDI File (format 0 or 1, not SMPTE timing) into the sequencer's event list: (time, message) pairs from all tracks, merged and sorted, then the times turned into waits in ms (at most 5 s each, else the file is refused). `tests/midi_compare.sh` checks the preparation against the original on 20,000 random files: all identical. Original quirks kept: meta and SysEx lengths are read as one byte rather than a variable-length number, and the delta times of meta events other than tempo changes are lost (tempo changes keep their own clock).
 
 ### What's left
 | Part | Functions | Status |
 |---|---|---|
-| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,318 | **ours** |
+| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,343 | **ours** |
 | Exports too short to hook (`RtEnableDirectDraw`, `RtSetScreenRes`) | 2 | original |
 | Sprite assembly routines whose callers are all ours (C versions in `blit.c`) | 14 | dead in the original, no hook needed |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~190 | original |
