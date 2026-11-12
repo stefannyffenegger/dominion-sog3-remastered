@@ -83,5 +83,10 @@ int __stdcall SpriteGetBounds(void *hsl, void *sprite, RECT *r);
 void __stdcall SpriteRefreshInterfaceArea(void *hsl, void *sprite);
 void __stdcall SpriteRefreshRect(void *hsl, const RECT *r);
 void __stdcall SpriteSetScrollPos(void *hsl, int x, int y);
+unsigned __cdecl RtGetResType(void *app, unsigned id);
+int __stdcall SpriteReplaceCellRange(void *hsl, void *src, void *dst, uint32_t from, uint32_t to, uint32_t n);
+void __stdcall SpriteSetExtOffsets(void *hsl, void *sprite, void *offsets);
+void __stdcall SpriteSetPosition(void *hsl, void *sprite, int x, int y, int redraw);
+void *__stdcall winmalloc(SIZE_T size, int zero);
 
 #endif

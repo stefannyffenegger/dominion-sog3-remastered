@@ -578,3 +578,8 @@ The debug sprites (show, hide; set by `IsoSetDebugSprite`), the direction from o
 * The radar click's scaling uses the x87 and `__ftol` truncation like the radar box (part 3).
 * `IsoGetProfilerValue` takes two arguments (it is stdcall and removes 8 bytes); the second is unused.
 * Checked: menu tour, Human mission 1 (no change), Alt+F4 at the main menu. The radar is off in mission 1 (no radar building yet), so `work/radar.sh` could not exercise radar clicks; the countdown has not been seen in a test either.
+### Part 7: placing a unit (`unit.c`, 3 functions, 0x100090e0-0x1000a86b)
+Setting up a unit when it is put on the map (about 120 fields: its cell and one of four places on it, facing, health and weapon from its type's record, the player's upgrade, being built or ready, its sprite cells, depth, bounds, a turret on top for the turret types), the player's upgrades for its kind, and keeping track of its square in the fog grid (32 pixels) and its sector (256 pixels).
+* `IsoVTilePos` returns the cell index (now in its declaration).
+* Original quirk kept: an upgrade halves the 0xd6 field of non-infantry and adds one.
+* Checked: menu tour, Human mission 1 (no change), Alt+F4 at the main menu, the group run (unit positions and selections the same; idle animation poses differ by a frame from run to run, also between two runs of ours).

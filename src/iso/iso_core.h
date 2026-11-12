@@ -84,7 +84,8 @@ static inline uint16_t *selected(uint32_t player) { return I(uint16_t *, ISO_SEL
 
 /* original functions not rewritten yet. Check each one's convention (work/tmp/iso/
  * retinfo.py): the Iso* exports are not all cdecl (these three are stdcall). */
-#define IsoVTilePos ORIG(void(__stdcall *)(uint8_t *, int *, int *, int *, int *), 0x100aed6a)
+/* pixel position to cell (in place); returns the cell index */
+#define IsoVTilePos ORIG(int32_t(__stdcall *)(uint8_t *, int *, int *, int *, int *), 0x100aed6a)
 #define IsoResetTileSet ORIG(void(__stdcall *)(uint8_t *), 0x10021c65)
 void __stdcall IsoRefreshScreen(uint8_t *iso); /* screen.c */
 

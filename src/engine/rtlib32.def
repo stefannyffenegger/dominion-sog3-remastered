@@ -57,3 +57,8 @@ EXPORTS
     SpriteRefreshInterfaceArea@8
     SpriteRefreshRect@8
     SpriteSetScrollPos@12
+    RtGetResType
+    SpriteReplaceCellRange@24
+    SpriteSetExtOffsets@12
+    SpriteSetPosition@20
+    winmalloc@8

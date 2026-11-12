@@ -9,5 +9,6 @@
 #include "display.h"
 #include "loop.h"
 #include "screen.h"
+#include "unit.h"
 
 #endif

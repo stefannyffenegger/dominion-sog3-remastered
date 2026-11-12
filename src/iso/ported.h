@@ -72,3 +72,8 @@ PORTED(0x10008c7d, IsoHideUnitNamePopup)
 PORTED(0x10008d30, radar_show)
 PORTED(0x10008e49, unit_update_bounds)
 PORTED(0x10008f27, countdown_draw)
+
+/* unit.c */
+PORTED(0x100090e0, unit_apply_upgrade)
+PORTED(0x100092bb, unit_place)
+PORTED(0x1000a474, unit_sector_update)
