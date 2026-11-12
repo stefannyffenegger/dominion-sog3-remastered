@@ -54,4 +54,17 @@ void __stdcall SpriteCreateDirectDrawPalette(void *hsl);
 void __stdcall SpriteReleaseDirectDrawPalette(void *hsl);
 int __stdcall SpriteRealizePalette2(void *hsl, int force);
 
+/* Objects (resources loaded or copied at run time) */
+unsigned __cdecl RtCopy(void *app, unsigned id);
+unsigned __cdecl RtDelete(void *app, unsigned id);
+unsigned __cdecl RtLoad(void *app, unsigned id);
+
+/* Sprites: msg is a list of count 32-bit values */
+void __stdcall SpriteEmptyQueue(void *hsl, void *sprite);
+void __stdcall SpriteHide(void *hsl, void *sprite, int erase);
+void __stdcall SpritePostMessage(void *hsl, void *sprite, uint32_t count, const uint32_t *msg);
+void __stdcall SpriteSendMessage(void *hsl, void *sprite, uint32_t count, const uint32_t *msg);
+void __stdcall SpriteSetLevel(void *hsl, void *sprite, int32_t level);
+void __cdecl SpriteSetProcessMsgs(void *hsl, void *sprite, int on);
+
 #endif

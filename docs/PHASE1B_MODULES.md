@@ -549,3 +549,10 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **The shell** (`src/iso/`): our `ISO.R32` forwards all 325 exports to the original, installed as `ISO_orig.dll` (a forwarded export names its module without an extension, which Windows completes as `.dll`; `ISO_orig.R32` was not found). `hooks.c` patches each function listed in `ported.h` into a jump to ours. The original's globals stay its own while its code still runs.
 * `DOMINION_ISO_ORIGINAL` (names or `all`) and `DOMINION_ISO_TRACE` work as the engine's did.
 * Checked: the empty shell, menu tour and Human mission 1 (no change).
+* A first-call trace (`DOMINION_ISO_TRACE`, every non-library function) through the menu tour and mission 1: 720 of the 2,120 game functions run there (`work/tmp/iso/live.txt`, not published).
+* **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
+* Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
+
+### Part 1: power grids (`power.c`, 10 functions)
+Structures that give power (an energy well, a relay) mark the map cells within their radius with their player's bit (bits 16-23 of a cell, the radius per unit type from a table, the shape from a mask per radius); each player keeps a list of up to 128 power grids with an icon sprite each. Placing or removing a structure marks or clears its cells and remarks the neighbours within 1,400 pixels.
+* Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.

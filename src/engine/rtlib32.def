@@ -32,3 +32,12 @@ EXPORTS
     SpriteRealizePalette2@8
     SpriteReleaseDirectDrawPalette@4
     SpriteReleaseDirectDrawSurfaces@4
+    RtCopy
+    RtDelete
+    RtLoad
+    SpriteEmptyQueue@8
+    SpriteHide@12
+    SpritePostMessage@16
+    SpriteSendMessage@16
+    SpriteSetLevel@12
+    SpriteSetProcessMsgs

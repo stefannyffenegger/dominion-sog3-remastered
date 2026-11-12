@@ -4,5 +4,6 @@
 #define DOMINION_ISO_ISO_H
 
 #include "orig.h"
+#include "power.h"
 
 #endif

@@ -1,0 +1,67 @@
+/* The game logic's state: one big block the engine hands to every Iso* export (the
+ * global at 0x1017c584 points at it), plus the shared helpers of the iso_*.c files.
+ * Fields are at the original's (unaligned) offsets. */
+#ifndef DOMINION_ISO_CORE_H
+#define DOMINION_ISO_CORE_H
+
+#include "orig.h"
+#include "rtlib32.h"
+
+#define g_iso G(uint8_t *, 0x1017c584)
+#define I(type, off) (*(type *)(g_iso + (off)))
+#define P(type, p, off) (*(type *)((uint8_t *)(p) + (off)))
+
+/* state fields */
+#define ISO_HAVE_SPRITES 0x0154   /* sprites are shown (not a dedicated server run) */
+#define ISO_APP 0x180e            /* the engine's app (rt) */
+#define ISO_HSL 0x181e            /* the engine's sprite state */
+#define ISO_MAP 0x1904            /* map cells: 32 bits, row y at (y << ISO_MAP_SHIFT) */
+#define ISO_MAP_H 0x1a98
+#define ISO_MAP_W 0x1a9c
+#define ISO_MAP_SHIFT 0x1aa0
+#define ISO_UNIT_COUNT 0x1b43     /* entries in the unit list */
+#define ISO_PLAYERS 0x1b69        /* per player, 0x1461 bytes */
+#define ISO_PLAYER_SIZE 0x1461
+#define ISO_UNITS 0xd656          /* unit pointers by id */
+#define ISO_UNIT_LIST 0xd67a      /* ids of the units in play (low 16 bits) */
+
+/* a unit */
+#define U_ID_TYPE 0x0c            /* its type is this >> 2 */
+#define U_CLASS 0x10
+#define U_PLAYER 0x14             /* byte */
+#define U_FLAGS 0x3e
+#define U_POWER 0x44              /* short: its power grid, or negative */
+#define U_POWER_ICON 0x4a         /* short: its "no power" icon, or -1 */
+#define U_X 0x52                  /* short, in pixels */
+#define U_Y 0x54
+
+#define CLASS_ENERGY_WELL 0x50
+#define CLASS_RELAY 0x84
+
+static inline uint8_t *iso_unit(int id) { return I(uint8_t **, ISO_UNITS)[id]; }
+static inline uint32_t *iso_cell(int x, int y)
+{
+    return &I(uint32_t *, ISO_MAP)[((uint32_t)y << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + (uint32_t)x];
+}
+static inline int iso_on_map(int x, int y)
+{
+    return x >= 0 && x < I(int, ISO_MAP_W) && y >= 0 && y < I(int, ISO_MAP_H);
+}
+
+/* data of the original */
+#define g_power_radius ((int16_t *)ORIG_PTR(0x10118798))  /* per unit type */
+#define g_radius_masks ((const char **)ORIG_PTR(0x10118038)) /* per radius, (2r+1)^2 bytes */
+/* steps on the isometric grid: (dx, dy) pairs for even and odd rows */
+#define g_step_ne ((const int8_t *)ORIG_PTR(0x1013b46c))
+#define g_step_dirs ((const int8_t *)ORIG_PTR(0x1013b468))    /* 8 directions x 2 parities */
+#define g_step_n ((const int8_t *)ORIG_PTR(0x1013b478))
+#define g_step_se ((const int8_t *)ORIG_PTR(0x1013b484))
+#define g_msg_hide ((const uint32_t *)ORIG_PTR(0x10157324)) /* sprite message */
+
+/* original functions not rewritten yet. Check each one's convention (work/tmp/iso/
+ * retinfo.py): the Iso* exports are not all cdecl (these three are stdcall). */
+#define IsoVTilePos ORIG(void(__stdcall *)(uint8_t *, int *, int *, int *, int *), 0x100aed6a)
+#define IsoResetTileSet ORIG(void(__stdcall *)(uint8_t *), 0x10021c65)
+#define IsoRefreshScreen ORIG(void(__stdcall *)(uint8_t *), 0x10008797)
+
+#endif
