@@ -9,6 +9,7 @@
  * for comparing behavior. */
 #include "orig.h"
 #include "iso.h" /* prototypes of everything in ported.h */
+#include "statelog.h"
 #include <stdarg.h>
 
 uint8_t *g_orig;
@@ -85,12 +86,23 @@ static const Hook hooks[] = {
     {0, NULL, NULL},
 };
 
-/* Is name in the comma-separated list? */
+/* Is name in the comma-separated list? "all" lists every name; "all,-a,-b" all but a, b. */
 static int listed(const char *list, const char *name)
 {
     size_t n = (size_t)lstrlenA(name);
     if (!lstrcmpA(list, "all"))
         return 1;
+    if (!memcmp(list, "all,", 4)) {
+        for (const char *p = list + 4; *p;) {
+            const char *end = p;
+            while (*end && *end != ',')
+                end++;
+            if (*p == '-' && (size_t)(end - p - 1) == n && !memcmp(p + 1, name, n))
+                return 0;
+            p = *end ? end + 1 : end;
+        }
+        return 1;
+    }
     while (*list) {
         const char *end = list;
         while (*end && *end != ',')
@@ -123,6 +135,7 @@ static void install_hooks(void)
         installed++;
     }
     FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+    statelog_install();
     rt_debug("ISO: %d functions rewritten, %d left original\n", installed, skipped);
 }
 

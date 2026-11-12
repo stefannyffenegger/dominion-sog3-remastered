@@ -553,6 +553,12 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
+### Checking the game logic: the unit state log
+Screenshots can't tell a logic change from a frame of timing (idle animations differ between runs), so the game logic is checked on its state instead. `DOMINION_ISO_STATELOG=<Windows path>` (`statelog.c`) writes a hash of every unit's state (position, facing, health, action, flags; not the fields the display changes every frame) once per game tick, from the call that runs the tick's logic in `IsoMovementLoop` (0x1008d375). With `DOMINION_ISO_STATELOG_ORDERS=1` the local player's units are given move orders at fixed ticks (in Human mission 1: into the enemy at tick 40, on at tick 500), so input does not depend on timing; clicks would land a tick early or late.
+* The original is exact up to its first event driven by the wall clock (a timer in the display loop and others): four original runs agree up to tick 721 (one up to 1708). By then units have moved and there have been 37 hits.
+* `work/statecheck.sh` runs ours and compares it with the saved original runs; ours must agree at least as far as the originals agree with each other. `DOMINION_ISO_ORIGINAL=all,-name` keeps everything original except the named functions.
+* Checked with parts 1-7: ours agrees with each original run exactly as far as that run agrees with the others (ticks 1138, 1138, 721, 987).
+
 ### Part 1: power grids (`power.c`, 10 functions)
 Structures that give power (an energy well, a relay) mark the map cells within their radius with their player's bit (bits 16-23 of a cell, the radius per unit type from a table, the shape from a mask per radius); each player keeps a list of up to 128 power grids with an icon sprite each. Placing or removing a structure marks or clears its cells and remarks the neighbours within 1,400 pixels.
 * Checked: menu tour, Human mission 1 (no change), and Alt+F4 at the main menu.
