@@ -184,7 +184,7 @@ void __stdcall wave_sound_ended(uint8_t *s)
 void __stdcall wave_fade_out(uint8_t *s, uint32_t ms, uint8_t steps, uint8_t extend)
 {
     uint32_t n = F(uint32_t, g_audio, A_BYTES_PER_SEC) * ms / 1000;
-    if (!F(uint32_t, g_audio, A_7A))
+    if (!F(uint32_t, g_audio, A_8BIT))
         n >>= 1;
     F(uint32_t, s, 0x30) = n / (uint32_t)(steps + 1);
     F(uint32_t, s, 0x34) = F(uint32_t, s, 0x30);
@@ -192,7 +192,7 @@ void __stdcall wave_fade_out(uint8_t *s, uint32_t ms, uint8_t steps, uint8_t ext
         s[0x8c] = 1;
     if (extend) {
         uint32_t len = F(uint32_t, s, W_LENGTH) << (s[W_SHIFT] & 0x1f);
-        if (!F(uint32_t, g_audio, A_7A))
+        if (!F(uint32_t, g_audio, A_8BIT))
             len >>= 1;
         len *= (uint32_t)(F(int16_t, s, W_LOOPS) + 1);
         if (s[0x8b])
@@ -288,7 +288,7 @@ uint32_t __stdcall AudioGetWaveSoundTime(uint8_t *a, uint8_t *id)
 void __stdcall wave_fade_in(uint8_t *s, uint32_t ms, uint8_t steps)
 {
     uint32_t n = F(uint32_t, g_audio, A_BYTES_PER_SEC) * ms / 1000;
-    if (!F(uint32_t, g_audio, A_7A))
+    if (!F(uint32_t, g_audio, A_8BIT))
         n >>= 1;
     F(uint32_t, s, 0x28) = n / steps;
     F(uint32_t, s, 0x2c) = F(uint32_t, s, 0x28);
@@ -358,7 +358,7 @@ int __stdcall wave_sound_play(uint8_t *s, const uint8_t *params)
     s[W_FADE_VOLUME] = s[W_VOLUME];
     F(uint16_t, s, W_LOOPS) = (uint16_t)F(uint32_t, params, 0x10);
     F(uint16_t, s, W_LOOPS_LEFT) = F(uint16_t, s, W_LOOPS);
-    if (!wave_open(s + W_FORMAT))
+    if (!wave_open((const WAVEFORMATEX *)(s + W_FORMAT)))
         return 0;
     s[W_RESAMPLED] = (uint8_t)wave_needs_resample(s);
     if (s[W_RESAMPLED])

@@ -18,7 +18,7 @@
 #define A_WAVES_ACTIVE 0x02c  /* short */
 #define A_PRIORITY 0x05a
 #define A_FORMAT 0x066
-#define A_WAVE_CHANNELS 0x060 /* short */
+#define A_FORMAT_FLAG 0x060  /* the device format's WAVE_FORMAT_* flag (short) */
 #define A_FADE 0x076
 #define A_WAVES 0x0e6
 #define A_MIDI_CURRENT 0x27a
@@ -28,7 +28,24 @@
 #define A_SIZE 0x2fa
 #define A_WAVE_ERROR 0x064    /* the last waveOut result (short) */
 #define A_BYTES_PER_SEC 0x06e /* the device format's nAvgBytesPerSec (format at A_FORMAT) */
-#define A_7A 0x07a            /* 0 halves byte counts (fades) */
+#define A_8BIT 0x07a          /* the device is 8-bit (else byte counts halve to samples) */
+#define A_BUF_PLAY 0x014      /* buffer slots: playing, filling, end */
+#define A_BUF_FILL 0x018
+#define A_BUFFERS_END 0x01c
+#define A_VOLUME_NOW 0x03e    /* the device volume (left, right words) */
+#define A_FADE_FROM 0x042
+#define A_FADE_TIME 0x046
+#define A_VOLUME_SAVED 0x04a  /* while muted */
+#define A_VOLUME_DEVICE 0x04e /* as found, restored at close */
+#define A_DEVICE_ID 0x052
+#define A_FADE_LEFT 0x056     /* per-step decrease (short) */
+#define A_FADE_RIGHT 0x058
+#define A_FADE_STEPS 0x05e
+#define A_FORMATS 0x062       /* WAVE_FORMAT_* flags allowed (short) */
+#define A_VOLUME_SET 0x07e
+#define A_VOLUME 0x082
+#define A_BUFFERS 0x086       /* 8 slots of 0xc bytes: WAVEHDR *, data, bytes used */
+#define A_PAUSE_TIME 0x276
 #define A_MIDIS 0x2aa         /* MIDI sound list, to A_MIDI_END */
 
 /* a MIDI sound */
@@ -118,17 +135,33 @@ void __stdcall AudioSetWaveSoundPriority(uint8_t *a, uint8_t *id, int16_t priori
 int __stdcall AudioSetWaveSoundVolume(uint8_t *a, uint8_t *id, uint8_t volume);
 void __stdcall AudioStopWave(uint8_t *a, uint8_t *id, const uint32_t *params);
 
+/* audio_wave.c */
+uint32_t __cdecl wave_buffers_free(void);
+void __stdcall wave_set_device_volume(uint32_t v);
+void __stdcall wave_fade_all(uint32_t ms);
+void __cdecl wave_apply_mute(void);
+int16_t __stdcall wave_format_index(const WAVEFORMATEX *f, uint16_t mask);
+uint16_t __stdcall wave_find_format(const WAVEFORMATEX *f);
+int __stdcall wave_pick_format(const WAVEFORMATEX *f);
+uint32_t __cdecl wave_buffers_alloc(void);
+uint32_t __stdcall wave_device_open(const WAVEFORMATEX *f);
+uint32_t __stdcall wave_open(const WAVEFORMATEX *f);
+void __stdcall wave_pause(int pause);
+void __cdecl wave_reset(void);
+void __stdcall AudioCloseWave(uint8_t *a);
+uint32_t __stdcall wave_device_format(uint8_t *unused, uint32_t *out);
+uint32_t __stdcall AudioGetWaveVolume(uint8_t *a);
+void __stdcall AudioOpenWave(uint8_t *a, const WAVEFORMATEX *f);
+void __stdcall AudioSetWaveFormats(uint8_t *a, uint16_t formats);
+void __stdcall AudioSetWaveVolume(uint8_t *a, uint32_t v);
+void __cdecl midi_sounds_free(void);
+
 /* not ported yet */
+#define midi_sound_free ORIG(void(__stdcall *)(uint8_t *), 0x10041514)
 #define midi_stop_playing ORIG(void(__cdecl *)(void), 0x10044fa2)
 #define midi_all_notes_off ORIG(void(__cdecl *)(void), 0x10043a33)
 #define midi_channel_off ORIG(void(__stdcall *)(uint32_t), 0x10043a96)
-#define wave_fade_all ORIG(void(__stdcall *)(uint32_t), 0x100406b7)
-#define wave_set_device_volume ORIG(void(__stdcall *)(uint32_t), 0x10041101)
-#define wave_buffers_free ORIG(void(__cdecl *)(void), 0x10040555)
 #define resample_setup ORIG(uint32_t(__stdcall *)(void *, void *, void *, uint32_t), 0x100452e0)
-#define wave_open ORIG(uint32_t(__stdcall *)(void *), 0x1004081f)
-#define wave_pause ORIG(void(__stdcall *)(int), 0x10041036)
-#define wave_apply_mute ORIG(void(__cdecl *)(void), 0x100407d5)
 #define wave_sounds_free ORIG(void(__cdecl *)(void), 0x10041920)
 #define wave_fade_step ORIG(void(__cdecl *)(void), 0x100447fb)
 #define wave_mix ORIG(int(__cdecl *)(void), 0x100449a3)
@@ -140,10 +173,8 @@ void __stdcall AudioStopWave(uint8_t *a, uint8_t *id, const uint32_t *params);
 #define midi_play_events ORIG(void(__stdcall *)(void *), 0x10044df0)
 #define midi_pause ORIG(void(__stdcall *)(int), 0x100439c9)
 #define midi_apply_mute ORIG(void(__cdecl *)(void), 0x100437bc)
-#define midi_sounds_free ORIG(void(__cdecl *)(void), 0x100414b0)
 #define cd_apply_mute ORIG(void(__cdecl *)(void), 0x10042cb0)
 #define cd_device_stop ORIG(int(__cdecl *)(void), 0x10042d6d)
 #define cd_close ORIG(void(__cdecl *)(void), 0x10042b13)
-#define wave_reset ORIG(void(__cdecl *)(void), 0x1004117d)
 #define resample ORIG(uint32_t(__stdcall *)(void *, void *, uint32_t, void *, uint32_t, void *), 0x10045394)
 #endif

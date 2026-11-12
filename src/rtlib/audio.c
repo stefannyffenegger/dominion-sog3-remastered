@@ -223,13 +223,13 @@ void __stdcall AudioService(uint8_t *a)
     }
 }
 
-/* Out: the device's formats and channel count; returns 0 = no wave device, 1, 2 = sync */
+/* Out: the device's formats and the format flag in use; returns 0 = no wave device, 1, 2 = sync */
 uint32_t __stdcall AudioGetWaveDeviceInfo(uint8_t *a, uint32_t *info)
 {
     g_audio = a;
     if (info) {
         info[0] = g_wave_caps->dwFormats;
-        info[1] = F(HWAVEOUT, a, A_WAVEOUT) ? F(uint16_t, a, A_WAVE_CHANNELS) : 0;
+        info[1] = F(HWAVEOUT, a, A_WAVEOUT) ? F(uint16_t, a, A_FORMAT_FLAG) : 0;
     }
     if (g_no_wave)
         return 0;
@@ -268,7 +268,7 @@ void __stdcall AudioActivate(uint8_t *a, int active)
         wave_close();
     } else if (!F(uint32_t, g_audio, A_PAUSED)) {
         if (F(int16_t, g_audio, A_WAVES_ACTIVE))
-            wave_open(g_audio + A_FORMAT);
+            wave_open((const WAVEFORMATEX *)(g_audio + A_FORMAT));
         if (F(void *, g_audio, A_MIDI_CURRENT)) {
             midi_open();
             F(uint16_t, F(uint8_t *, g_audio, A_MIDI_CURRENT), 4) = 0;

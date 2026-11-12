@@ -13,7 +13,7 @@ Order (smallest and most self-contained first):
 | 2 | `Smacker.r32` | Plays the cutscenes (Smacker video) | **Done**: own decoder, bit-exact |
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
-| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,245 of ~1,450 engine functions rewritten |
+| 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **In progress**: our DLL wraps the original; 1,264 of ~1,450 engine functions rewritten |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -513,11 +513,12 @@ The engine borrowed `rand`, `srand`, `atoi`, `strstr`, `strrchr`, `isalpha`, `ab
 ### Cutting loose, step 5: the audio library
 Dominion never opens the engine's wave, MIDI or CD devices (it plays everything through `WAVEPLAY.R32`), but our engine code still calls into this library (script commands, wave and MIDI resources, movies), so it comes along: about 190 functions, ported in parts from the decompile, with the assembly read wherever the decompile drops arguments or garbles a field. None of it can be checked in the game; the game tests only show that nothing else changed. The context layout and the functions still borrowed are in `audio_int.h`.
 * Part 1 (`audio_play.c`, 34 functions, 0x1003f036-0x10040555): playing, stopping and querying MIDI and wave sounds: priorities, fades, loops, random delays, notifications to the window. The original's MIDI stop clears the notification flag before checking it, so no end message is ever sent; kept.
+* Part 2 (`audio_wave.c`, 19 functions, 0x10040555-0x10041514): the waveOut device: the format (the sound's own, the same in 8 bits, or the first of the twelve standard formats the device and the `WaveFormatMask` setting allow), opening, eight 8 KB buffers, volume, fades in 200 ms steps, mute, pause and reset. The original's "no format found" test compared a 16-bit value with 0xffffffff and so never fired (it would have read entry 65,535 of a 12-entry table); ours gives up. Its volume setter checks the previous call's error instead of its own; kept.
 
 ### What's left
 | Part | Functions | Status |
 |---|---|---|
-| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,245 | **ours** |
+| Engine core, resources, utilities, sprites, display, audio (in progress) | 1,264 | **ours** |
 | Exports too short to hook (`RtEnableDirectDraw`, `RtSetScreenRes`) | 2 | original |
 | Sprite assembly routines whose callers are all ours (C versions in `blit.c`) | 14 | dead in the original, no hook needed |
 | Audio mixer, MIDI, CD (unused by Dominion, see above) | ~190 | original |
