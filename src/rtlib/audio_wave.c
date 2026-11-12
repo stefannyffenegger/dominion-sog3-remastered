@@ -246,7 +246,7 @@ void __stdcall wave_pause(int pause)
 /* 0x1004117d: stops the device and empties the buffers */
 void __cdecl wave_reset(void)
 {
-    if (!F(HWAVEOUT, g_audio, A_WAVEOUT) || !F(int16_t, g_audio, A_WAVES_PLAYING))
+    if (!F(HWAVEOUT, g_audio, A_WAVEOUT) || !F(int16_t, g_audio, A_BUFFERS_QUEUED))
         return;
     F(uint16_t, g_audio, A_WAVE_ERROR) = (uint16_t)waveOutReset(F(HWAVEOUT, g_audio, A_WAVEOUT));
     wave_check_error("waveOutReset");
@@ -256,7 +256,7 @@ void __cdecl wave_reset(void)
         BUF(i, 8) = 0;
     F(uint8_t *, g_audio, A_BUF_FILL) = g_audio + A_BUFFERS;
     F(uint8_t *, g_audio, A_BUF_PLAY) = F(uint8_t *, g_audio, A_BUF_FILL);
-    F(int16_t, g_audio, A_WAVES_PLAYING) = 0;
+    F(int16_t, g_audio, A_BUFFERS_QUEUED) = 0;
     F(int32_t, g_audio, A_PRIORITY) = 0;
 }
 

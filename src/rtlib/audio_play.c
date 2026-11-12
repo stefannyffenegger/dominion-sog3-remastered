@@ -347,7 +347,7 @@ void __cdecl wave_sounds_yield(void)
  * set volume (+0x1a) to +0x1c */
 int __stdcall wave_sound_play(uint8_t *s, const uint8_t *params)
 {
-    if ((!s[W_NO_PRIORITY] || F(int16_t, s, W_PRIORITY)) && F(int16_t, g_audio, A_WAVES_PLAYING) &&
+    if ((!s[W_NO_PRIORITY] || F(int16_t, s, W_PRIORITY)) && F(int16_t, g_audio, A_BUFFERS_QUEUED) &&
         F(int16_t, s, W_PRIORITY) < F(int32_t, g_audio, A_PRIORITY))
         return 1; /* something more important plays */
     s[0x8c] = 0;
@@ -379,7 +379,7 @@ int __stdcall wave_sound_play(uint8_t *s, const uint8_t *params)
         return wave_sound_delay(s, params);
     if (!s[W_NO_PRIORITY])
         wave_sounds_yield();
-    if (F(int16_t, g_audio, A_WAVES_PLAYING) && !params[0x18])
+    if (F(int16_t, g_audio, A_BUFFERS_QUEUED) && !params[0x18])
         wave_reset();
     wave_sound_started(s);
     if (F(uint32_t, s, 0x4c)) {

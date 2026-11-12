@@ -12,7 +12,7 @@
 #define A_SERVICE_ARG 0x008
 #define A_MUTED 0x00c
 #define A_PAUSED 0x010
-#define A_WAVES_PLAYING 0x020 /* short */
+#define A_BUFFERS_QUEUED 0x020 /* buffers handed to waveOut (short) */
 #define A_WAVES_END 0x022     /* end of the wave sound list at 0xe6 */
 #define A_WAVEOUT 0x026       /* HWAVEOUT, 0 = closed */
 #define A_WAVE_COUNT 0x02a    /* wave sounds made (short) */
@@ -58,6 +58,8 @@
 #define A_MIDI_VOLUME_SET 0x2a6
 
 /* a MIDI sound */
+#define M_POS 0x04             /* the next event (short) */
+#define M_COUNT 0x06           /* events (short) */
 #define M_LOOPS_LEFT 0x2c
 #define M_LOOPS 0x30
 #define M_NOTIFY 0x38         /* post message 0x52c at the end */
@@ -248,14 +250,26 @@ void __stdcall midi_pause(int pause);
 HMIDIOUT __stdcall AudioOpenMidiDevice(uint8_t *a, uint32_t *remap_drums);
 void __stdcall AudioSetMidiVolume(uint8_t *a, DWORD v);
 
+/* audio_mix.c */
+void __cdecl wave_fade_up(void);
+void __cdecl wave_fade_down(void);
+void __cdecl wave_fade_step(void);
+void __cdecl wave_reclaim(void);
+uint32_t __cdecl wave_mix16(void);
+uint16_t __cdecl wave_mix8(void);
+uint32_t __cdecl wave_mix(void);
+void __stdcall wave_sound_timeout(uint8_t *s);
+int __stdcall midi_loop(uint8_t *m);
+void __cdecl midi_stop_playing(void);
+void __stdcall midi_play_events(uint8_t *m);
+void CALLBACK AudioTimerProc(UINT id, UINT msg, DWORD_PTR user, DWORD_PTR dw1, DWORD_PTR dw2);
+
 /* not ported yet */
+#define wave_volume_step ORIG(uint32_t(__stdcall *)(uint32_t, int, int, uint32_t), 0x10045b80)
+#define mix_sound16 ORIG(uint32_t(__stdcall *)(uint8_t *, int16_t *, uint32_t, uint32_t), 0x10045d96)
+#define mix_sound8 ORIG(uint32_t(__stdcall *)(uint8_t *, uint8_t *, uint32_t, uint32_t), 0x10045c30)
 #define wave_sound_refill ORIG(int(__stdcall *)(void *), 0x100459c5)
-#define midi_stop_playing ORIG(void(__cdecl *)(void), 0x10044fa2)
 #define resample_setup ORIG(uint32_t(__stdcall *)(void *, void *, void *, uint32_t), 0x100452e0)
-#define wave_fade_step ORIG(void(__cdecl *)(void), 0x100447fb)
-#define wave_mix ORIG(int(__cdecl *)(void), 0x100449a3)
-#define wave_sound_timeout ORIG(void(__stdcall *)(void *), 0x10044d40)
 #define wave_sound_rewind ORIG(void(__stdcall *)(void *), 0x100458d5)
-#define midi_play_events ORIG(void(__stdcall *)(void *), 0x10044df0)
 #define resample ORIG(uint32_t(__stdcall *)(void *, void *, uint32_t, void *, uint32_t, void *), 0x10045394)
 #endif
