@@ -5,10 +5,9 @@
 #include "iso_core.h"
 #include "power.h"
 #include "view.h"
+#include "relay.h"
 
 /* not rewritten yet (names ours, provisional) */
-#define relay_add ORIG(void(__cdecl *)(uint32_t), 0x10010ca9)
-#define relay_remove ORIG(void(__cdecl *)(uint32_t), 0x10010e0e)
 #define unit_distance ORIG(int(__cdecl *)(int, int, int, int), 0x10067620)
 #define alert_add ORIG(void(__cdecl *)(uint32_t, int, int, int), 0x100e42a6)
 #define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)

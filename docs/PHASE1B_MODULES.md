@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 105 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -609,3 +609,8 @@ Stances for the selected units (`IsoSetSelectedUnitState`: stand, kneel, crawl, 
 * Original quirk: `IsoSetSelectedUnitState` passes a value whose upper 24 bits are left over on the stack; ours passes the low byte only (the vehicle behaviour 0-7, all the callee is given).
 * Our earlier parts call these directly now.
 * Checked: the unit state log, with the stances added to the scripted input (new baselines), as far as the original runs agree (ticks 949-981 in three runs, the same spread as the originals); menu tour, Human mission 1, Alt+F4. Destroyed structures and bridges are not reached in the test.
+### Part 12: power relays (`relay.c`, 10 functions, 0x10010ca9-0x100118ad)
+Putting a relay ("umbilical") on the map and taking it off (a slot of its player's, its cell marked), the ring of eight sprites circling a relay to show its reach (growing to the relay's radius, then staying five seconds or for ever), the nearest relay to a point (`IsoShowClosestUmbilical`).
+* Original quirk: the ring's size comes from an 11-entry table indexed by the relay's power radius without a check; ours takes 0 outside it.
+* `power.c` calls `relay_add` and `relay_remove` directly now.
+* Checked: the unit state log (equal to one original run over all 1,681 ticks), menu tour, Human mission 1, Alt+F4. Mission 1 has no relays, so the relay functions themselves have not run in a test.

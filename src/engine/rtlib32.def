@@ -64,3 +64,5 @@ EXPORTS
     winmalloc@8
     SpriteSetFlip
     SpriteSetRedraw
+    Cosine@4
+    Sine@4

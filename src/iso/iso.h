@@ -16,5 +16,6 @@
 #include "combat.h"
 #include "commands.h"
 #include "sector.h"
+#include "relay.h"
 
 #endif

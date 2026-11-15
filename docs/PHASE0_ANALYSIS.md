@@ -66,9 +66,9 @@ In an isolated prefix with a virtual desktop, the game loads all modules (`Rtlib
 
 ### Phase 0 — Analysis (mostly done; remaining work)
 1. ✅ Unpack discs and installer; inventory files; identify architecture and tech stack.
-2. ⏳ Load `ISO.R32`, `Rtlib32.dll` and the `.R32` modules into **Ghidra**, apply export names and the debug-runtime signatures, and map the module interfaces (call graph between modules).
+2. ✅ Load `ISO.R32`, `Rtlib32.dll` and the `.R32` modules into **Ghidra**, apply export names and the debug-runtime signatures, and map the module interfaces (call graph between modules).
 3. ⏳ Document file formats, in priority order: RtLib resource file (`DOMINION.000`, `audio.rdf`) → sprites and palettes → `TL2/TLH` tiles → `WXM/WXP` maps → `SDC` scenario scripts → `DOMINION.bin` script bytecode → saved games. Write a Python extractor and viewer for each (the start of a modding toolkit).
-4. ⏳ Get a playable baseline under Wine (get past the CD check) and record reference footage and timings. These are the "feel" baseline that every later phase is compared against.
+4. ✅ Get a playable baseline under Wine (get past the CD check) and record reference footage and timings. These are the "feel" baseline that every later phase is compared against.
 5. ⏳ Collect known crash reports and patches (the game reports `v1.1`; check whether a later patch existed).
 
 ### Phase 1 — Run on modern platforms
@@ -121,6 +121,38 @@ Feasibility: medium-low as a whole. The tech is straightforward once 1b is done;
 3. Get past the CD check under Wine → playable baseline + reference recordings.
 4. Write extractors for `audio.rdf` and `DOMINION.000` (resource format) → asset viewer.
 5. Start Phase 1b with the smallest modules (`BmpFont.r32`, `Smacker.r32`) to prove the drop-in-replacement approach.
+
+## 6. Plan check, 2026-11-15
+Where the plan stands after six days, what holds and what it missed. Details per module are in `PHASE1B_MODULES.md`.
+
+| Step | Status |
+|---|---|
+| Phase 0: unpack, Ghidra, Wine baseline | done |
+| Phase 0: file formats, extractors, asset viewer (item 3) | **not started**; the modules read the formats, but there is no tool that exports or repacks assets |
+| Phase 1a: runs under Wine, no-CD, music from ripped files | done |
+| Phase 1b step 1: BmpFont, Smacker, WAVEPLAY, NETPLAY, Rtlib32 | done: all ours, none of the original's code runs in them |
+| Phase 1b step 2: `ISO.R32` | in progress: 105 of about 1,986 game functions (about 7% of its code), 12 parts |
+| Phase 1b step 3: native 64-bit builds | not started |
+
+**What holds**
+* The module-by-module route works: the game has been playable after every step.
+* Step 2's check "compare deterministic game state" exists now (`work/statecheck.sh`, the unit state log): a hash of every unit's state per game tick, scripted input, a virtual clock. It caught nothing wrong in parts 1-11 but twice showed the original's own run-to-run variance, which screenshots could not separate from errors.
+
+**What the plan missed or got wrong**
+1. **"After Rtlib32 everything below the game logic is ours and portable": ours, yes; portable, not yet.** The engine is our C code but still a Win32 DLL: 14 of its 56 source files use DirectDraw, waveOut or window messages. The plan's "DirectDraw → SDL3" did not happen in step 1 (the rewrite stayed function-for-function to be checkable against the original). It needs its own step.
+2. **Step 3 ("once no original binaries remain, build 64-bit") hides three pieces of work:**
+   * `dominion.exe` (108 KB) is still the original; it starts the engine. It needs a replacement.
+   * Our game-logic code addresses the original's memory layout by offset (`P(type, unit, 0x147)`), with 32-bit pointers stored in the game's structures. That is what makes it checkable against the original today, and it is not 64-bit clean. Going 64-bit means naming the structures and widening the pointers, after the original is gone.
+   * The original files stay needed as data: the engine's tables and resources come from `Rtlib32_orig.dll`, and `ISO.R32` has large tables too (animation records, per-type handlers). "The player's own files as data" is fine legally, but it has to be planned for, as for Rtlib.
+   Proposed split of step 3: **3a** `ISO.R32` cut loose like Rtlib32 (32-bit, Wine and Windows); **3b** own `dominion.exe` and SDL3 for window, drawing, sound and input, giving a native 32-bit Linux build; **3c** named structures, then 64-bit.
+3. **Order of work in `ISO.R32`.** The engine was done "live functions first" (those a trace saw running). ISO is being done in address order, which follows the original's source files and gives coherent files of ours (`power.c`, `combat.c`), but only 41 of the 95 functions done so far are among the 720 the trace saw. Everything has to be ported before the original can go, so the order does not change the total; it changes how much of the new code the tests exercise. Decision: keep address order, and widen the tests instead (below).
+4. **The state check reaches about 950 ticks, then original runs differ from each other.** Tried on 2026-11-15: giving our engine the virtual clock as well (it only uses `timeGetTime`) changes nothing. What differs first is a power-state flag on all of one player's structures flipping a tick earlier or later, after which the enemy AI reacts differently: some logic runs per displayed frame rather than per tick. Open: find it (the power updates are the lead) and pin the frame/tick phase in test runs; until then, judge by several runs.
+5. **Test reach.** The scripted fight in Human mission 1 covers walking, fighting, stances, dying. Not covered: building and power, vehicles and boarding, destroyed structures and bridges, the radar, saved games, multiplayer logic. Needed: more scenarios (a later mission or a saved game with a base; a two-player state log), and orders for building in the scripted input.
+6. **Phase 0 item 3 (formats and extractors) was skipped and is now on the path of Phase 3**: no upscaling or new art without exporting sprites, tiles and videos and loading replacements (`PHASE3_UPSCALING.md`).
+
+**Numbers to steer by**
+* `ISO.R32`: 2,566 functions, of which about 580 are C runtime and thunks; about 1,986 game functions in 996 KB of code and 123,000 lines of decompile. Done: 95 functions, 65 KB, 4,400 lines of our C.
+* For comparison the engine was 1,384 functions in 26,800 lines of our C.
 
 ## Appendix
 * `tools/is5x.py`: InstallShield 5 cabinet extractor (pure Python). Usage: `python3 tools/is5x.py <DATA1.CAB> <outdir> [--list]`
