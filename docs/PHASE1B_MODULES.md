@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 105 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 118 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -614,3 +614,7 @@ Putting a relay ("umbilical") on the map and taking it off (a slot of its player
 * Original quirk: the ring's size comes from an 11-entry table indexed by the relay's power radius without a check; ours takes 0 outside it.
 * `power.c` calls `relay_add` and `relay_remove` directly now.
 * Checked: the unit state log (equal to one original run over all 1,681 ticks), menu tour, Human mission 1, Alt+F4. Mission 1 has no relays, so the relay functions themselves have not run in a test.
+### Part 13: idle infantry, the mouse cursor (`idle.c`, `cursor.c`, 13 functions, 0x100118ad-0x10012852)
+Infantry at ease play one of two idle animations every 21-35 periods of 16 ticks; a group's leader stirs its group (their own idle animation; the most hurt member sets how long until the next time). The random choices come from the original's own C library `rand()`, reseeded from the unit's facing and id each time, so ours calls the original's `srand`/`rand` (0x100f4d60, 0x100f4d80) to get the same numbers. Also the in-game mouse cursor (loading its animation table and sprite, enabling it, its state and operation) and `IsoInitInGameFont`.
+* Original quirk: the idle animation number is passed with leftover stack bytes above it; ours passes the byte.
+* Checked: the unit state log (as far as the original runs agree; all five idle functions and the cursor run in it), menu tour, Human mission 1, Alt+F4.

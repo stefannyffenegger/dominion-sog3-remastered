@@ -132,3 +132,20 @@ PORTED(0x100115af, relay_selected)
 PORTED(0x100115d4, relay_nearest)
 PORTED(0x1001180d, IsoShowClosestUmbilical)
 PORTED(0x10011890, unit_set_16b)
+
+/* idle.c */
+PORTED(0x100118ad, idle_solo)
+PORTED(0x100119d0, idle_wait)
+PORTED(0x10011a40, idle_member)
+PORTED(0x10011b82, idle_leader)
+PORTED(0x10011f48, idle_leader_wait)
+
+/* cursor.c */
+PORTED(0x100120c0, IsoLoadMouseCursor)
+PORTED(0x100122db, IsoUnloadMouseCursor)
+PORTED(0x100123e7, IsoEnableMouseCursor)
+PORTED(0x10012486, IsoSetMouseCursorState)
+PORTED(0x1001275f, IsoGetMouseCursorState)
+PORTED(0x10012784, IsoSetMouseCursorOp)
+PORTED(0x100127c1, IsoGetMouseCursorOp)
+PORTED(0x100127e6, IsoInitInGameFont)

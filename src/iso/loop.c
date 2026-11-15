@@ -2,6 +2,7 @@
  * hidden, the unit under the mouse, the cursor, effects, the interface), the map
  * editor's loop, the debug sprites, "next unit" and selecting groups. */
 #include "iso_core.h"
+#include "cursor.h"
 #include "view.h"
 #include "display.h"
 #include "loop.h"
@@ -11,7 +12,6 @@
 /* not rewritten yet (names ours, provisional) */
 #define IsoBriefingScreen ORIG(void(__cdecl *)(uint8_t *, int), 0x1005b438)
 #define IsoShowObjects ORIG(void(__stdcall *)(uint8_t *, int), 0x100ae0ae)
-#define IsoSetMouseCursorState ORIG(void(__stdcall *)(uint8_t *, uint32_t, int), 0x10012486)
 #define IsoNetWindow ORIG(void(__stdcall *)(uint8_t *, int, int, int), 0x10046d25)
 #define IsoSetFollowUnit ORIG(void(__cdecl *)(uint8_t *, int), 0x10055f9f)
 #define BF_BlastText                                                                         \

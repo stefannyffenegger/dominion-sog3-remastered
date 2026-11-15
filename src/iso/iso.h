@@ -17,5 +17,7 @@
 #include "commands.h"
 #include "sector.h"
 #include "relay.h"
+#include "idle.h"
+#include "cursor.h"
 
 #endif

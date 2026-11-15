@@ -66,3 +66,4 @@ EXPORTS
     SpriteSetRedraw
     Cosine@4
     Sine@4
+    RtCursor
