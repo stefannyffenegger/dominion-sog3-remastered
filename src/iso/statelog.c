@@ -3,10 +3,13 @@
  * redirected here): the tick, the number of units and a hash of every unit's state (position,
  * facing, health, action, flags). Two runs with the same input give the same lines when
  * the game logic behaves the same; compare the ticks both runs logged. With
- * DOMINION_ISO_STATELOG_UNITS=1 each unit's fields are written too. With
+ * DOMINION_ISO_STATELOG_UNITS=1 each unit's fields are written too (=from-to: only for those
+ * ticks, which disturbs the timing less). With
  * DOMINION_ISO_STATELOG_ORDERS=1 the local player's units get move orders at fixed ticks
  * (Human mission 1: into the enemy at tick 40, on at tick 500), input that does not
- * depend on timing. */
+ * depend on timing. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
+ * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
 #include "statelog.h"
 #include "loop.h"
@@ -16,6 +19,7 @@
 
 static HANDLE g_log = INVALID_HANDLE_VALUE;
 static int g_log_units, g_orders;
+static uint32_t g_units_from, g_units_to = 0xffffffff;
 static uint32_t g_last_tick = 0xffffffff;
 
 static void out(const char *text)
@@ -59,7 +63,7 @@ static void log_tick(void)
             h = fnv(h, u + fields[f][0], fields[f][1]);
         uint32_t flags[2] = {P(uint32_t, u, 0x3e) & ~0x40u, P(uint32_t, u, 0x10e) & ~0x100u};
         h = fnv(h, flags, sizeof flags);
-        if (g_log_units) {
+        if (g_log_units && tick >= g_units_from && tick <= g_units_to) {
             wsprintfA(line, "  %d t%d p%d (%d,%d) d%d hp%d a%d/%d f%08x/%08x c%d s%d\r\n", id,
                       P(int32_t, u, 0x0c), P(uint8_t, u, 0x14), P(int16_t, u, 0x52), P(int16_t, u, 0x54),
                       P(uint8_t, u, 0x79), P(int16_t, u, 0xd6), P(uint8_t, u, 0x147), P(uint8_t, u, 0x148),
@@ -92,16 +96,30 @@ static void __stdcall tick_stub(uint8_t *iso)
     ORIG(void(__stdcall *)(uint8_t *), TICK_FUNC)(iso);
 }
 
+static void clock_install(void);
+
 void statelog_install(void)
 {
-    char path[MAX_PATH], units[8] = "";
+    char path[MAX_PATH], units[32] = "";
+    clock_install();
     if (!GetEnvironmentVariableA("DOMINION_ISO_STATELOG", path, sizeof path))
         return;
     g_log = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
     if (g_log == INVALID_HANDLE_VALUE)
         return;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_UNITS", units, sizeof units);
-    g_log_units = units[0] == '1';
+    g_log_units = units[0] != 0;
+    if (units[0] && units[0] != '1') { /* a tick range "from-to" */
+        char *p = units;
+        g_units_from = 0;
+        while (*p >= '0' && *p <= '9')
+            g_units_from = g_units_from * 10 + (uint32_t)(*p++ - '0');
+        if (*p == '-') {
+            g_units_to = 0;
+            for (p++; *p >= '0' && *p <= '9'; p++)
+                g_units_to = g_units_to * 10 + (uint32_t)(*p - '0');
+        }
+    }
     units[0] = 0;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_ORDERS", units, sizeof units);
     g_orders = units[0] == '1';
@@ -114,4 +132,71 @@ void statelog_install(void)
     memcpy(p + 1, &rel, 4);
     VirtualProtect(p, 5, old, &old);
     FlushInstructionCache(GetCurrentProcess(), p, 5);
+}
+
+/* ---- the virtual clock ---- */
+
+static uint32_t g_clock, g_clock_step;
+static int g_clock_on; /* from the first displayed frame of a mission; real time before */
+static DWORD(WINAPI *real_time)(void); /* winmm's (our own import of it is redirected too) */
+
+static DWORD WINAPI virtual_time(void) { return g_clock_on ? g_clock : real_time(); }
+
+void statelog_frame(void)
+{
+    if (!g_clock_step)
+        return;
+    if (!g_clock_on) {
+        g_clock = real_time();
+        g_clock_on = 1;
+    }
+    g_clock += g_clock_step;
+}
+
+/* points the module's import of winmm's timeGetTime at the virtual clock */
+static void patch_import(HMODULE mod)
+{
+    uint8_t *base = (uint8_t *)mod;
+    IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
+    IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (!dir.VirtualAddress)
+        return;
+    for (IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress); d->Name; d++) {
+        if (lstrcmpiA((char *)(base + d->Name), "winmm.dll"))
+            continue;
+        IMAGE_THUNK_DATA *names = (IMAGE_THUNK_DATA *)(base + (d->OriginalFirstThunk ? d->OriginalFirstThunk : d->FirstThunk));
+        IMAGE_THUNK_DATA *iat = (IMAGE_THUNK_DATA *)(base + d->FirstThunk);
+        for (; names->u1.AddressOfData; names++, iat++) {
+            if (IMAGE_SNAP_BY_ORDINAL(names->u1.Ordinal))
+                continue;
+            IMAGE_IMPORT_BY_NAME *n = (IMAGE_IMPORT_BY_NAME *)(base + names->u1.AddressOfData);
+            if (lstrcmpA((char *)n->Name, "timeGetTime"))
+                continue;
+            DWORD old;
+            VirtualProtect(&iat->u1.Function, sizeof iat->u1.Function, PAGE_READWRITE, &old);
+            iat->u1.Function = (uintptr_t)virtual_time;
+            VirtualProtect(&iat->u1.Function, sizeof iat->u1.Function, old, &old);
+        }
+    }
+}
+
+static void clock_install(void)
+{
+    char v[16] = "";
+    if (!GetEnvironmentVariableA("DOMINION_ISO_STATELOG_CLOCK", v, sizeof v))
+        return;
+    for (char *p = v; *p >= '0' && *p <= '9'; p++)
+        g_clock_step = g_clock_step * 10 + (uint32_t)(*p - '0');
+    if (!g_clock_step)
+        return;
+    real_time = (DWORD(WINAPI *)(void))(void *)GetProcAddress(GetModuleHandleA("winmm.dll"), "timeGetTime");
+    if (!real_time) {
+        g_clock_step = 0;
+        return;
+    }
+    HMODULE self;
+    GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                       (const char *)clock_install, &self);
+    patch_import(GetModuleHandleA("ISO_orig.dll"));
+    patch_import(self);
 }

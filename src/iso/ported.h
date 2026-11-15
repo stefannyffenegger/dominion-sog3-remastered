@@ -77,3 +77,6 @@ PORTED(0x10008f27, countdown_draw)
 PORTED(0x100090e0, unit_apply_upgrade)
 PORTED(0x100092bb, unit_place)
 PORTED(0x1000a474, unit_sector_update)
+
+/* action.c */
+PORTED(0x1000a86b, unit_action_tick)

@@ -10,5 +10,6 @@
 #include "loop.h"
 #include "screen.h"
 #include "unit.h"
+#include "action.h"
 
 #endif

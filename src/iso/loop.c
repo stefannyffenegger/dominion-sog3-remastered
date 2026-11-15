@@ -6,6 +6,7 @@
 #include "display.h"
 #include "loop.h"
 #include "screen.h"
+#include "statelog.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define IsoBriefingScreen ORIG(void(__cdecl *)(uint8_t *, int), 0x1005b438)
@@ -59,6 +60,7 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
     uint32_t cursor = 0, over = 0, over_unit = 0;
     uint8_t *last = NULL;
     g_iso = iso;
+    statelog_frame();
     if ((I(int, 0x175) && !I(int, 0x17cd) && !I(uint8_t, 0xd90f)) ||
         ((I(uint8_t, 0x181) || I(uint8_t, 0x17e)) && I(uint32_t, 0x17cd) > 1))
         return 1;

@@ -3,5 +3,6 @@
 #define DOMINION_ISO_STATELOG_H
 
 void statelog_install(void);
+void statelog_frame(void); /* at the start of every displayed frame */
 
 #endif
