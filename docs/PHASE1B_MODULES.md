@@ -598,3 +598,9 @@ A unit's sprite following its state every frame (depth, mirroring, cell, positio
 * Original quirks kept: `IsoSetUnitItem` items 0x3ef and 0x3f0 do their work but report failure (a missing `break`).
 * Two more calls Ghidra marks fastcall are plain cdecl with one argument (`FUN_1000e7e2`); the "register" arguments it shows don't exist.
 * Checked: the unit state log (as far as the original runs agree), menu tour, Human mission 1, Alt+F4. In the test fight the sprite update and armour checks run; effect damage, taking damage and the item functions are not called there.
+### Part 10: hits and kills (`combat.c`, 5 functions, 0x1000d96c-0x1000f85e)
+A unit hit by a weapon or an effect: the damage (direct, or falling off with distance; weapons reach twice their radius here), its armour, the "under attack" announcement, death with its score, the team and the revealed area, the host's network message when a unit falls below half or a quarter of its health (multiplayer); then fighting back or, for an enemy's unarmed unit that can't reach the attacker, running. Also the hit's reaction (ducking; vehicles and structures turning to their hurt states) and sprite, calling the units of the sector for help (at most once a second per unit), and killing a unit (structures are wrecked).
+* The decompile left out part of the weapon damage: the attacker's health counts. A unit above half its health does half again as much damage, one at a quarter or less half as much (`HIDDEN_AND_UNUSED.md`).
+* Ghidra's fastcall functions with 64-bit results here (`FUN_100a2550`, `FUN_100a24d0`, `FUN_1006b6d3`) are plain cdecl with a 32-bit result.
+* Our earlier parts now call `unit_kill` and `unit_hit` directly.
+* Checked: the unit state log (as far as the original runs agree; all five functions run in the test fight), menu tour, Human mission 1, Alt+F4.

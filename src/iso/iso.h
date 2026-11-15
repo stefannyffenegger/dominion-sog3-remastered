@@ -13,5 +13,6 @@
 #include "action.h"
 #include "items.h"
 #include "damage.h"
+#include "combat.h"
 
 #endif

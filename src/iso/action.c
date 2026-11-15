@@ -3,6 +3,7 @@
  * entering and leaving vehicles and buildings, turning, attacking); then the unit takes
  * one step of it. */
 #include "iso_core.h"
+#include "combat.h"
 #include "unit.h"
 #include "action.h"
 
@@ -16,7 +17,7 @@
 #define unit_boarded ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x100bd8e8)
 #define unit_enter_building ORIG(int(__cdecl *)(uint32_t, uint32_t), 0x100bca4c)
 #define building_entered ORIG(void(__cdecl *)(uint8_t, int16_t), 0x10041277)
-#define unit_remove_from_map ORIG(void(__cdecl *)(uint32_t, uint32_t, int, uint32_t), 0x1000f5e5)
+#define unit_remove_from_map unit_kill
 #define score_unit_lost ORIG(void(__cdecl *)(uint32_t, uint8_t, uint8_t), 0x1007e870)
 #define unit_leave_vehicle ORIG(void(__cdecl *)(uint32_t), 0x100bdab0)
 #define unit_is_local ORIG(int(__cdecl *)(uint32_t), 0x10010a60)

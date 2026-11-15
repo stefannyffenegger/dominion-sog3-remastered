@@ -1,6 +1,7 @@
 /* The game logic, 0x1000d362-0x1000d96c: damage from an effect (full at its centre, less
  * further out, minus armour), taking damage, and whether a weapon gets through armour. */
 #include "iso_core.h"
+#include "combat.h"
 #include "damage.h"
 
 /* not rewritten yet (names ours, provisional) */
@@ -8,9 +9,8 @@
 #define unit_max_health ORIG(int(__cdecl *)(uint8_t *, int), 0x100a23e0)
 #define score_unit_lost ORIG(void(__cdecl *)(uint32_t, uint8_t, uint8_t), 0x1007e870)
 #define reveal_around ORIG(void(__cdecl *)(int, int, uint32_t, int, uint32_t, uint16_t, int), 0x10090223)
-#define unit_remove ORIG(void(__cdecl *)(uint32_t, uint32_t, int, uint32_t), 0x1000f5e5)
+#define unit_remove unit_kill
 #define net_unit_hit ORIG(int(__cdecl *)(uint32_t, char), 0x10034aef)
-#define unit_hit ORIG(void(__cdecl *)(uint32_t), 0x1000e7e2)
 
 #define EFFECT_TYPE(e) P(uint8_t *, I(uint8_t *, 0xd6db) + (e) * 0x44, 0x16)
 /* a weapon's armour piercing */

@@ -2,6 +2,7 @@
  * the player's upgrades for it, keeping track of the map sector it is in, its sprite
  * following its state every frame, and making room where a structure is put down. */
 #include "iso_core.h"
+#include "combat.h"
 #include "unit.h"
 
 /* not rewritten yet (names ours, provisional) */
@@ -19,7 +20,7 @@
 #define sector_leave ORIG(void(__cdecl *)(uint8_t *), 0x1001065b)
 #define sector_seen ORIG(void(__cdecl *)(int, uint32_t), 0x1002d9c8)
 #define sector_enter ORIG(void(__cdecl *)(uint8_t *, int16_t *, int16_t), 0x100108af)
-#define unit_remove ORIG(void(__cdecl *)(uint32_t, uint32_t, int, uint32_t), 0x1000f5e5)
+#define unit_remove unit_kill
 
 #define HSL I(void *, ISO_HSL)
 #define APP I(void *, ISO_APP)

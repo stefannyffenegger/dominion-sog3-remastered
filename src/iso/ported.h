@@ -94,3 +94,10 @@ PORTED(0x1000d362, effect_damage)
 PORTED(0x1000d4c2, unit_take_damage)
 PORTED(0x1000d6ec, weapon_pierces)
 PORTED(0x1000d7cb, weapon_pierces_carried)
+
+/* combat.c */
+PORTED(0x1000d96c, unit_hit_by)
+PORTED(0x1000e7e2, unit_hit)
+PORTED(0x1000ead8, hit_effect)
+PORTED(0x1000f2e9, call_for_help)
+PORTED(0x1000f5e5, unit_kill)
