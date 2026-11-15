@@ -88,5 +88,7 @@ int __stdcall SpriteReplaceCellRange(void *hsl, void *src, void *dst, uint32_t f
 void __stdcall SpriteSetExtOffsets(void *hsl, void *sprite, void *offsets);
 void __stdcall SpriteSetPosition(void *hsl, void *sprite, int x, int y, int redraw);
 void *__stdcall winmalloc(SIZE_T size, int zero);
+void __cdecl SpriteSetFlip(void *hsl, void *sprite, uint32_t fx, uint32_t fy);
+void __cdecl SpriteSetRedraw(void *hsl, void *sprite, uint32_t on, int update);
 
 #endif

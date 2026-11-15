@@ -11,5 +11,7 @@
 #include "screen.h"
 #include "unit.h"
 #include "action.h"
+#include "items.h"
+#include "damage.h"
 
 #endif

@@ -77,6 +77,20 @@ PORTED(0x10008f27, countdown_draw)
 PORTED(0x100090e0, unit_apply_upgrade)
 PORTED(0x100092bb, unit_place)
 PORTED(0x1000a474, unit_sector_update)
+PORTED(0x1000c898, unit_sprite_update)
+PORTED(0x1000cb68, unit_clear_ground)
 
 /* action.c */
 PORTED(0x1000a86b, unit_action_tick)
+
+/* items.c */
+PORTED(0x1000cdd4, IsoSetUnitItem)
+PORTED(0x1000cf22, IsoGetUnitItem)
+PORTED(0x1000d116, IsoSetObjectItem)
+PORTED(0x1000d23a, IsoGetObjectItem)
+
+/* damage.c */
+PORTED(0x1000d362, effect_damage)
+PORTED(0x1000d4c2, unit_take_damage)
+PORTED(0x1000d6ec, weapon_pierces)
+PORTED(0x1000d7cb, weapon_pierces_carried)

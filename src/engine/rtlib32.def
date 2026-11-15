@@ -62,3 +62,5 @@ EXPORTS
     SpriteSetExtOffsets@12
     SpriteSetPosition@20
     winmalloc@8
+    SpriteSetFlip
+    SpriteSetRedraw

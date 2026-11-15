@@ -1,5 +1,6 @@
-/* The game logic, 0x100090e0-0x1000a86b: setting up a unit when it is placed on the map,
- * the player's upgrades for it, and keeping track of the map sector it is in. */
+/* The game logic, 0x100090e0-0x1000a86b and 0x1000c898-0x1000cdd4: setting up a unit when it is placed on the map,
+ * the player's upgrades for it, keeping track of the map sector it is in, its sprite
+ * following its state every frame, and making room where a structure is put down. */
 #include "iso_core.h"
 #include "unit.h"
 
@@ -18,6 +19,7 @@
 #define sector_leave ORIG(void(__cdecl *)(uint8_t *), 0x1001065b)
 #define sector_seen ORIG(void(__cdecl *)(int, uint32_t), 0x1002d9c8)
 #define sector_enter ORIG(void(__cdecl *)(uint8_t *, int16_t *, int16_t), 0x100108af)
+#define unit_remove ORIG(void(__cdecl *)(uint32_t, uint32_t, int, uint32_t), 0x1000f5e5)
 
 #define HSL I(void *, ISO_HSL)
 #define APP I(void *, ISO_APP)
@@ -374,4 +376,79 @@ void __cdecl unit_sector_update(uint32_t id, int16_t mode, int reveal)
     }
     if (I(uint8_t, 0xeeb) & 0x10)
         DebugStr((const char *)ORIG_PTR(0x10118b90), I(uint32_t, 0xc2ff));
+}
+
+/* 0x1000c898: the unit's sprite follows its state (depth, mirroring, cell, position) and
+ * its marker (selection colour: own, other, multiplayer; health bar) */
+void __cdecl unit_sprite_update(uint32_t id)
+{
+    uint8_t *u = iso_unit((int)(id & 0xffff));
+    void *s = P(void *, u, 4);
+    int level = P(int16_t, u, U_Y) + 10000;
+    if (P(uint8_t, u, U_SEL_STATE) == 1)
+        return;
+    if (P(int16_t, u, 0x66) != level && P(int32_t, u, U_CLASS) != 100 && (P(uint32_t, u, U_FLAGS) >> 3 & 1)) {
+        P(int16_t, u, 0x66) = (int16_t)level;
+        if (P(uint8_t, u, 0x147) == 'E')
+            P(int16_t, u, 0x66) = 0;
+        SpriteSetLevel(HSL, s, P(int16_t, u, 0x66));
+    }
+    SpriteSetRedraw(HSL, s, 0, 0);
+    if (P(uint32_t, u, U_FLAGS2) >> 8 & 1) {
+        SpriteSetFlip(HSL, s, P(uint8_t, u, 0x159) == 1, 0);
+        P(uint32_t, u, U_FLAGS2) &= 0xfffffeff;
+    }
+    SpriteReplaceCellRange(HSL, P(void *, u, 8), s, P(uint16_t, u, 0x145), 0, 1);
+    SpriteSetPosition(HSL, s, P(int16_t, u, U_X), P(int16_t, u, U_Y), 0);
+    if (!P(uint8_t, u, U_SELECTED)) {
+        G(uint32_t, 0x1015728c) = 0;
+        G(uint32_t, 0x10157290) = 0xffffffff;
+        G(uint32_t, 0x10157294) = 0xffffffff;
+    } else {
+        uint32_t other = P(uint8_t, u, U_PLAYER) != I(uint32_t, ISO_LOCAL_PLAYER);
+        G(uint32_t, 0x1015728c) = (I(int, 0x175) ? 2u : 0u) + other + 1;
+        G(uint32_t, 0x10157290) = 0;
+        G(int32_t, 0x10157294) = P(int16_t, u, 0x8c + P(uint8_t, u, 0x159) * 2);
+    }
+    G(uint32_t, 0x10157298) = (I(uint8_t, 0xeea) & 8) ? 0xb : 0xffffffff;
+    SpriteSendMessage(HSL, s, 7, ORIG_PTR(0x10157288));
+    if (P(uint8_t, u, U_SEL_STATE) == 2 && I(uint32_t, 0x17dd) > 2)
+        P(uint8_t, u, U_SEL_STATE) = 1;
+}
+
+/* 0x1000cb68: whether a unit (a structure being put down) has room: a unit standing on its
+ * middle cell is removed, as are units of the sector on the same cell when the cell has
+ * places taken. 0: no room. */
+int __cdecl unit_clear_ground(uint32_t id)
+{
+    uint8_t *u = iso_unit((int)(id & 0xffff));
+    if (!u)
+        return 1;
+    int x = P(int16_t, u, U_X), tx, ty;
+    int y = P(int16_t, u, U_Y);
+    RECT r;
+    SpriteGetBounds(HSL, P(void *, u, 4), &r);
+    int h = r.bottom - y;
+    h = h < 0 ? -h : h;
+    int cy = y + h / 2, cx = x;
+    int cell = IsoVTilePos(g_iso, &cx, &cy, &tx, &ty);
+    uint32_t c = I(uint32_t *, 0x1934)[((uint32_t)cy << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + (uint32_t)cx];
+    uint32_t other = c >> 16 & 0xfff;
+    if (other && other != (id & 0xffff) && iso_unit((int)other)) {
+        unit_remove(other, 0x20, 1, 0);
+        return 1;
+    }
+    if ((c >> 3 & 1) || !(c >> 8 & 0xf))
+        return 0;
+    int sx = (I(int32_t, 0xd6f1) >> 1) + P(int16_t, u, U_X);
+    int sy = P(int16_t, u, U_Y) + (I(int32_t, 0xd6f5) >> 1);
+    int sector = ((sy >> 8) << (I(uint8_t, 0xc2f5) & 0x1f)) + (sx >> 8);
+    uint16_t v = P(uint16_t, I(uint8_t *, 0xc2eb) + sector * 0x1e, 2);
+    while (v) {
+        uint16_t next = P(uint16_t, iso_unit(v), 0x393);
+        if (P(int32_t, iso_unit(v), U_CELL) == cell)
+            unit_remove(v, 0x20, 1, 0);
+        v = next;
+    }
+    return 1;
 }
