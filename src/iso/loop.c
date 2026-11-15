@@ -2,6 +2,7 @@
  * hidden, the unit under the mouse, the cursor, effects, the interface), the map
  * editor's loop, the debug sprites, "next unit" and selecting groups. */
 #include "iso_core.h"
+#include "mouse.h"
 #include "cursor.h"
 #include "view.h"
 #include "display.h"
@@ -16,10 +17,8 @@
 #define IsoSetFollowUnit ORIG(void(__cdecl *)(uint8_t *, int), 0x10055f9f)
 #define BF_BlastText                                                                         \
     ORIG(int(__cdecl *)(void *, void *, uint32_t, void *, int, int, const char *, int), 0x101120b6)
-#define mouse_state ORIG(void(__cdecl *)(int *, int *, int *, uint32_t *, int *), 0x10012852)
 #define mouse_frame_start ORIG(int(__cdecl *)(void), 0x10014160)
 #define mouse_over_unit ORIG(int(__cdecl *)(uint16_t, uint16_t *), 0x1001836f)
-#define cursor_for_unit ORIG(uint32_t(__cdecl *)(uint32_t, int, int, int, uint32_t, int), 0x10012ed3)
 #define unit_name_popup ORIG(void(__cdecl *)(uint32_t), 0x100144c4)
 #define unit_cost ORIG(void(__cdecl *)(int, int *, int *), 0x100a5423)
 #define status_text ORIG(int(__cdecl *)(char *, int), 0x10053ef5)
@@ -56,7 +55,7 @@ static int32_t ftol(long double v) { return (int32_t)(int64_t)v; }
 /* 0x100065c3: one frame of the game's display */
 int __stdcall IsoDisplayLoop(uint8_t *iso)
 {
-    int mx = 0, my = 0, buttons = 0, over_kind = 0;
+    int selected_any = 0, unused = 0, over_map = 0, fixed = 0;
     uint32_t cursor = 0, over = 0, over_unit = 0;
     uint8_t *last = NULL;
     g_iso = iso;
@@ -89,7 +88,7 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
     for (int k = 1; k < 0xe; k++)
         G(uint32_t, 0x10157288 + k * 4) = 0xffffffff;
     mouse_frame_start();
-    mouse_state(&mx, &my, &buttons, &cursor, &over_kind);
+    mouse_state(&selected_any, &unused, &over_map, &cursor, &fixed);
 
     uint32_t local = I(uint32_t, ISO_LOCAL_PLAYER);
     for (int i = 0; i < I(int, ISO_UNIT_COUNT); i++) {
@@ -156,10 +155,10 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
         if (I(int, 300))
             unit_draw_hidden(u, allied, 0);
         uint16_t hit;
-        if (buttons && (!over || !over_unit) && mouse_over_unit((uint16_t)id, &hit)) {
+        if (over_map && (!over || !over_unit) && mouse_over_unit((uint16_t)id, &hit)) {
             over = hit;
             over_unit = (uint32_t)P(int32_t, iso_unit(hit), U_ID_TYPE) < 0x40;
-            cursor = cursor_for_unit(over, my, mx, buttons, cursor, over_kind);
+            cursor = cursor_for_unit(over, unused, selected_any, over_map, cursor, fixed);
             if (cursor == 0xb && (I(int, 0xd692) || I(uint32_t, 0xd68a) != over))
                 IsoHideUnitNamePopup(iso);
         }

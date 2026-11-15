@@ -19,5 +19,6 @@
 #include "relay.h"
 #include "idle.h"
 #include "cursor.h"
+#include "mouse.h"
 
 #endif

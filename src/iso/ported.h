@@ -149,3 +149,8 @@ PORTED(0x1001275f, IsoGetMouseCursorState)
 PORTED(0x10012784, IsoSetMouseCursorOp)
 PORTED(0x100127c1, IsoGetMouseCursorOp)
 PORTED(0x100127e6, IsoInitInGameFont)
+
+/* mouse.c */
+PORTED(0x10012852, mouse_state)
+PORTED(0x10012d3b, cell_free_for_cursor)
+PORTED(0x10012ed3, cursor_for_unit)
