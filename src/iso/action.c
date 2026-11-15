@@ -3,6 +3,7 @@
  * entering and leaving vehicles and buildings, turning, attacking); then the unit takes
  * one step of it. */
 #include "iso_core.h"
+#include "sector.h"
 #include "combat.h"
 #include "unit.h"
 #include "action.h"
@@ -20,7 +21,6 @@
 #define unit_remove_from_map unit_kill
 #define score_unit_lost ORIG(void(__cdecl *)(uint32_t, uint8_t, uint8_t), 0x1007e870)
 #define unit_leave_vehicle ORIG(void(__cdecl *)(uint32_t), 0x100bdab0)
-#define unit_is_local ORIG(int(__cdecl *)(uint32_t), 0x10010a60)
 #define unit_next_waypoint ORIG(int(__cdecl *)(uint32_t, int, int, int), 0x100b5897)
 #define action_set ORIG(void(__cdecl *)(uint32_t, uint8_t), 0x1009cc60)
 #define unit_set_anim ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cc91)
@@ -36,7 +36,6 @@
 #define path_move                                                                            \
     ORIG(int(__cdecl *)(int16_t *, int16_t *, int16_t *, int16_t *, int16_t *, int16_t *, int32_t *, int32_t *), \
          0x100e64f3)
-#define action_counts ORIG(int(__cdecl *)(uint8_t), 0x10010ab0)
 #define unit_attack ORIG(int(__cdecl *)(uint32_t), 0x100e7b9b)
 #define unit_guard ORIG(int(__cdecl *)(uint32_t), 0x100e80fa)
 #define unit_fire_at ORIG(void(__cdecl *)(uint8_t *), 0x100dbdae)

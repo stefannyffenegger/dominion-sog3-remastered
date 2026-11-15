@@ -101,3 +101,22 @@ PORTED(0x1000e7e2, unit_hit)
 PORTED(0x1000ead8, hit_effect)
 PORTED(0x1000f2e9, call_for_help)
 PORTED(0x1000f5e5, unit_kill)
+PORTED(0x1000f85e, structure_kill)
+PORTED(0x1000fb28, occupant_eject)
+PORTED(0x1000fe89, kill_units_on_id)
+PORTED(0x1000fed3, kill_units_on)
+PORTED(0x100105fe, sprites_overlap)
+
+/* commands.c */
+PORTED(0x1000ec9e, unit_command)
+PORTED(0x1000f0fc, IsoSetSelectedUnitState)
+PORTED(0x1000f207, unit_fire_button)
+
+/* sector.c */
+PORTED(0x1001065b, sector_leave)
+PORTED(0x100108af, sector_enter)
+PORTED(0x10010a60, unit_is_local)
+PORTED(0x10010ab0, action_counts)
+PORTED(0x10010b40, unit_is_local_u)
+PORTED(0x10010b80, player_slot_alloc)
+PORTED(0x10010c33, player_slot_free)

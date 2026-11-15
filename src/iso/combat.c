@@ -1,9 +1,12 @@
-/* The game logic, 0x1000d96c-0x1000f85e (without 0x1000ec9e-0x1000f2e9): a unit hit by a
+/* The game logic, 0x1000d96c-0x1001065b (without 0x1000ec9e-0x1000f2e9): a unit hit by a
  * weapon or an effect (damage, death and its score, fighting back), its reaction and the
- * hit's sprite, allies called for help, and killing a unit. */
+ * hit's sprite, allies called for help, killing a unit, destroyed structures and what is
+ * in, on or under them. */
 #include "iso_core.h"
+#include "sector.h"
 #include "damage.h"
 #include "combat.h"
+#include "screen.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define unit_set_anim ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cc91)
@@ -20,7 +23,6 @@
 #define net_unit_killed ORIG(int(__cdecl *)(uint32_t, int, char, char), 0x10034dcf)
 #define team_lost_leader ORIG(void(__cdecl *)(int), 0x1002dc7f)
 #define unit_set_target ORIG(void(__cdecl *)(uint16_t, uint16_t), 0x100dcabd)
-#define unit_is_local_u ORIG(int(__cdecl *)(uint8_t *), 0x10010b40)
 #define unit_can_reach ORIG(int(__cdecl *)(uint32_t, uint32_t, int, int), 0x1006b6d3)
 #define unit_attack_target ORIG(void(__cdecl *)(uint32_t, uint16_t, int, uint16_t), 0x100dc75c)
 #define player_is_ai ORIG(int(__cdecl *)(int), 0x100e2df0)
@@ -32,7 +34,6 @@
 #define path_stop ORIG(int(__cdecl *)(uint32_t, int), 0x100d4947)
 #define path_release ORIG(int(__cdecl *)(uint32_t, int, int, int), 0x100d559a)
 #define structure_wreck ORIG(void(__cdecl *)(uint32_t, int), 0x100b2953)
-#define structure_kill ORIG(void(__cdecl *)(uint32_t, uint32_t, int), 0x1000f85e)
 #define IsoHidePopupMenu ORIG(void(__stdcall *)(uint8_t *), 0x100d4263)
 
 #define U_FLAGS2 0x10e
@@ -334,4 +335,195 @@ void __cdecl unit_kill(uint32_t id, uint32_t anim, int sync, uint32_t quiet)
     }
     if (I(int, 0xd813))
         LeaveCriticalSection(lock);
+}
+
+/* ---- structures and what is on or in them ---- */
+
+#define schedule ORIG(void(__cdecl *)(uint16_t, uint32_t, uint32_t, uint32_t, uint32_t *), 0x1002de13)
+#define tutorial_event ORIG(int(__cdecl *)(uint8_t *, int, int, int), 0x1001b5ec)
+#define IsoRemoveObject ORIG(void(__stdcall *)(uint8_t *, uint32_t, int, int), 0x100ad9ea)
+#define IsoRedrawObject ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x100ad5f2)
+#define U_INSIDE 0xf6  /* short: the first unit inside, linked through +0xf6 */
+#define U_ON_TOP 0xf8  /* short: the first unit on it, linked through +0xf8 */
+
+/* the units inside and on top of a destroyed structure: each is handled `step` ticks after
+ * the one before by the original's `handler` (event `event`) */
+static void occupants(uint32_t id, uint16_t event, uint32_t step, uint32_t handler, uint32_t *args, int eject)
+{
+    uint32_t tick = I(uint32_t, ISO_TICK);
+    for (int list = 0; list < 2; list++) {
+        uint16_t link = list ? U_ON_TOP : U_INSIDE;
+        uint16_t v = P(uint16_t, I(uint8_t **, ISO_UNITS)[id], link);
+        if (list)
+            tick = I(uint32_t, ISO_TICK);
+        while (v) {
+            uint8_t *w = iso_unit(v);
+            if (!w) {
+                v = 0;
+                continue;
+            }
+            if (list)
+                P(uint32_t, w, U_FLAGS2) |= 0x100000;
+            if (eject)
+                P(uint8_t, w, U_KIND) = 0x14;
+            args[0] = v;
+            tick += step;
+            schedule(event, tick, 0, handler, args);
+            kill_units_on(w, 0, 0);
+            v = P(uint16_t, w, link);
+            P(uint16_t, w, U_INSIDE) = 0;
+            P(uint16_t, w, U_ON_TOP) = 0;
+        }
+        P(uint16_t, I(uint8_t **, ISO_UNITS)[id], link) = 0;
+    }
+}
+
+/* 0x1000f85e: a destroyed structure: its dying animation; the units in and on it are
+ * killed one after another (8 ticks apart) */
+void __cdecl structure_kill(uint32_t id, uint32_t anim, int sync)
+{
+    uint8_t *u = I(uint8_t **, ISO_UNITS)[id];
+    if (!u) {
+        DebugStr((const char *)ORIG_PTR(0x10118cb0), id);
+        return;
+    }
+    unit_set_anim(id, anim, 1, 0);
+    unit_set_mode(id, 0x1a);
+    unit_set_action(id, 0x1a, 1, 0);
+    if (sync && I(int, 0x175))
+        net_unit_killed((int)id, 1, (char)anim, 0);
+    if (P(int16_t, u, U_INSIDE) || P(int16_t, u, U_ON_TOP)) {
+        uint32_t args[3] = {0, 0x20, 1};
+        kill_units_on(u, 0, 0);
+        occupants(id, 0xee, 8, (uint32_t)(uintptr_t)ORIG_PTR(0x1005629c), args, 0);
+    }
+}
+
+/* 0x1000fb28: a unit leaving a destroyed structure (action 0x14), and those in and on it
+ * one after another (16 ticks apart) */
+void __cdecl occupant_eject(int id)
+{
+    uint8_t *u = I(uint8_t **, ISO_UNITS)[id];
+    if (!u) {
+        DebugStr((const char *)ORIG_PTR(0x10118cc8), id);
+        return;
+    }
+    uint8_t a = P(uint8_t, u, 0x147), n = P(uint8_t, u, 0x148);
+    if (a == 0x14 || a == 'O' || a == 'L' || a == ' ' || a == '!' || n == 'L' || n == ' ')
+        return;
+    P(uint8_t, u, U_KIND) = 0x14;
+    P(uint8_t, u, 0x148) = P(uint8_t, u, U_KIND);
+    if (P(uint8_t, u, U_PLAYER) == I(uint32_t, ISO_LOCAL_PLAYER))
+        tutorial_event(u, 8, 0, 0);
+    if (P(int16_t, u, U_INSIDE) || P(int16_t, u, U_ON_TOP)) {
+        uint32_t args[3] = {0, 0, 0};
+        kill_units_on(u, 0, 0);
+        occupants((uint32_t)id, 0xef, 0x10, (uint32_t)(uintptr_t)ORIG_PTR(0x1000fb28), args, 1);
+    }
+}
+
+/* 0x1000fe89 */
+void __cdecl kill_units_on_id(int id, int building, int keep_units)
+{
+    if (I(uint8_t **, ISO_UNITS)[id])
+        kill_units_on(I(uint8_t **, ISO_UNITS)[id], building, keep_units);
+}
+
+/* the unit's screen bounds in +0xc6 (a RECT) */
+static void unit_bounds(uint8_t *u)
+{
+    if (!(P(uint32_t, u, U_FLAGS) >> 6 & 1))
+        unit_update_bounds(((uint32_t)(uintptr_t)u & 0xffff0000) | P(uint16_t, u, 0x1cb));
+    else
+        SpriteGetBounds(I(void *, ISO_HSL), P(void *, u, 4), (RECT *)(u + 0xc6));
+}
+
+/* 0x1000fed3: a bridge destroyed or a structure built (`building`): the units under it
+ * (192x96 pixels around it, in its sector and the eight around) are killed unless
+ * keep_units; for a building, the map objects under it are removed and those near them
+ * redrawn */
+void __cdecl kill_units_on(uint8_t *u, int building, int keep_units)
+{
+    if (I(int, 0x175) && !I(int, 0x148))
+        return;
+    DebugStr((const char *)ORIG_PTR(0x10118ce0), building, keep_units);
+    unit_bounds(u);
+    RECT *area = (RECT *)(u + 0xc6);
+    InflateRect(area, (0xc0 - (area->right - area->left)) / 2, (0x60 - (area->bottom - area->top)) / 2);
+    int sx = (I(int32_t, 0xd6f1) >> 1) + P(int16_t, u, U_X);
+    int sy = P(int16_t, u, U_Y) + (I(int32_t, 0xd6f5) >> 1);
+    int sector = ((sy >> 8) << (I(uint8_t, 0xc2f5) & 0x1f)) + (sx >> 8);
+    for (int k = 0; k < 9; k++) {
+        int s = k == 0 ? sector : P(int16_t, I(uint8_t *, 0xc2eb), k * 2 + 4 + sector * 0x1e);
+        if (s < 0)
+            continue;
+        RECT tmp;
+        if (!keep_units) {
+            uint16_t v = P(uint16_t, I(uint8_t *, 0xc2eb) + s * 0x1e, 2);
+            while (v) {
+                uint8_t *w = iso_unit(v);
+                if (!w) {
+                    DebugStr((const char *)ORIG_PTR(0x10118d04), v);
+                    return;
+                }
+                uint16_t next = P(uint16_t, w, U_SECTOR_NEXT);
+                int16_t ws = P(int16_t, w, U_SECTOR);
+                int32_t cls = P(int32_t, w, U_CLASS), t = P(int32_t, w, U_ID_TYPE);
+                if ((ws == s || ws == -1) && (cls < 0x88 || cls > 0x9f)) {
+                    int32_t top = t > 0x2f && t < 0x38 ? P(int32_t, P(uint8_t *, w, 0x39d), 0xc4) : 0;
+                    if (!(t > 0x2f && t < 0x38) || top == 10 || top == 9 || top == 5) {
+                        unit_bounds(w);
+                        if (IntersectRect(&tmp, area, (RECT *)(w + 0xc6))) {
+                            unit_kill(v, 0x20, 1, 0);
+                            if (!(P(uint32_t, w, U_FLAGS) >> 0x1e & 1)) {
+                                score_unit_lost(P(uint32_t, w, U_CLASS), P(uint8_t, w, U_PLAYER), P(uint8_t, u, U_PLAYER));
+                                P(uint32_t, w, U_FLAGS) |= 0x40000000;
+                            }
+                        }
+                    }
+                }
+                v = next;
+            }
+        }
+        if (!building)
+            continue;
+        DebugStr((const char *)ORIG_PTR(0x10118d1c), building);
+        DebugStr((const char *)ORIG_PTR(0x10118d2c), P(int32_t, u, U_CLASS));
+        RECT all = {0, 0, 0, 0}, r;
+        uint8_t *rec = I(uint8_t *, 0xc2eb) + s * 0x1e;
+        for (int o = P(int16_t, rec, 4); o >= 0;) {
+            uint8_t *ob = I(uint8_t *, 0x192c) + o * 0x12;
+            int next = P(int16_t, ob, 0xe);
+            uint16_t ot = P(uint16_t, ob, 8);
+            if (P(uint32_t, ob, 0) && (ot < 0x6f || ot > 0x77) && (ot < 0xb4 || ot > 0x103) &&
+                (ot < 0x104 || ot > 0x107) && (ot < 0x78 || ot > 0x7b) && (ot < 0xaa || ot > 0xb1) &&
+                (ot < 300 || ot > 0x15d) && (ot < 0x15e || ot > 0x185)) {
+                SpriteGetBounds(I(void *, ISO_HSL), RtGetResource(I(void *, ISO_APP), P(uint32_t, ob, 0))[1], &r);
+                if (IntersectRect(&tmp, area, &r)) {
+                    UnionRect(&all, &all, &r);
+                    IsoRemoveObject(g_iso, (uint32_t)o, keep_units, 1);
+                }
+            }
+            o = next;
+        }
+        InflateRect(&all, 0x20, 0x10);
+        for (int o = P(int16_t, rec, 4); o >= 0; o = P(int16_t, I(uint8_t *, 0x192c) + o * 0x12, 0xe)) {
+            uint8_t *ob = I(uint8_t *, 0x192c) + o * 0x12;
+            if (!P(uint32_t, ob, 0))
+                continue;
+            SpriteGetBounds(I(void *, ISO_HSL), RtGetResource(I(void *, ISO_APP), P(uint32_t, ob, 0))[1], &r);
+            RECT tmp2;
+            if (IntersectRect(&tmp2, &all, &r))
+                IsoRedrawObject(g_iso, (uint32_t)o);
+        }
+    }
+}
+
+/* 0x100105fe */
+BOOL __cdecl sprites_overlap(void *a, void *b)
+{
+    RECT ra, rb, tmp;
+    SpriteGetBounds(I(void *, ISO_HSL), a, &ra);
+    SpriteGetBounds(I(void *, ISO_HSL), b, &rb);
+    return IntersectRect(&tmp, &ra, &rb);
 }

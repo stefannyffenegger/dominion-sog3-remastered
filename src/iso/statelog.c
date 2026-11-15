@@ -6,8 +6,8 @@
  * DOMINION_ISO_STATELOG_UNITS=1 each unit's fields are written too (=from-to: only for those
  * ticks, which disturbs the timing less). With
  * DOMINION_ISO_STATELOG_ORDERS=1 the local player's units get move orders at fixed ticks
- * (Human mission 1: into the enemy at tick 40, on at tick 500), input that does not
- * depend on timing. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * (Human mission 1: into the enemy at tick 40, on at tick 500) and stances (kneel at 60,
+ * crawl at 120, stand at 200), input that does not depend on timing. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
@@ -81,11 +81,17 @@ static void log_tick(void)
 static void give_orders(void)
 {
     static const struct { uint32_t tick; int x, y; } orders[] = {{40, -200, -250}, {500, -192, 0}};
+    /* stances for the selected units: kneel, crawl, stand (through the original's address,
+     * so original runs use the original) */
+    static const struct { uint32_t tick, state; } stances[] = {{60, 1}, {120, 2}, {200, 0}};
     for (unsigned i = 0; i < sizeof orders / sizeof *orders; i++)
         if (I(uint32_t, 0x17dd) == orders[i].tick) {
             IsoSelectGroup(g_iso, 0xffffffff, 10, 0, 0);
             order_move(I(int, ISO_LOCAL_PLAYER), orders[i].x, (uint32_t)orders[i].y, 2, 10, 0, I(int, 0xd797) == 0);
         }
+    for (unsigned i = 0; i < sizeof stances / sizeof *stances; i++)
+        if (I(uint32_t, 0x17dd) == stances[i].tick)
+            ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x1000f0fc)(g_iso, stances[i].state);
 }
 
 static void __stdcall tick_stub(uint8_t *iso)

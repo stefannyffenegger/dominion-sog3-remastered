@@ -14,5 +14,7 @@
 #include "items.h"
 #include "damage.h"
 #include "combat.h"
+#include "commands.h"
+#include "sector.h"
 
 #endif
