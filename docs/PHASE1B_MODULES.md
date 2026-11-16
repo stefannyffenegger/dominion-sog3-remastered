@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 157 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 164 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -650,3 +650,9 @@ The right-click popup menu (on by default, `PopupEnabled` in `Dominion.ini`): wh
 * The decompile gets the 64-bit item sets wrong in places (it puts the per-player bits 32-39 in the low word, and shows two 64-bit locals as four mixed ones); ours follows the assembly.
 * Original quirk: more than 15 items are not shown, only reported through `DebugStr`.
 * Checked: new `tests/game/popup.sh` (the menu without a unit, "Command Points", which needs a long right click on the ground: set, locate and remove the rendezvous and withdrawal points, the last two greyed while none is set; the Commander's menu; the selection's menu; all equal to the original's), the hover run, the unit state log, menu tour, Human mission 1, Alt+F4.
+
+### Part 20: a click or drag on the map (`click.c`, 7 functions, 0x10018711-0x10018edb and 0x10019b52-0x1001a434)
+What a left click or drag on the map does when the mouse button comes up: a drag selects the local player's units in the box (added to the selection with the add modifier); a click on the ground moves the selection there (with the marker effect; the order modifier places a structure instead where the selection can build); a click on a unit sells, repairs or upgrades it when the cursor is in that mode, adds it to or removes it from the selection, uses a single selected unit's special action on itself, links two structures of the same owner, has the selection guard it or detonate at it (order modifier), or hands it to each selected unit's order for that unit (part 21), and otherwise selects it alone (another player's unit goes into its owner's selection list).
+* A debug option (bit 2 of byte 0xeea) paints the clicked tile with a random ground tile; ours keeps it, with the original's `rand`.
+* The decompile drops the second argument (0) of the sell, repair and 0x1005b314 calls, and invents register arguments for two calls; ours follows the assembly.
+* Checked: the unit state log, Human mission 1 (its move click), the groups run (drag select; the poses of idle units differ from the original runs by about 250 pixels, as much as with this part kept original), the popup and hover runs, menu tour, Alt+F4. Not reached: clicks on structures, other players' units, the modifiers, structure links.
