@@ -2,13 +2,13 @@
  * screen edges, gliding to a stop, screen shake), the radar's view box, and the
  * players' selections. */
 #include "iso_core.h"
+#include "mouse.h"
 #include "cursor.h"
 #include "power.h"
 #include "view.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define status_text ORIG(int(__cdecl *)(char *, int), 0x10053ef5)
-#define cursor_scroll ORIG(void(__cdecl *)(int, int, int), 0x100145d0)
 #define IsoHidePopupMenu ORIG(void(__stdcall *)(uint8_t *), 0x100d4263)
 #define RubberSetActiveBox ORIG(void(__stdcall *)(uint8_t *, int, int, int, int), 0x10060110)
 #define IsoTilePos ORIG(void(__stdcall *)(uint8_t *, int *, int *, int *, int *), 0x100af006)

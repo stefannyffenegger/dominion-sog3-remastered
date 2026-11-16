@@ -17,9 +17,7 @@
 #define IsoSetFollowUnit ORIG(void(__cdecl *)(uint8_t *, int), 0x10055f9f)
 #define BF_BlastText                                                                         \
     ORIG(int(__cdecl *)(void *, void *, uint32_t, void *, int, int, const char *, int), 0x101120b6)
-#define mouse_frame_start ORIG(int(__cdecl *)(void), 0x10014160)
 #define mouse_over_unit ORIG(int(__cdecl *)(uint16_t, uint16_t *), 0x1001836f)
-#define unit_name_popup ORIG(void(__cdecl *)(uint32_t), 0x100144c4)
 #define unit_cost ORIG(void(__cdecl *)(int, int *, int *), 0x100a5423)
 #define status_text ORIG(int(__cdecl *)(char *, int), 0x10053ef5)
 #define radar_update ORIG(int(__cdecl *)(void), 0x100a25d0)
@@ -87,7 +85,7 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
     I(int32_t, 0x17cd)++;
     for (int k = 1; k < 0xe; k++)
         G(uint32_t, 0x10157288 + k * 4) = 0xffffffff;
-    mouse_frame_start();
+    selection_abilities();
     mouse_state(&selected_any, &unused, &over_map, &cursor, &fixed);
 
     uint32_t local = I(uint32_t, ISO_LOCAL_PLAYER);

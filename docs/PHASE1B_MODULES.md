@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 121 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 126 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -622,3 +622,8 @@ Infantry at ease play one of two idle animations every 21-35 periods of 16 ticks
 The mouse each frame (anything selected, over the map, the cursor for the current operation, whether the operation stands alone), whether a cell can take a move or a structure (free, and seen by the local player), and the cursor over a unit: move, attack, enter, load, repair, capture, the waypoint and building cursors, about 30 cases from the unit's owner, kind and state and the option keys. After the mouse rests on a unit for 30 ticks, its name popup: own units with their figures (a carrier's load in percent, a power plant's output), allies and enemies by player name.
 * The names I gave `mouse_state`'s outputs in part 5 were guesses; they are now named for what they are (`selected_any`, `over_map`, `fixed`), and `loop.c` calls these functions directly.
 * Checked: a hover run (`tests/game/hover.sh`: a unit's name popup, the move cursor over ground with units selected, a vehicle's popup): ours pixel-identical or within two pixels of the original's; the unit state log; menu tour, Human mission 1, Alt+F4.
+### Part 15: selection abilities, popup and scroll cursor, scouting (`mouse.c`, `recon.c`, 5 functions, 0x10014160-0x10014d9e)
+What the local player's selection can do, as a set of bits worked out from the selected units' classes each frame (the cursors of part 14 and the command buttons depend on it); placing the unit name popup under a unit; the scroll cursor's arrow for the scroll direction; the cursor sprite following the mouse. And where a scouting unit goes next: the corner of the map, of the three other quarters, its player has seen least of, by a sector on the way it can reach.
+* The word at 0xe099 is this ability set, not "option keys" as part 14 called it; renamed in `mouse.c`.
+* The scouting function has a second mode that was never finished (it returns -1 in every case).
+* Checked: the hover run (pixel-identical), the unit state log, menu tour, Human mission 1, Alt+F4. The scouting function is not reached in the tests.

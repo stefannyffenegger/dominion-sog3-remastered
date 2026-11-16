@@ -20,5 +20,6 @@
 #include "idle.h"
 #include "cursor.h"
 #include "mouse.h"
+#include "recon.h"
 
 #endif

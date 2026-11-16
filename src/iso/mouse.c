@@ -1,4 +1,4 @@
-/* The game logic, 0x10012852-0x10014160: the mouse over the map: the cursor for the
+/* The game logic, 0x10012852-0x100147d0: the mouse over the map: the cursor for the
  * current operation and for the unit under the mouse (move, attack, enter, repair, load,
  * ...), whether a cell can take the operation, and the unit name popup's text. */
 #include "iso_core.h"
@@ -10,14 +10,13 @@
 #define unit_can_order ORIG(uint32_t(__cdecl *)(uint16_t), 0x100f4301)
 #define can_repair ORIG(int(__cdecl *)(char, uint8_t), 0x100a60bb)
 #define unit_cargo ORIG(uint32_t(__cdecl *)(uint32_t, uint32_t), 0x100a36d6)
-#define unit_name_popup ORIG(void(__cdecl *)(uint32_t), 0x100144c4)
 #define unit_reachable ORIG(int(__cdecl *)(uint32_t, int, int), 0x1006b633)
 #define IsoUnitCanEnter ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x100f0c6c)
 #define BF_BlastText                                                                         \
     ORIG(int(__cdecl *)(void *, void *, uint32_t, void *, int, int, const char *, int), 0x101120b6)
 
 #define APP I(void *, ISO_APP)
-#define KEYS I(uint16_t, 0xe099) /* modifier and option bits for the mouse */
+#define SEL_CAN I(uint16_t, 0xe099) /* what the selection can do (selection_abilities) */
 #define CUR_OP I(int32_t, 0xd77d)
 #define MOUSE_X I(int32_t, 0xd76d)
 #define MOUSE_Y I(int32_t, 0xd771)
@@ -29,8 +28,8 @@ static uint32_t local_player(void) { return I(uint32_t, ISO_LOCAL_PLAYER); }
 static uint8_t allies_of(uint32_t player) { return I(uint8_t, player * ISO_PLAYER_SIZE + 0x1ba0); }
 
 /* 0x10012d3b: whether the cell under (x, y) can take a move (building: a structure); it
- * must be free and seen by the local player (for moves, unseen is fine unless option
- * 0x1000) */
+ * must be free and seen by the local player (for moves, unseen is fine unless the
+ * selection has ability 0x1000) */
 int __cdecl cell_free_for_cursor(int x, uint32_t y, int building)
 {
     int tx = x, ty = (int)y, a, b;
@@ -40,8 +39,8 @@ int __cdecl cell_free_for_cursor(int x, uint32_t y, int building)
         return 0;
     uint32_t c = I(uint32_t *, 0x1934)[((uint32_t)ty << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + (uint32_t)tx];
     int seen = (uint8_t)(I(uint32_t *, ISO_MAP)[cell] >> 24) & (uint8_t)(1u << (local_player() & 0x1f));
-    return (!(c & 1) || (KEYS & 0x800)) && !(c & 2) && !(c & 8) && !(c >> 8 & 0xf) && !(c & 4) && !(c >> 0xc & 1) &&
-           !(c >> 0xd & 1) && !(c >> 0xe & 1) && (seen || (!building && !(KEYS & 0x1000)));
+    return (!(c & 1) || (SEL_CAN & 0x800)) && !(c & 2) && !(c & 8) && !(c >> 8 & 0xf) && !(c & 4) && !(c >> 0xc & 1) &&
+           !(c >> 0xd & 1) && !(c >> 0xe & 1) && (seen || (!building && !(SEL_CAN & 0x1000)));
 }
 
 /* 0x10012852: the mouse this frame: whether units are selected, whether the mouse is over
@@ -62,7 +61,7 @@ void __cdecl mouse_state(int *selected_any, int *unused, int *over_map, uint32_t
         return;
     }
     int32_t op;
-    if (I(int, 0xd79b) && (KEYS & 0x400) && CUR_OP == 1) {
+    if (I(int, 0xd79b) && (SEL_CAN & 0x400) && CUR_OP == 1) {
         op = 0xf;
         I(uint8_t, ISO_FLAGS) |= 0x40;
     } else {
@@ -113,11 +112,11 @@ void __cdecl mouse_state(int *selected_any, int *unused, int *over_map, uint32_t
             *cursor = (uint32_t)CUR_OP;
         } else {
             *cursor = 1;
-            if (KEYS & 0x80)
+            if (SEL_CAN & 0x80)
                 *cursor = cell_free_for_cursor(MOUSE_X, (uint32_t)MOUSE_Y, 0) ? 0xc : 0xd;
         }
         I(uint32_t, 0xd783) = *cursor != 0xd;
-        if (*selected_any && I(int, 0xd7af) && (KEYS & 0x80))
+        if (*selected_any && I(int, 0xd7af) && (SEL_CAN & 0x80))
             *cursor = *cursor == 0xc ? 0x12 : 0x13;
         break;
     }
@@ -236,8 +235,8 @@ uint32_t __cdecl cursor_for_unit(uint32_t id, int unused, int selected_any, int 
             return cursor;
         }
         if (!allied || I(int, 0xd797))
-            return (KEYS & 0x200) ? 0x14 : 0x15;
-        return (KEYS & 0x400) ? 0x1a : 0x1b;
+            return (SEL_CAN & 0x200) ? 0x14 : 0x15;
+        return (SEL_CAN & 0x400) ? 0x1a : 0x1b;
     }
     if (cls >= 0x88 && cls <= 0x9f && !I(int, 0xd797))
         return cursor;
@@ -266,16 +265,16 @@ uint32_t __cdecl cursor_for_unit(uint32_t id, int unused, int selected_any, int 
     int friendly = player == local || ((1u << (local & 0x1f)) & allies_of(player));
     int own = player == local;
     int nsel = SELECTED_N(local);
-    if (KEYS & 8)
+    if (SEL_CAN & 8)
         return 0;
     if (own && I(int, 0xd7af) && !I(int, 0xd79b))
         return 0;
     if (own && I(int, 0xd797) && !reach)
         return 0;
     if (friendly && !I(int, 0xd797) && I(int, 0xd79b))
-        return (KEYS & 0x400) ? 0x1a : 0x1b;
+        return (SEL_CAN & 0x400) ? 0x1a : 0x1b;
     if ((!friendly || I(int, 0xd797)) && I(int, 0xd79b))
-        return (KEYS & 0x200) ? 0x14 : 0x15;
+        return (SEL_CAN & 0x200) ? 0x14 : 0x15;
     uint8_t *ti = P(uint8_t *, u, 0x32);
     if (nsel == 1 && P(uint8_t, u, U_SELECTED) && own) {
         if (P(int32_t, ti, 0xe0) && P(uint8_t, u, 0xf3))
@@ -286,10 +285,10 @@ uint32_t __cdecl cursor_for_unit(uint32_t id, int unused, int selected_any, int 
             return 0x10;
         }
     }
-    if (own && (KEYS & 0x10) && P(int32_t, ti, 0xe0) && !I(int, 0xd797))
+    if (own && (SEL_CAN & 0x10) && P(int32_t, ti, 0xe0) && !I(int, 0xd797))
         return (int)P(uint8_t, u, 0xf3) < P(int32_t, ti, 0xe0) ? 0x16 : 0x17;
     uint32_t flags = P(uint32_t, u, U_FLAGS);
-    if (((type > 0x3f && type < 0x50) || (type > 0x4f && type < 0x88)) && (KEYS & 1)) {
+    if (((type > 0x3f && type < 0x50) || (type > 0x4f && type < 0x88)) && (SEL_CAN & 1)) {
         if (!friendly)
             return (P(int16_t, u, U_POWER) != -1 && !(flags >> 0xc & 1)) ? 0x1c : 0x27;
         if ((flags >> 0xc & 1) || (flags >> 2 & 1))
@@ -297,20 +296,112 @@ uint32_t __cdecl cursor_for_unit(uint32_t id, int unused, int selected_any, int 
     }
     if (I(int, 0xd797))
         friendly = 0;
-    if (friendly && (KEYS & 0x80) && cls >= 100 && cls <= 0x67) {
+    if (friendly && (SEL_CAN & 0x80) && cls >= 100 && cls <= 0x67) {
         if (I(uint16_t, 0xd6cb + local * 2) == id)
             return 0;
-        int ready = !(KEYS & 2) && P(int16_t, u, 0x42);
+        int ready = !(SEL_CAN & 2) && P(int16_t, u, 0x42);
         if (flags >> 0x1a & 1)
-            return ready && (KEYS & 0x100) ? 0x28 : 0x29;
+            return ready && (SEL_CAN & 0x100) ? 0x28 : 0x29;
         if (!(flags >> 0xb & 1) || !(flags >> 0x1b & 1))
             return ready && I(int16_t, 0xd6f9 + local * 2) ? 0x2a : 0x2b;
         return ready ? 0x2c : 0x2d;
     }
     if (friendly && ((cls >= 0x18 && cls <= 0x2c && cls != 0x20) || cls == 0x38) && P(uint8_t, u, 0x147) != 'E' &&
-        !P(int32_t, u, 0x84) && (KEYS & 0x20) && !P(uint8_t, u, U_SELECTED))
+        !P(int32_t, u, 0x84) && (SEL_CAN & 0x20) && !P(uint8_t, u, U_SELECTED))
         return 0x25;
     if ((!friendly || reach) && mode != 1)
-        return reach ? 2 : ((KEYS & 0x80) ? 0xd : 0);
+        return reach ? 2 : ((SEL_CAN & 0x80) ? 0xd : 0);
     return 0;
+}
+
+/* 0x10014160: what the local player's selection can do, as bits in SEL_CAN (the cursors
+ * and command buttons depend on it); returns how many units are selected.
+ * A single unit of type 0x22 or 0x21 has a fixed set; otherwise the set starts full and
+ * each selected unit's class takes away what it cannot do or adds what only it can. */
+int __cdecl selection_abilities(void)
+{
+    uint32_t local = local_player();
+    int n = SELECTED_N(local);
+    uint16_t can = 0;
+    uint8_t *u;
+    if (n == 1 && (u = iso_unit(selected(local)[0]))) {
+        if (P(int32_t, u, U_ID_TYPE) == 0x22)
+            can = 0x15c0;
+        else if (P(int32_t, u, U_ID_TYPE) == 0x21)
+            can = 0x5a0;
+    }
+    if (!can) {
+        can = 0xf00e;
+        for (int i = 0; i < n; i++) {
+            if (!(u = iso_unit(selected(local)[i])))
+                continue;
+            uint8_t c = P(uint8_t, u, U_CLASS);
+            int entering = P(uint8_t, u, 0x147) == 'E';
+            uint16_t t;
+            if (c < 0x30 || c > 0x37)
+                t = can & (P(int32_t, u, U_ID_TYPE) != 0x22 ? 0xeffd : 0xfffd);
+            else
+                t = can | 0x800;
+            if (c < 0x40 || c > 0x4f)
+                t &= 0xfffb;
+            if (c < 0x50 || c > 0x9f)
+                t &= 0xfff7;
+            if (c < 0x14 && c != 8)
+                t |= 0x10;
+            if (c < 0x40 && !entering)
+                t |= 0x80;
+            if (c > 0xf && c < 0x14)
+                t |= 0x101;
+            if (c > 7 && (c < 0xc || c > 0x17) && (c < 0x30 || c > 0x37) && (c < 0x50 || c > 0x9f) && !entering)
+                t |= 0x100;
+            if ((c > 0x17 && c < 0x20) || (c > 7 && c < 0xc) || (c > 0x23 && c < 0x30))
+                t |= 0x200;
+            can = t;
+            if (c < 0x40 && (c < 0x30 || c > 0x37) && !entering)
+                can = t | 0x400;
+        }
+    }
+    SEL_CAN = can;
+    return n;
+}
+
+/* 0x100144c4: the name popup under a unit */
+void __cdecl unit_name_popup(uint32_t id)
+{
+    void *s = RtGetResource(APP, I(uint32_t, 0xd686))[1];
+    if (!s)
+        return;
+    uint8_t *u = iso_unit((int)(id & 0xffff));
+    G(int32_t, 0x1015727c) = P(int16_t, u, U_X);
+    G(int32_t, 0x10157280) = (P(uint16_t, u, 0xba) >> 1) + P(int16_t, u, U_Y) + 10;
+    SpriteSendMessage(I(void *, ISO_HSL), s, 4, ORIG_PTR(0x10157278));
+    G(uint32_t, 0x101572c4) = 0;
+    G(uint32_t, 0x101572c8) = 0;
+    G(uint32_t, 0x101572cc) = 0;
+    SpriteSendMessage(I(void *, ISO_HSL), s, 4, ORIG_PTR(0x101572c0));
+}
+
+/* 0x100145d0: the scroll cursor: state's first cell plus the arrow for the direction of
+ * (dx, dy) */
+void __cdecl cursor_scroll(int state, int dx, int dy)
+{
+    int sx = dx > 0 ? 1 : dx < 0 ? -1 : 0, sy = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+    int32_t *t = I(int32_t *, 0xd765);
+    int32_t first = P(int32_t, (uintptr_t)t[0], t[0xb] * state * 4);
+    int32_t cell = first + G(int8_t, 0x10118f34 + sx * 3 + sy);
+    int32_t cur = *I(int32_t *, 0x182a);
+    if (cur != -1)
+        SpriteHide(I(void *, ISO_HSL), RtGetResource(APP, (unsigned)cur)[1], 1);
+    SpriteEmptyQueue(I(void *, ISO_HSL), I(void *, 0xd761));
+    G(int32_t, 0x101572cc) = first;
+    G(int32_t, 0x101572c4) = cell;
+    G(int32_t, 0x101572c8) = cell;
+    SpriteSendMessage(I(void *, ISO_HSL), I(void *, 0xd761), 4, ORIG_PTR(0x101572c0));
+}
+
+/* 0x10014745: the cursor sprite follows the mouse */
+void __cdecl cursor_follow(void)
+{
+    if (I(int, 0xd761) && I(int, 0xd759) && I(int32_t, 0xd779) != 99)
+        SpriteSetPosition(I(void *, ISO_HSL), I(void *, 0xd761), MOUSE_X, MOUSE_Y, 0);
 }

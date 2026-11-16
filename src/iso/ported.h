@@ -154,3 +154,10 @@ PORTED(0x100127e6, IsoInitInGameFont)
 PORTED(0x10012852, mouse_state)
 PORTED(0x10012d3b, cell_free_for_cursor)
 PORTED(0x10012ed3, cursor_for_unit)
+PORTED(0x10014160, selection_abilities)
+PORTED(0x100144c4, unit_name_popup)
+PORTED(0x100145d0, cursor_scroll)
+PORTED(0x10014745, cursor_follow)
+
+/* recon.c */
+PORTED(0x100147d0, recon_next_sector)
