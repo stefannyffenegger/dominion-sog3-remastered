@@ -4,11 +4,11 @@
  * clusters of objects from a per-terrain table are scattered over free cells. Several
  * of its steps are empty in the original. */
 #include "iso_core.h"
+#include "maptiles.h"
 #include "createmap.h"
 #include "mapgen.h"
 
 /* not rewritten yet */
-#define IsoGetTile ORIG(int32_t(__stdcall *)(uint8_t *, int, int), 0x100219df)
 #define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, int, int, int), 0x100aca6e)
 #define g_srand ORIG(void(__cdecl *)(uint32_t), 0x100f4d60)
 #define g_rand ORIG(int(__cdecl *)(void), 0x100f4d80)

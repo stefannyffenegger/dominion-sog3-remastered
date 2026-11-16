@@ -3,6 +3,7 @@
  * its tiles (from the tile library, or embedded), the objects, and the AI's choke
  * points (versions x.3-x.5). */
 #include "iso_core.h"
+#include "maptiles.h"
 #include "mapedit.h"
 #include "createmap.h"
 #include "scenario.h"
@@ -11,7 +12,6 @@
 #define scenario_tiles_open ORIG(int(__stdcall *)(char *, void *, int32_t, uint32_t, int), 0x10023657)
 #define scenario_tiles_read ORIG(int(__stdcall *)(uint8_t *, uint32_t, uint32_t, int32_t), 0x10023b04)
 #define scenario_tiles_close ORIG(void(__cdecl *)(void), 0x10023559)
-#define IsoRescanMap ORIG(int(__stdcall *)(uint8_t *), 0x10021667)
 #define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, int, int, int), 0x100aca6e)
 #define map_reset_view ORIG(void(__cdecl *)(void), 0x10050fc6)
 #define ai_player_setup ORIG(void(__cdecl *)(int32_t), 0x100a783d)

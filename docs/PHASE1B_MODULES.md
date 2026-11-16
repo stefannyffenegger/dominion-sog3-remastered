@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 206 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 213 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -694,3 +694,8 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 * Original quirks kept: version 1 objects are counted as 12-byte records but stepped through 48 bytes apart (reading past the buffer); version 3 recomputes the points' cells when the previous map's grid was 0x8000 bytes or more; two arguments carry the header's address in their high halves.
 * The loader calls several helpers of the original that are still original: the tile set's library (0x10023657, 0x10023b04, 0x10023559), the choke point set-up (0x10098542, 0x10098970, 0x1008de00, 0x10098dd4).
 * Checked: the unit state log (equal to an all-original run made at the same time, both 847 on a busy machine), Human mission 1 (4_moved pixel-identical), the orders run, menu tour, Alt+F4.
+
+### Part 28: map cells and tiles for the scripts (`maptiles.c`, 7 functions, 0x10020b81-0x10020bea, 0x10021667-0x10021c65)
+`IsoRescanMap` (run by the scenario loader: clears the cells' top byte and marks which cells block, the edge and cells of blocking tiles), `IsoGetTile`, `IsoSetTile` and `IsoSetTileSet` (only in the editor or without sprites; otherwise they return 1 and do nothing), `IsoSetTileLib`, clearing the object map's marks, and `IsoMessageBox`.
+* Original quirk kept: the cell checks allow x equal to the map width and y equal to its height (one past the end).
+* Checked: the unit state log (980/990), Human mission 1, Alt+F4.
