@@ -61,3 +61,10 @@ Pipeline: decode with our decoder → remove dithering and banding → upscale 4
 * Does not block Phase 1b or 2. The export tools can be written any time and also serve modding.
 * Cutscene upscaling can ship as soon as the tools exist (our Smacker module plays the result).
 * Sprites and tiles need the Phase 3 renderer.
+
+## 7. Sources (searched 2026-11-15)
+Most comparisons below come from vendors of upscaling services, and none tested game cutscenes or pre-rendered sprites; treat them as leads for the bake-off, not as results.
+* Video: [SeedVR vs FlashVSR (upsampler.com)](https://upsampler.com/blog/seedvr-vs-flashvsr-ai-video-super-resolution-2026), [open-source video upscalers tested (VideoProc)](https://www.videoproc.com/video-editor/open-source-video-upscaler.htm), [upscaling review incl. FlashVSR's shimmer on camera moves (Sogni)](https://blog.sogni.ai/blogs/minimax-h3-upscaling/), [upscalers compared (Creative AI News)](https://www.creativeainews.com/articles/ai-video-upscalers-compared-speed-2026/)
+* Pre-rendered game art: [modders upscale pre-rendered PS1 backgrounds (PC Gamer)](https://pcgamer.com/modders-are-using-ai-to-upscale-pre-rendered-ps1-backgrounds-with-phenomenal-results), [how AI upscaling can help remaster game art (Game Developer)](https://gamedeveloper.com/art/how-ai-upscaling-can-help-remaster-game-art), [neural upscaling of pre-rendered sprites (Doomworld forum)](https://www.doomworld.com/forum/post/2048895)
+* Image to 3D: [open-source options 2026 (CMARIX)](https://www.cmarix.com/blog/top-open-source-ai-models-for-3d-image-generation/), [comparing generative 3D models (Scenario)](https://help.scenario.com/articles/1263568892-comparing-generative-3d-models), [TRELLIS.2 (CodeSOTA)](https://www.codesota.com/news/trellis-2-3d-generation)
+* Not found: anything on keeping team colours through upscaling, or on consistency across isometric facings. The mask approach in section 1 is our own.

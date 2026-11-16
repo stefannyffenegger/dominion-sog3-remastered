@@ -136,7 +136,7 @@ Where the plan stands after six days, what holds and what it missed. Details per
 
 **What holds**
 * The module-by-module route works: the game has been playable after every step.
-* Step 2's check "compare deterministic game state" exists now (`work/statecheck.sh`, the unit state log): a hash of every unit's state per game tick, scripted input, a virtual clock. It caught nothing wrong in parts 1-11 but twice showed the original's own run-to-run variance, which screenshots could not separate from errors.
+* Step 2's check "compare deterministic game state" exists now (`tests/game/statecheck.sh`, the unit state log): a hash of every unit's state per game tick, scripted input, a virtual clock. It caught nothing wrong in parts 1-11 but twice showed the original's own run-to-run variance, which screenshots could not separate from errors.
 
 **What the plan missed or got wrong**
 1. **"After Rtlib32 everything below the game logic is ours and portable": ours, yes; portable, not yet.** The engine is our C code but still a Win32 DLL: 14 of its 56 source files use DirectDraw, waveOut or window messages. The plan's "DirectDraw → SDL3" did not happen in step 1 (the rewrite stayed function-for-function to be checkable against the original). It needs its own step.
@@ -155,6 +155,7 @@ Where the plan stands after six days, what holds and what it missed. Details per
 * For comparison the engine was 1,384 functions in 26,800 lines of our C.
 
 ## Appendix
+* Other documents: `PHASE1A_WINE.md` (running under Wine), `PHASE1B_MODULES.md` (every rewritten module and part), `TESTING.md` (how the rewrite is checked, the working method, what the tests miss), `HIDDEN_AND_UNUSED.md` (finds for the community), `PHASE3_UPSCALING.md` (outlook on AI upscaling)
 * `tools/is5x.py`: InstallShield 5 cabinet extractor (pure Python). Usage: `python3 tools/is5x.py <DATA1.CAB> <outdir> [--list]`
 * `docs/exports_ISO.R32.txt`, `docs/exports_Rtlib32.txt`: exported function names
 * `docs/data1_cab_filelist.txt`: full installer file list with sizes
