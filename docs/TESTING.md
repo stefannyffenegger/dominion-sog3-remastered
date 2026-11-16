@@ -39,7 +39,7 @@ The reference screenshots were recorded with the all-original game, before the e
 | `tests/game/hover.sh OUT` | cursors and the unit name popup | the same |
 | `tests/game/keys.sh OUT` | arrow-key scrolling; needs `KeyboardScrolling=1` under `[Dominion]` in the test install's `Dominion.ini` (restore it afterwards) | the same |
 | `tests/game/chat.sh OUT` | two-player match, chat lines (start positions are random: compare the text area only) | the same |
-| `tests/game/popup.sh OUT` | the right-click popup menu on a unit and on the selection (the animated pool at the bottom left differs by about 50-90 pixels) | two runs with `DOMINION_ISO_ORIGINAL=all` |
+| `tests/game/popup.sh OUT` | the right-click popup menu: on the ground (a long click, the command points), on a unit and on the selection (the animated pool at the bottom left differs by about 50-90 pixels) | two runs with `DOMINION_ISO_ORIGINAL=all` |
 | `tests/game/recon.sh OUT` | double click on the Recon unit (its goal is random by wall clock: check that it runs, not pixels) | - |
 | `tests/game/radar.sh OUT` | radar clicks; does nothing in mission 1, which has no radar | - |
 | `tools/mp_test.sh start|shot|stop` | two players on one machine | by eye |
@@ -84,7 +84,7 @@ Ported but never run by a test (as of part 19):
 * saved games (among them the record table of part 17), and the game logic in multiplayer;
 * scout orders (`recon_scout_area`, `recon_rescout`);
 * the action buttons other than the stances, and the toggle buttons (`iso_check_state`);
-* the popup menu without a unit, and its items for structures, vehicles and other players' units (`menu_for_unit`).
+* the popup menu's items for structures, vehicles and other players' units (`menu_for_unit`).
 
 Needed to close this: a scenario with a base (a later mission or a saved game), building orders in the scripted input, and a two-player state log.
 
