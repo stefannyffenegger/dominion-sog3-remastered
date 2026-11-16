@@ -28,5 +28,6 @@
 #include "click.h"
 #include "mapgen.h"
 #include "sound.h"
+#include "paths.h"
 
 #endif

@@ -76,7 +76,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 23):
+Ported but never run by a test (as of part 24):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;
@@ -88,6 +88,7 @@ Ported but never run by a test (as of part 23):
 * the action buttons other than the stances, and the toggle buttons (`iso_check_state`);
 * clicks on structures and on other players' units, Shift+click, structure links (`structure_link`);
 * the random map generator (`IsoGenerateMap`, `mapgen_*`);
+* the sector path helpers (`paths.c`);
 * boarding vehicles, entering buildings, engineers' orders (`order_board`, `order_enter`, `order_engineer`);
 * the popup menu's items for structures, vehicles and other players' units (`menu_for_unit`).
 

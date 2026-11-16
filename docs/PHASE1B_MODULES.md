@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 189 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 196 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -672,3 +672,8 @@ A sound placed on the map: full volume in the middle of the view, 3 per pixel qu
 * The function earlier parts called `tutorial_event` is the unit voice (`unit_voice`): an order makes only the first unit speak. Renamed in `action.c`, `combat.c`, `click.c` and `orders.c`.
 * The original reports missing waves through its debug printf, which returns at once in the shipped build; left out.
 * Checked: the orders run with the new `DOMINION_WAVE_LOG`: the same 59 waves with the same volume and pan as the original (voices, 24 weapon sounds with panning, interface sounds); the unit state log, menu tour, Human mission 1, Alt+F4.
+
+### Part 24: sector paths (`paths.c`, 7 functions, 0x1001bd92-0x1001c7c0)
+Helpers on top of the path finder (0x100c70bc) between sectors' middles: releasing a found path's nodes (reference counted, back to a free list), its length (the sum of the straight pieces, with the original's `hypot` and truncation), whether a path exists from a sector or a point to a sector, how far a straight run of sectors goes in one direction (recursive), and a flag bit of the map cell in a sector's middle.
+* The run in one direction also works out the slope between the two sectors as a float and never uses it; left out.
+* Checked: the unit state log, the Recon run, menu tour, Human mission 1, Alt+F4. None of the seven ran in those (a trace of the Recon run, and the earlier trace of the menus and mission 1): probably the AI of later missions.

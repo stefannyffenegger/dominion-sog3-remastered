@@ -3,10 +3,10 @@
  * sector on the way it can reach), and the Recon unit's double click (a sector still in
  * fog). */
 #include "iso_core.h"
+#include "paths.h"
 #include "recon.h"
 
 /* not rewritten yet (names ours, provisional) */
-#define sector_reachable ORIG(int(__cdecl *)(int, uint32_t, int, uint32_t), 0x1001c62c)
 #define IsoGetSectorCoordinates ORIG(void(__stdcall *)(uint8_t *, int, int *, int *), 0x1001bce0)
 #define direction_to ORIG(int(__cdecl *)(int16_t, int16_t, int16_t, int16_t), 0x1009188a)
 
@@ -53,7 +53,7 @@ int __cdecl recon_next_sector(uint32_t id, int16_t mode)
         /* from the corner towards the unit until a sector it can reach */
         int found = 0, tries = 0;
         while (!found && P(int16_t, u, U_SECTOR) != s && s != -1 && tries < (SECTORS_W >> 1)) {
-            found = sector_reachable(P(int16_t, u, U_X), (uint32_t)(int)P(int16_t, u, U_Y), s, id);
+            found = point_path_exists(P(int16_t, u, U_X), (uint32_t)(int)P(int16_t, u, U_Y), s, id);
             if (!found) {
                 int sx, sy;
                 IsoGetSectorCoordinates(g_iso, s, &sx, &sy);
