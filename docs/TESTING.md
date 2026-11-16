@@ -39,6 +39,7 @@ The reference screenshots were recorded with the all-original game, before the e
 | `tests/game/hover.sh OUT` | cursors and the unit name popup | the same |
 | `tests/game/keys.sh OUT` | arrow-key scrolling; needs `KeyboardScrolling=1` under `[Dominion]` in the test install's `Dominion.ini` (restore it afterwards) | the same |
 | `tests/game/chat.sh OUT` | two-player match, chat lines (start positions are random: compare the text area only) | the same |
+| `tests/game/recon.sh OUT` | double click on the Recon unit (its goal is random by wall clock: check that it runs, not pixels) | - |
 | `tests/game/radar.sh OUT` | radar clicks; does nothing in mission 1, which has no radar | - |
 | `tools/mp_test.sh start|shot|stop` | two players on one machine | by eye |
 
@@ -72,7 +73,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 15):
+Ported but never run by a test (as of part 16):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;

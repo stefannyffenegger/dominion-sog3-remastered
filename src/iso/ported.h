@@ -161,3 +161,12 @@ PORTED(0x10014745, cursor_follow)
 
 /* recon.c */
 PORTED(0x100147d0, recon_next_sector)
+PORTED(0x10014d9e, recon_target_in_sector)
+PORTED(0x100150a9, cell_blocked)
+PORTED(0x10015137, recon_double_click)
+PORTED(0x100153a1, find_fogged_sector)
+PORTED(0x10015a94, sector_seen_by)
+PORTED(0x10015b7e, sector_line_clear)
+PORTED(0x10015c29, tile_line_clear)
+PORTED(0x10015e1a, recon_double_click_x)
+PORTED(0x10015e36, percent_unseen)

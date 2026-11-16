@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 126 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 135 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -627,3 +627,10 @@ What the local player's selection can do, as a set of bits worked out from the s
 * The word at 0xe099 is this ability set, not "option keys" as part 14 called it; renamed in `mouse.c`.
 * The scouting function has a second mode that was never finished (it returns -1 in every case).
 * Checked: the hover run (pixel-identical), the unit state log, menu tour, Human mission 1, Alt+F4. The scouting function is not reached in the tests.
+### Part 16: the Recon unit's double click (`recon.c`, 9 functions, 0x10014d9e-0x10015efc)
+A double click on a Recon unit standing still sends it to a sector still in fog: a random neighbouring sector its side has not seen and it can reach in a straight line (a line of cells drawn Bresenham-style), else the nearest such sector in its area, else (once) anywhere on the map. Its goal is the sector's middle or a free spot near it; a sector it cannot reach is marked so its player's scouts skip it. Also whether a player or its allies have seen a sector, and the share of sectors a player has not seen.
+* The random choice uses the original's C library `rand()`, seeded with `time(NULL)`, the wall clock in seconds: ours calls the original's `time`, `srand` and `rand`, so it draws the same numbers in the same second. Runs differ from each other, the original's too.
+* Distances are the original C library's `sqrt` (called, kept in extended precision as the original compares them against a stored `float`).
+* Original quirks kept: a range check on the sector number never fires (it tests a 16-bit value for being negative); one check reads the order at +0x11b after testing +0x119.
+* Ghidra lost `FUN_10015b7e`'s body (the two tile positions and its result); written from the assembly.
+* Checked: `tests/game/recon.sh` (double click on the Recon unit in mission 1: in two runs each of the original and ours, the unit once drives off and once stays, as the seed decides), the unit state log, menu tour, Human mission 1, Alt+F4.
