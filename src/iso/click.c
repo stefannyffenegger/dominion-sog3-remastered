@@ -7,6 +7,7 @@
 #include "display.h"
 #include "mouse.h"
 #include "popup.h"
+#include "orders.h"
 #include "click.h"
 
 /* not rewritten yet (names ours, provisional) */
@@ -35,12 +36,6 @@
 #define link_add ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x10078dd5)
 #define net_link ORIG(void(__cdecl *)(uint32_t, uint32_t, int), 0x1003527c)
 #define g_rand ORIG(int(__cdecl *)(void), 0x100f4d80)
-/* part 21 (0x10018edb-0x10019b52): what a selected unit does to the clicked unit */
-#define order_unit_18edb ORIG(int(__cdecl *)(uint32_t, uint32_t, int *), 0x10018edb)
-#define order_unit_192ef ORIG(int(__cdecl *)(uint32_t, uint32_t, int *), 0x100192ef)
-#define order_unit_19443 ORIG(int(__cdecl *)(uint32_t, uint32_t, int *), 0x10019443)
-#define order_unit_19535 ORIG(int(__cdecl *)(uint32_t, uint32_t, int *, int *), 0x10019535)
-#define order_unit_19715 ORIG(int(__cdecl *)(uint32_t, uint32_t, int *, int *), 0x10019715)
 
 typedef void(__cdecl *SpecialHandler)(uint32_t id);
 #define unit_special_handler(type) G(SpecialHandler, 0x101545f4 + (type) * 0x44)
@@ -242,7 +237,7 @@ int __cdecl map_click(void)
                 return 1;
             }
             if (unit_can_reach(first, id, 1, 0))
-                done = order_unit_19443(first, id, &tutorial);
+                done = order_type21(first, id, &tutorial);
             else
                 done = structure_link(id);
         }
@@ -265,15 +260,15 @@ int __cdecl map_click(void)
                 int engineer = vt >= 0x10 && vt <= 0x13;
                 if (own && friendly && !engineer) {
                     if (P(int32_t, u, U_CLASS) == 100)
-                        done |= order_unit_192ef(v, id, &tutorial);
+                        done |= order_enter(v, id, &tutorial);
                     else if (P(int32_t, P(uint8_t *, u, 0x32), 0xe0))
-                        done |= order_unit_18edb(v, id, &tutorial);
+                        done |= order_board(v, id, &tutorial);
                 }
                 if (friendly) {
                     if (engineer)
-                        done |= order_unit_19535(v, id, &tutorial, &tutorial2);
+                        done |= order_engineer(v, id, &tutorial, &tutorial2);
                 } else {
-                    done |= order_unit_19715(v, id, &tutorial, &tutorial2);
+                    done |= order_attack(v, id, &tutorial, &tutorial2);
                 }
             }
     }

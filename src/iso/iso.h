@@ -24,6 +24,7 @@
 #include "records.h"
 #include "buttons.h"
 #include "popup.h"
+#include "orders.h"
 #include "click.h"
 
 #endif

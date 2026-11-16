@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 164 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 169 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -656,3 +656,8 @@ What a left click or drag on the map does when the mouse button comes up: a drag
 * A debug option (bit 2 of byte 0xeea) paints the clicked tile with a random ground tile; ours keeps it, with the original's `rand`.
 * The decompile drops the second argument (0) of the sell, repair and 0x1005b314 calls, and invents register arguments for two calls; ours follows the assembly.
 * Checked: the unit state log, Human mission 1 (its move click), the groups run (drag select; the poses of idle units differ from the original runs by about 250 pixels, as much as with this part kept original), the popup and hover runs, menu tour, Alt+F4. Not reached: clicks on structures, other players' units, the modifiers, structure links.
+
+### Part 21: a selected unit's order for a clicked unit (`orders.c`, 5 functions, 0x10018edb-0x10019b52)
+What each selected unit does with the unit the player clicked (called from `map_click` of part 20): board a vehicle or enter a structure with room (where the vehicle waits moves to the boarders' middle), go into a building of class 100 or make it the owner's choice (0xd6f9), the type 0x21 unit's order, an engineer's repair or capture of a structure, and attacking (also an own unit with Ctrl). Units ordered together start their action 2 ticks apart.
+* The decompile shows the attack order as fastcall with two invented register arguments, and leaves out an argument of the attack call (the callee reads only four, so ours passes four).
+* Checked: new `tests/game/orders.sh` (Ctrl+click: the infantry shoot the Recon to pieces; Alt+click on a soldier: "Guarding specified unit/structure"; equal to two original runs apart from the animated pool), the unit state log, menu tour, Human mission 1, Alt+F4. Not reached: boarding (no transport at the start of mission 1), entering buildings, engineers, the type 0x21 unit.

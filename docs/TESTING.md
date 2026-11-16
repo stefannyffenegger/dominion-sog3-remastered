@@ -40,6 +40,7 @@ The reference screenshots were recorded with the all-original game, before the e
 | `tests/game/keys.sh OUT` | arrow-key scrolling; needs `KeyboardScrolling=1` under `[Dominion]` in the test install's `Dominion.ini` (restore it afterwards) | the same |
 | `tests/game/chat.sh OUT` | two-player match, chat lines (start positions are random: compare the text area only) | the same |
 | `tests/game/popup.sh OUT` | the right-click popup menu: on the ground (a long click, the command points), on a unit and on the selection (the animated pool at the bottom left differs by about 50-90 pixels) | two runs with `DOMINION_ISO_ORIGINAL=all` |
+| `tests/game/orders.sh OUT` | Ctrl+click (force attack: the infantry destroy the Recon) and Alt+click (guard) with the infantry selected; the keys: Ctrl force, Shift add to the selection, Alt order | two runs with `DOMINION_ISO_ORIGINAL=all` |
 | `tests/game/recon.sh OUT` | double click on the Recon unit (its goal is random by wall clock: check that it runs, not pixels) | - |
 | `tests/game/radar.sh OUT` | radar clicks; does nothing in mission 1, which has no radar | - |
 | `tools/mp_test.sh start|shot|stop` | two players on one machine | by eye |
@@ -74,7 +75,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 20):
+Ported but never run by a test (as of part 21):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;
@@ -84,7 +85,8 @@ Ported but never run by a test (as of part 20):
 * saved games (among them the record table of part 17), and the game logic in multiplayer;
 * scout orders (`recon_scout_area`, `recon_rescout`);
 * the action buttons other than the stances, and the toggle buttons (`iso_check_state`);
-* clicks with the modifier keys, on structures and on other players' units, structure links (`structure_link`);
+* clicks on structures and on other players' units, Shift+click, structure links (`structure_link`);
+* boarding vehicles, entering buildings, engineers' orders (`order_board`, `order_enter`, `order_engineer`);
 * the popup menu's items for structures, vehicles and other players' units (`menu_for_unit`).
 
 Needed to close this: a scenario with a base (a later mission or a saved game), building orders in the scripted input, and a two-player state log.
