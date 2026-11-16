@@ -26,5 +26,6 @@
 #include "popup.h"
 #include "orders.h"
 #include "click.h"
+#include "mapgen.h"
 
 #endif

@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 169 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 182 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -661,3 +661,8 @@ What a left click or drag on the map does when the mouse button comes up: a drag
 What each selected unit does with the unit the player clicked (called from `map_click` of part 20): board a vehicle or enter a structure with room (where the vehicle waits moves to the boarders' middle), go into a building of class 100 or make it the owner's choice (0xd6f9), the type 0x21 unit's order, an engineer's repair or capture of a structure, and attacking (also an own unit with Ctrl). Units ordered together start their action 2 ticks apart.
 * The decompile shows the attack order as fastcall with two invented register arguments, and leaves out an argument of the attack call (the callee reads only four, so ours passes four).
 * Checked: new `tests/game/orders.sh` (Ctrl+click: the infantry shoot the Recon to pieces; Alt+click on a soldier: "Guarding specified unit/structure"; equal to two original runs apart from the animated pool), the unit state log, menu tour, Human mission 1, Alt+F4. Not reached: boarding (no transport at the start of mission 1), entering buildings, engineers, the type 0x21 unit.
+
+### Part 22: the modifier keys, the random map generator (`mapgen.c`, 13 functions, 0x1001a434-0x1001b380)
+`IsoGetKeyModifiers` (the script asks which of Shift, Ctrl, Alt and the right button are down) and the unfinished random map generator `IsoGenerateMap` (see `HIDDEN_AND_UNUSED.md`): a new map, a ring of numbered object areas on a grid of 9x9-cell blocks, clusters of objects from per-terrain tables on the free cells, with the original's `srand`/`rand`.
+* Most of its functions are stdcall with more arguments than the decompile shows (it drops the seed, the block grid and the area count); ours follows the assembly. Four steps of the original that only return 1 or loop over nothing (0x1001aa18, 0x1001adbd, 0x1001ae15, 0x1001b050) and the debug print of the block grid are not hooked: all their callers are ours.
+* Checked: the unit state log, menu tour, Human mission 1, the orders run (Ctrl, Alt), Alt+F4. The generator itself is not reached (nothing in the tests calls `IsoGenerateMap`).
