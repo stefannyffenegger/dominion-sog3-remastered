@@ -669,6 +669,6 @@ What each selected unit does with the unit the player clicked (called from `map_
 
 ### Part 23: sounds on the map, unit voices (`sound.c`, 7 functions, 0x1001b380-0x1001bd92)
 A sound placed on the map: full volume in the middle of the view, 3 per pixel quieter beyond half the view's width or height, panned by 6 per pixel from the view's left edge, and not played at all below 7500 (9000 in multiplayer); it goes to `WAVEPLAY.R32`'s `rdfPlayWave` through the original's import thunk. On top of it: a unit's voice (attack, selected, dying, moving and two more; a wounded soldier speaks its next recording; the file number comes from the unit type's table), general sounds (`gen800xx.wav`), and a weapon's firing and hit sounds by projectile or by weapon number. And `IsoGetSectorCoordinates`.
-* The function earlier parts called `tutorial_event` is the unit voice (`unit_voice`): an order makes only the first unit speak. Renamed in parts 10-21.
+* The function earlier parts called `tutorial_event` is the unit voice (`unit_voice`): an order makes only the first unit speak. Renamed in `action.c`, `combat.c`, `click.c` and `orders.c`.
 * The original reports missing waves through its debug printf, which returns at once in the shipped build; left out.
 * Checked: the orders run with the new `DOMINION_WAVE_LOG`: the same 59 waves with the same volume and pan as the original (voices, 24 weapon sounds with panning, interface sounds); the unit state log, menu tour, Human mission 1, Alt+F4.
