@@ -73,14 +73,15 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 16):
+Ported but never run by a test (as of part 17):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;
 * effect (splash) damage and `unit_take_damage`;
 * the radar (clicks, the view box moving), the countdown clock, `IsoDisplayPowerInfo`;
 * `IsoFindNextUnit`, `IsoSetUnitItem` and the other script-value functions, `unit_line_clear`, scouting (`recon_next_sector`);
-* saved games, and the game logic in multiplayer.
+* saved games (among them the record table of part 17), and the game logic in multiplayer;
+* scout orders (`recon_scout_area`, `recon_rescout`).
 
 Needed to close this: a scenario with a base (a later mission or a saved game), building orders in the scripted input, and a two-player state log.
 

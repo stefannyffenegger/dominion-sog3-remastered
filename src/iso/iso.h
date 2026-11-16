@@ -21,5 +21,6 @@
 #include "cursor.h"
 #include "mouse.h"
 #include "recon.h"
+#include "records.h"
 
 #endif

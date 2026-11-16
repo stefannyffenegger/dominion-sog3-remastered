@@ -88,6 +88,7 @@ int __stdcall SpriteReplaceCellRange(void *hsl, void *src, void *dst, uint32_t f
 void __stdcall SpriteSetExtOffsets(void *hsl, void *sprite, void *offsets);
 void __stdcall SpriteSetPosition(void *hsl, void *sprite, int x, int y, int redraw);
 void *__stdcall winmalloc(SIZE_T size, int zero);
+void *__stdcall winfree(const void *p);
 unsigned __cdecl RtCursor(void *app, uint8_t id);
 int __stdcall Cosine(int tenths); /* x 10000 */
 int __stdcall Sine(int tenths);

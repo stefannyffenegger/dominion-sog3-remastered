@@ -14,5 +14,8 @@ int16_t __cdecl find_fogged_sector(uint8_t *u);
 int __cdecl recon_double_click(uint32_t id);
 void __cdecl recon_double_click_x(uint32_t id);
 int16_t __cdecl percent_unseen(int16_t player);
+uint16_t __cdecl quarter_unseen(uint32_t quarter, int16_t player);
+void __cdecl recon_scout_area(uint32_t id, uint32_t sector, int radius);
+void __cdecl recon_rescout(void);
 
 #endif

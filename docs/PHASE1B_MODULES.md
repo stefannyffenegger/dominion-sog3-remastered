@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 135 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 149 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -634,3 +634,7 @@ A double click on a Recon unit standing still sends it to a sector still in fog:
 * Original quirks kept: a range check on the sector number never fires (it tests a 16-bit value for being negative); one check reads the order at +0x11b after testing +0x119.
 * Ghidra lost `FUN_10015b7e`'s body (the two tile positions and its result); written from the assembly.
 * Checked: `tests/game/recon.sh` (double click on the Recon unit in mission 1: in two runs each of the original and ours, the unit once drives off and once stays, as the seed decides), the unit state log, menu tour, Human mission 1, Alt+F4.
+### Part 17: scouting areas, a record table, unit categories (`recon.c`, `records.c`, 14 functions, 0x10015efc-0x10016aa0)
+The share of a quarter of the map a player has not seen (what `recon_next_sector` of part 15 compares), a scout ordered to the sectors around one (its area for later double clicks), and the local player's scouts forgetting their marked sectors. A table of 200 records of 0x4c bytes (allocate, add, remove, look up, search with a test callback, and save and load it whole in saved games). And a unit's category for the interface (infantry, special infantry, the vehicle kinds, armed and unarmed structures).
+* Original quirks: the quarter share gives 0 for a quarter number over 3; the category function leaves other bits in the register for three categories, but every caller uses the low byte only, so ours returns a byte.
+* Checked: the unit state log, the hover run, menu tour, Human mission 1, Alt+F4. Saving and loading the record table (saved games) and the scout orders are not reached in the tests.

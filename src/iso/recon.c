@@ -1,4 +1,4 @@
-/* The game logic, 0x100147d0-0x10015efc: scouting. Where a scouting unit goes next (the
+/* The game logic, 0x100147d0-0x10016430: scouting. Where a scouting unit goes next (the
  * corner of the map, of the three other quarters, its player has seen least of, by a
  * sector on the way it can reach), and the Recon unit's double click (a sector still in
  * fog). */
@@ -6,7 +6,6 @@
 #include "recon.h"
 
 /* not rewritten yet (names ours, provisional) */
-#define quarter_unseen ORIG(int(__cdecl *)(uint32_t, int16_t), 0x10015efc)
 #define sector_reachable ORIG(int(__cdecl *)(int, uint32_t, int, uint32_t), 0x1001c62c)
 #define IsoGetSectorCoordinates ORIG(void(__stdcall *)(uint8_t *, int, int *, int *), 0x1001bce0)
 #define direction_to ORIG(int(__cdecl *)(int16_t, int16_t, int16_t, int16_t), 0x1009188a)
@@ -378,4 +377,69 @@ int16_t __cdecl percent_unseen(int16_t player)
     if (open < 1)
         return 0;
     return (int16_t)((open - seen) * 100 / open);
+}
+
+/* 0x10015efc: the share of a quarter of the map (0-3) the player has not seen, in
+ * percent; 100 when it has no open sectors (original: a quarter number over 3 gives 0) */
+uint16_t __cdecl quarter_unseen(uint32_t quarter, int16_t player)
+{
+    int w = I(uint16_t, 0xc2fd), h = I(uint16_t, 0xc2ef), x0 = 0, y0 = 0, x1 = w, y1 = h;
+    if (quarter >= 4)
+        return 0;
+    switch (quarter) {
+    case 0: x1 = w >> 1; y1 = h >> 1; break;
+    case 1: x0 = w >> 1; y1 = h >> 1; break;
+    case 2: x1 = w >> 1; y0 = h >> 1; break;
+    case 3: x0 = w >> 1; y0 = h >> 1; break;
+    }
+    int open = 0, seen = 0;
+    for (int s = 0; s < SECTORS; s++) {
+        int sy = s >> SECTOR_SHIFT, sx = (w - 1) & s;
+        if (sx >= x0 && sx < x1 && sy >= y0 && sy < y1 && !P(uint8_t, SEC(s), S_BLOCKED)) {
+            open++;
+            if (sector_seen_by(SEC(s), player) == 1)
+                seen++;
+        }
+    }
+    DebugStr((const char *)ORIG_PTR(0x10119080), open, seen);
+    if (!open)
+        return 100;
+    return (uint16_t)((open - seen) * 100 / open);
+}
+
+/* 0x10016153: a scout ordered to the sectors around `sector` (`radius` sectors each way):
+ * that is its area; it heads for the sector's middle; marked if it cannot go */
+void __cdecl recon_scout_area(uint32_t id, uint32_t sector, int radius)
+{
+    uint8_t *u = iso_unit((int)(id & 0xffff));
+    int sy = (int)sector >> SECTOR_SHIFT, sx = (I(uint16_t, 0xc2fd) - 1) & (int)sector;
+    int maxx = I(uint16_t, 0xc2fd) - 1, maxy = I(uint16_t, 0xc2ef) - 1;
+    P(int16_t, u, U_BOX) = (int16_t)(sx - radius < 1 ? 0 : sx - radius);
+    P(int16_t, u, U_BOX + 2) = (int16_t)(sx + radius <= maxx ? sx + radius : maxx);
+    P(int16_t, u, U_BOX + 4) = (int16_t)(sy - radius < 1 ? 0 : sy - radius);
+    P(int16_t, u, U_BOX + 6) = (int16_t)(sy + radius <= maxy ? sy + radius : maxy);
+    P(uint8_t, u, U_BOX_ALL) = 0;
+    recon_target_in_sector(id, sector);
+    P(int16_t, u, 0x74) = P(int16_t, u, 0x70);
+    P(int16_t, u, 0x76) = P(int16_t, u, 0x72);
+    if (!order_move_to(id, P(uint16_t, u, 0x70), P(uint16_t, u, 0x72), 2, 0, 0, 1, 0, 0, 1) || P(int16_t, u, 0x113) < 1)
+        P(uint8_t, SEC(sector), S_MARKED) |= (uint8_t)(1u << (P(uint8_t, u, U_PLAYER) & 0x1f));
+    unit_set_mode(id, ')');
+    unit_set_action(id, 0x29, 1, 0);
+}
+
+/* 0x10016302: the local player's scouts forget the marked sectors and scout again */
+void __cdecl recon_rescout(void)
+{
+    for (int s = 0; s < SECTORS; s++)
+        P(uint8_t, SEC(s), S_MARKED) &= (uint8_t)~(1u << (I(uint8_t, ISO_LOCAL_PLAYER) & 0x1f));
+    int n = I(int, ISO_UNIT_COUNT);
+    for (int i = 0; i < n; i++) {
+        uint32_t v = I(uint32_t *, ISO_UNIT_LIST)[i];
+        uint8_t *u = I(uint8_t **, ISO_UNITS)[v];
+        if (u && P(int32_t, u, U_ID_TYPE) > 0x3b && P(int32_t, u, U_ID_TYPE) < 0x40) {
+            unit_set_mode(v, ')');
+            unit_set_action(v, 0x29, 1, 0);
+        }
+    }
 }
