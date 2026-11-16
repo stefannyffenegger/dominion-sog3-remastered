@@ -81,8 +81,9 @@ static void log_tick(void)
 static void give_orders(void)
 {
     static const struct { uint32_t tick; int x, y; } orders[] = {{40, -200, -250}, {500, -192, 0}};
-    /* stances for the selected units: kneel, crawl, stand (through the original's address,
-     * so original runs use the original) */
+    /* stances for the selected units: kneel, crawl, stand, given with the interface's
+     * buttons (actions 9, 8, 10; through the original's address, so original runs use
+     * the original) */
     static const struct { uint32_t tick, state; } stances[] = {{60, 1}, {120, 2}, {200, 0}};
     for (unsigned i = 0; i < sizeof orders / sizeof *orders; i++)
         if (I(uint32_t, 0x17dd) == orders[i].tick) {
@@ -91,7 +92,7 @@ static void give_orders(void)
         }
     for (unsigned i = 0; i < sizeof stances / sizeof *stances; i++)
         if (I(uint32_t, 0x17dd) == stances[i].tick)
-            ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x1000f0fc)(g_iso, stances[i].state);
+            ORIG(void(__stdcall *)(uint8_t *, int), 0x10017124)(g_iso, 10 - (int)stances[i].state);
 }
 
 static void __stdcall tick_stub(uint8_t *iso)

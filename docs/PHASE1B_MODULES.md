@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 149 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 152 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -638,3 +638,9 @@ A double click on a Recon unit standing still sends it to a sector still in fog:
 The share of a quarter of the map a player has not seen (what `recon_next_sector` of part 15 compares), a scout ordered to the sectors around one (its area for later double clicks), and the local player's scouts forgetting their marked sectors. A table of 200 records of 0x4c bytes (allocate, add, remove, look up, search with a test callback, and save and load it whole in saved games). And a unit's category for the interface (infantry, special infantry, the vehicle kinds, armed and unarmed structures).
 * Original quirks: the quarter share gives 0 for a quarter number over 3; the category function leaves other bits in the register for three categories, but every caller uses the low byte only, so ours returns a byte.
 * Checked: the unit state log, the hover run, menu tour, Human mission 1, Alt+F4. Saving and loading the record table (saved games) and the scout orders are not reached in the tests.
+
+### Part 18: the action buttons (`buttons.c`, 3 functions, 0x10016aa0-0x1001782a)
+`IsoProcessAction`, what the engine calls for a button of the interface: actions 0-0x27 for the local player's selection (stances, detonate, the selection modes for move, attack and the like, the rendezvous and withdrawal points, automatic retreat, repair, sell, each unit type's special action, and eight actions for the unit the interface shows), and 0x30-0x37 the toggle buttons, whose check state the interface also asks for without toggling (automatic repair, the commander's thumper, two per-player unit choices, two unit flags, player colours). And the fire button of one unit: a relay shows its ring, another unit its weapon's range.
+* The original writes two lines to its debug log when the automatic repair button is toggled; the log function returns at once in the shipped build, so ours leaves the calls out.
+* The decompile drops the second argument (1) of the sell and the 0x1005b314 calls; the assembly has it.
+* Checked: the unit state log (its scripted stances now go through `IsoProcessAction`, actions 9, 8, 10, which call the same function as before), menu tour, Human mission 1, Alt+F4. The other actions and the toggle buttons are not reached in the tests.

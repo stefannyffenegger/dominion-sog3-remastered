@@ -52,14 +52,14 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 |---|---|
 | `DOMINION_ISO_STATELOG=<Windows path>` | writes "tick units hash" lines |
 | `DOMINION_ISO_STATELOG_UNITS=1` or `=from-to` | also each unit's fields (a range disturbs timing less) |
-| `DOMINION_ISO_STATELOG_ORDERS=1` | scripted input for Human mission 1: all own units move into the enemy at tick 40 and on at tick 500; kneel at 60, crawl at 120, stand at 200 |
+| `DOMINION_ISO_STATELOG_ORDERS=1` | scripted input for Human mission 1: all own units move into the enemy at tick 40 and on at tick 500; kneel at 60, crawl at 120, stand at 200 (with the interface's buttons, `IsoProcessAction`) |
 | `DOMINION_ISO_STATELOG_CLOCK=15` | `timeGetTime` for the game logic advances 15 ms per displayed frame instead of real time |
 | `DOMINION_ISO_ORIGINAL=name,name` / `all` / `all,-name` | keeps those functions original |
 | `DOMINION_ISO_TRACE=<Windows path>` | a list of original addresses; logs "first call" for each that runs (needs `DOMINION_ISO_ORIGINAL=all` and `WINEDEBUG=+debugstr`) |
 
 `tests/game/statecheck.sh` runs ours with the scripted input and the virtual clock and compares it with four saved original runs, `work/cmp/state_o1.log` to `state_o4.log`. It prints up to which tick ours equals each of them and up to which tick they equal each other.
 
-* **Reading the result:** original runs agree with each other up to about tick 950-1000, varying from run to run. Ours must agree at least that far. One low value is not an error; three runs of ours all diverging earlier than any pair of originals is.
+* **Reading the result:** original runs agree with each other up to about tick 950-1000, varying from run to run. Ours must agree at least that far. One low value is not an error (single runs have come out as low as 857 with no code change); three runs of ours all diverging earlier than any pair of originals is.
 * **When it diverges early:** `DOMINION_ISO_STATELOG_UNITS=from-to` around the tick on both builds, then `python3 tools/iso/statediff.py A.log B.log` shows the unit fields that differ; then bisect with `DOMINION_ISO_ORIGINAL`.
 * **Recording the original runs again** (after changing the scripted input; about 12 minutes, run it in the background):
   ```
@@ -73,7 +73,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 17):
+Ported but never run by a test (as of part 18):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;
@@ -81,7 +81,8 @@ Ported but never run by a test (as of part 17):
 * the radar (clicks, the view box moving), the countdown clock, `IsoDisplayPowerInfo`;
 * `IsoFindNextUnit`, `IsoSetUnitItem` and the other script-value functions, `unit_line_clear`, scouting (`recon_next_sector`);
 * saved games (among them the record table of part 17), and the game logic in multiplayer;
-* scout orders (`recon_scout_area`, `recon_rescout`).
+* scout orders (`recon_scout_area`, `recon_rescout`);
+* the action buttons other than the stances, and the toggle buttons (`iso_check_state`).
 
 Needed to close this: a scenario with a base (a later mission or a saved game), building orders in the scripted input, and a two-player state log.
 

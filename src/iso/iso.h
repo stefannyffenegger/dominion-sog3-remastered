@@ -22,5 +22,6 @@
 #include "mouse.h"
 #include "recon.h"
 #include "records.h"
+#include "buttons.h"
 
 #endif

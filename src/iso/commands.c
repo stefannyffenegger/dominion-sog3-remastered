@@ -3,13 +3,13 @@
 #include "iso_core.h"
 #include "sector.h"
 #include "commands.h"
+#include "buttons.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define unit_set_anim ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cc91)
 #define unit_set_action ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cf5b)
 #define unit_cmd_3000 ORIG(void(__cdecl *)(uint32_t), 0x100dbe86)
 #define unit_set_behaviour ORIG(int(__cdecl *)(uint32_t, uint32_t, int, int), 0x100b6e66)
-#define unit_fire ORIG(int(__cdecl *)(uint16_t), 0x10016fee)
 #define net_unit_order ORIG(void(__cdecl *)(uint16_t, uint16_t, uint8_t), 0x10040706)
 
 #define U_FLAGS2 0x10e
@@ -116,7 +116,7 @@ int __cdecl unit_fire_button(uint32_t id)
     uint8_t *u = iso_unit((int)(id & 0xffff));
     if (!P(uint8_t, u, 0xf3) || P(uint8_t, u, 0x147)) {
         if (P(int16_t, u, 0xe6) >= 0)
-            unit_fire((uint16_t)id);
+            unit_show_range((uint16_t)id);
     } else {
         unit_set_action(id, 0x3b, 1, 0);
         if (I(int, 0x175) && unit_is_local(id))
