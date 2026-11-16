@@ -23,5 +23,6 @@
 #include "recon.h"
 #include "records.h"
 #include "buttons.h"
+#include "popup.h"
 
 #endif

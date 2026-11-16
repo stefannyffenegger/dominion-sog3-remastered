@@ -9,6 +9,7 @@
 #include "loop.h"
 #include "screen.h"
 #include "statelog.h"
+#include "popup.h"
 
 /* not rewritten yet (names ours, provisional) */
 #define IsoBriefingScreen ORIG(void(__cdecl *)(uint8_t *, int), 0x1005b438)
@@ -17,7 +18,6 @@
 #define IsoSetFollowUnit ORIG(void(__cdecl *)(uint8_t *, int), 0x10055f9f)
 #define BF_BlastText                                                                         \
     ORIG(int(__cdecl *)(void *, void *, uint32_t, void *, int, int, const char *, int), 0x101120b6)
-#define mouse_over_unit ORIG(int(__cdecl *)(uint16_t, uint16_t *), 0x1001836f)
 #define unit_cost ORIG(void(__cdecl *)(int, int *, int *), 0x100a5423)
 #define status_text ORIG(int(__cdecl *)(char *, int), 0x10053ef5)
 #define radar_update ORIG(int(__cdecl *)(void), 0x100a25d0)

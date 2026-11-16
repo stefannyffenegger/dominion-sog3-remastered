@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 152 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 157 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -644,3 +644,9 @@ The share of a quarter of the map a player has not seen (what `recon_next_sector
 * The original writes two lines to its debug log when the automatic repair button is toggled; the log function returns at once in the shipped build, so ours leaves the calls out.
 * The decompile drops the second argument (1) of the sell and the 0x1005b314 calls; the assembly has it.
 * Checked: the unit state log (its scripted stances now go through `IsoProcessAction`, actions 9, 8, 10, which call the same function as before), menu tour, Human mission 1, Alt+F4. The other actions and the toggle buttons are not reached in the tests.
+
+### Part 19: the popup menu, the mouse over a unit, click or drag (`popup.c`, 5 functions, 0x1001782a-0x10018711)
+The right-click popup menu (on by default, `PopupEnabled` in `Dominion.ini`): which items it has and which are available, for one unit or for the whole selection, from a table of two 64-bit item sets per unit category (one unit, several units) adjusted per unit (allies to give a structure to, entering, repair, the toggle buttons' states), then shown by the original's `IsoShowPopupMenu`. Also the test whether the mouse is over a unit (every frame, from the display loop: the box for infantry and relays, the sprite's pixels otherwise) and whether a mouse press was a click or a drag (10 pixels).
+* The decompile gets the 64-bit item sets wrong in places (it puts the per-player bits 32-39 in the low word, and shows two 64-bit locals as four mixed ones); ours follows the assembly.
+* Original quirk: more than 15 items are not shown, only reported through `DebugStr`.
+* Checked: new `tests/game/popup.sh` (the Commander's menu and the selection's menu, against two original runs: same apart from the animated pool), the hover run, the unit state log, menu tour, Human mission 1, Alt+F4. The menu without a unit (right click on the ground with nothing selected) did not open in the test, also not in the original.
