@@ -31,5 +31,6 @@
 #include "paths.h"
 #include "mapedit.h"
 #include "createmap.h"
+#include "scenario.h"
 
 #endif

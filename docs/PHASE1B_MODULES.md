@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 204 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 206 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -687,3 +687,10 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 `IsoCreateMap`, run for every mission: the view's size in cells for the screen width (tables for 640, 800, 1024 and 1280) and the map size (32-256 by 64-512 cells), the row shifts, the cell size (64 x 32 pixels) and its logarithms, the map's pixel size and middle, clearing objects, units and the old map, the map and object arrays, the scenario's tiles (or the editor's autofill), the path finder and the AI.
 * The decompile drops the fourth argument of the tile read (the tile count, 0xcda2); ours follows the assembly.
 * Checked: the unit state log (one run equal to an original run to its end, tick 1681), menu tour, Human mission 1, Alt+F4. Only the 640-pixel table and mission 1's map size are reached.
+
+### Part 27: loading a scenario (`scenario.c`, 2 functions, 0x1001e25a-0x10020b81)
+`IsoLoadScenario` and the 10 KB loader behind it, run for every mission. A `.wxm` or `.wxp` file: a 0x80-byte header ("WXM"/"WXP", version, map size, tile set, offsets and sizes of the parts), the map's cells, the tiles (from the tile set's library, or embedded in the file), the objects (record layouts for versions 0, 1 and 2-5), and the AI's choke points (versions 3-5: points with their cells, the links between them, and a grid). Afterwards the cells' temporary bits are cleared, and on a dedicated server run tiles over 22000 are repaired ("Repairing corrupted map...").
+* All 105 shipped maps are version 1.5. Versions 3 and 4 differ only in how points and links are stored (version 3 points have 6-byte cells; versions 3 and 4 links have 10 points, version 5 links 20).
+* Original quirks kept: version 1 objects are counted as 12-byte records but stepped through 48 bytes apart (reading past the buffer); version 3 recomputes the points' cells when the previous map's grid was 0x8000 bytes or more; two arguments carry the header's address in their high halves.
+* The loader calls several helpers of the original that are still original: the tile set's library (0x10023657, 0x10023b04, 0x10023559), the choke point set-up (0x10098542, 0x10098970, 0x1008de00, 0x10098dd4).
+* Checked: the unit state log (equal to an all-original run made at the same time, both 847 on a busy machine), Human mission 1 (4_moved pixel-identical), the orders run, menu tour, Alt+F4.
