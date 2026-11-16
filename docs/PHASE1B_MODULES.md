@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 203 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 204 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -682,3 +682,8 @@ Helpers on top of the path finder (0x100c70bc) between sectors' middles: releasi
 Making the engine's tile background from the map's cells, freeing the map arrays, loading a tile library (`.TL2`: an 18-byte "TLX" header with the tile count, then the tiles; all of it or only listed tiles) and freeing it, `IsoUnloadMaskSubSystem`, and two map editor functions: `IsoCompileTileLibrary` (writes a tile list resource's tiles into a library file) and `IsoAutofillMap` (random tiles from a range, none equal to its upper or left neighbours, seeded from the clock; it uses the map width as the row stride for the neighbours, also where the map's rows are wider).
 * `IsoClearScreen` (it only returns 0) is too short to hook and stays original.
 * Checked: menu tour, Human mission 1, Alt+F4, the unit state log. A trace of the mission run shows none of the seven running (the scenario loader of part 26 loads tiles its own way).
+
+### Part 26: a new map (`createmap.c`, 1 function, 0x1001d92f-0x1001e25a)
+`IsoCreateMap`, run for every mission: the view's size in cells for the screen width (tables for 640, 800, 1024 and 1280) and the map size (32-256 by 64-512 cells), the row shifts, the cell size (64 x 32 pixels) and its logarithms, the map's pixel size and middle, clearing objects, units and the old map, the map and object arrays, the scenario's tiles (or the editor's autofill), the path finder and the AI.
+* The decompile drops the fourth argument of the tile read (the tile count, 0xcda2); ours follows the assembly.
+* Checked: the unit state log (one run equal to an original run to its end, tick 1681), menu tour, Human mission 1, Alt+F4. Only the 640-pixel table and mission 1's map size are reached.

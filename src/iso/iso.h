@@ -30,5 +30,6 @@
 #include "sound.h"
 #include "paths.h"
 #include "mapedit.h"
+#include "createmap.h"
 
 #endif

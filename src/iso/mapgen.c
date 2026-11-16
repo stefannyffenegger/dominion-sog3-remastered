@@ -4,10 +4,10 @@
  * clusters of objects from a per-terrain table are scattered over free cells. Several
  * of its steps are empty in the original. */
 #include "iso_core.h"
+#include "createmap.h"
 #include "mapgen.h"
 
 /* not rewritten yet */
-#define IsoCreateMap ORIG(int(__stdcall *)(uint8_t *, int, int, int, int, int, int, uint32_t, int), 0x1001d92f)
 #define IsoGetTile ORIG(int32_t(__stdcall *)(uint8_t *, int, int), 0x100219df)
 #define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, int, int, int), 0x100aca6e)
 #define g_srand ORIG(void(__cdecl *)(uint32_t), 0x100f4d60)
@@ -228,7 +228,7 @@ int __stdcall mapgen_add_clusters(int w, int h, int terrain, int density)
 int __stdcall mapgen_generate(int w, int h, int seed, int terrain, int density, int ring, int unused)
 {
     (void)unused;
-    if (IsoCreateMap(g_iso, w, h, terrain, 1, 1, 1, g_terrain_tiles(terrain)[0], (int)g_terrain_tiles(terrain)[1])) {
+    if (IsoCreateMap(g_iso, (uint32_t)w, (uint32_t)h, terrain, 1, 1, 1, g_terrain_tiles(terrain)[0], (int)g_terrain_tiles(terrain)[1])) {
         DebugStr((const char *)ORIG_PTR(0x10130c60));
         return 0;
     }
