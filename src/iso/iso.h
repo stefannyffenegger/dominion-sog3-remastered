@@ -27,5 +27,6 @@
 #include "orders.h"
 #include "click.h"
 #include "mapgen.h"
+#include "sound.h"
 
 #endif

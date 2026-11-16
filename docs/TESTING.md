@@ -57,6 +57,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 | `DOMINION_ISO_STATELOG_ORDERS=1` | scripted input for Human mission 1: all own units move into the enemy at tick 40 and on at tick 500; kneel at 60, crawl at 120, stand at 200 (with the interface's buttons, `IsoProcessAction`) |
 | `DOMINION_ISO_STATELOG_CLOCK=15` | `timeGetTime` for the game logic advances 15 ms per displayed frame instead of real time |
 | `DOMINION_ISO_ORIGINAL=name,name` / `all` / `all,-name` | keeps those functions original |
+| `DOMINION_WAVE_LOG=<Windows path>` | our `WAVEPLAY.R32` writes "name volume pan" for each wave played by name; compare a run of ours with a `DOMINION_ISO_ORIGINAL=all` run (the orders run plays 59 waves) |
 | `DOMINION_ISO_TRACE=<Windows path>` | a list of original addresses; logs "first call" for each that runs (needs `DOMINION_ISO_ORIGINAL=all` and `WINEDEBUG=+debugstr`) |
 
 `tests/game/statecheck.sh` runs ours with the scripted input and the virtual clock and compares it with four saved original runs, `work/cmp/state_o1.log` to `state_o4.log`. It prints up to which tick ours equals each of them and up to which tick they equal each other.
@@ -75,7 +76,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 22):
+Ported but never run by a test (as of part 23):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;

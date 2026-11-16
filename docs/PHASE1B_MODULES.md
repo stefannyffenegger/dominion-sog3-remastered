@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 182 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 189 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -666,3 +666,9 @@ What each selected unit does with the unit the player clicked (called from `map_
 `IsoGetKeyModifiers` (the script asks which of Shift, Ctrl, Alt and the right button are down) and the unfinished random map generator `IsoGenerateMap` (see `HIDDEN_AND_UNUSED.md`): a new map, a ring of numbered object areas on a grid of 9x9-cell blocks, clusters of objects from per-terrain tables on the free cells, with the original's `srand`/`rand`.
 * Most of its functions are stdcall with more arguments than the decompile shows (it drops the seed, the block grid and the area count); ours follows the assembly. Four steps of the original that only return 1 or loop over nothing (0x1001aa18, 0x1001adbd, 0x1001ae15, 0x1001b050) and the debug print of the block grid are not hooked: all their callers are ours.
 * Checked: the unit state log, menu tour, Human mission 1, the orders run (Ctrl, Alt), Alt+F4. The generator itself is not reached (nothing in the tests calls `IsoGenerateMap`).
+
+### Part 23: sounds on the map, unit voices (`sound.c`, 7 functions, 0x1001b380-0x1001bd92)
+A sound placed on the map: full volume in the middle of the view, 3 per pixel quieter beyond half the view's width or height, panned by 6 per pixel from the view's left edge, and not played at all below 7500 (9000 in multiplayer); it goes to `WAVEPLAY.R32`'s `rdfPlayWave` through the original's import thunk. On top of it: a unit's voice (attack, selected, dying, moving and two more; a wounded soldier speaks its next recording; the file number comes from the unit type's table), general sounds (`gen800xx.wav`), and a weapon's firing and hit sounds by projectile or by weapon number. And `IsoGetSectorCoordinates`.
+* The function earlier parts called `tutorial_event` is the unit voice (`unit_voice`): an order makes only the first unit speak. Renamed in parts 10-21.
+* The original reports missing waves through its debug printf, which returns at once in the shipped build; left out.
+* Checked: the orders run with the new `DOMINION_WAVE_LOG`: the same 59 waves with the same volume and pan as the original (voices, 24 weapon sounds with panning, interface sounds); the unit state log, menu tour, Human mission 1, Alt+F4.

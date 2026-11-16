@@ -7,7 +7,7 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iso_orig.def)
 add_custom_target(iso_orig_implib DEPENDS ${ISO_ORIG_IMPLIB})
 
-add_library(iso SHARED hooks.c power.c view.c display.c loop.c screen.c unit.c action.c items.c damage.c combat.c commands.c sector.c relay.c idle.c cursor.c mouse.c recon.c records.c buttons.c popup.c click.c orders.c mapgen.c statelog.c iso.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
+add_library(iso SHARED hooks.c power.c view.c display.c loop.c screen.c unit.c action.c items.c damage.c combat.c commands.c sector.c relay.c idle.c cursor.c mouse.c recon.c records.c buttons.c popup.c click.c orders.c mapgen.c sound.c statelog.c iso.def ${PROJECT_SOURCE_DIR}/src/common/minicrt.c)
 add_dependencies(iso iso_orig_implib rtlib32_implib)
 set_target_properties(iso PROPERTIES PREFIX "" OUTPUT_NAME "ISO" SUFFIX ".R32")
 target_compile_options(iso PRIVATE ${DOM_MODULE_FLAGS})

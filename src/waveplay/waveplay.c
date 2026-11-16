@@ -748,10 +748,30 @@ int __cdecl DSPlayWaveFile(WavePlay *wp, int slot, int volume, int pan, int loop
     return play(wp, slot, volume, pan, loop, msg, priority, restart, auto_unload);
 }
 
+/* test aid: DOMINION_WAVE_LOG=<Windows path> appends "name volume pan" for every wave
+ * played by name (tests/game: compare the game logic's sounds with the original's) */
+static void wave_log(const char *name, int volume, int pan)
+{
+    static HANDLE log = INVALID_HANDLE_VALUE;
+    static int tried;
+    char line[160];
+    if (!tried) {
+        char path[MAX_PATH];
+        tried = 1;
+        if (GetEnvironmentVariableA("DOMINION_WAVE_LOG", path, sizeof path))
+            log = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+    }
+    if (log == INVALID_HANDLE_VALUE)
+        return;
+    DWORD n = (DWORD)wsprintfA(line, "%s %d %d\r\n", name, volume, pan), done;
+    WriteFile(log, line, n, &done, NULL);
+}
+
 int __cdecl rdfPlayWave(WavePlay *wp, const char *name, int volume, int pan, int loop, int msg,
                         int priority, int restart, int unused, int auto_unload)
 {
     (void)unused;
+    wave_log(name, volume, pan);
     int slot = rdfLoadWave(wp, name, 0);
     if (slot < 0)
         return slot;

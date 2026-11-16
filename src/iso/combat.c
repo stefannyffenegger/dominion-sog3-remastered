@@ -3,6 +3,7 @@
  * hit's sprite, allies called for help, killing a unit, destroyed structures and what is
  * in, on or under them. */
 #include "iso_core.h"
+#include "sound.h"
 #include "sector.h"
 #include "damage.h"
 #include "combat.h"
@@ -340,7 +341,6 @@ void __cdecl unit_kill(uint32_t id, uint32_t anim, int sync, uint32_t quiet)
 /* ---- structures and what is on or in them ---- */
 
 #define schedule ORIG(void(__cdecl *)(uint16_t, uint32_t, uint32_t, uint32_t, uint32_t *), 0x1002de13)
-#define tutorial_event ORIG(int(__cdecl *)(uint8_t *, int, int, int), 0x1001b5ec)
 #define IsoRemoveObject ORIG(void(__stdcall *)(uint8_t *, uint32_t, int, int), 0x100ad9ea)
 #define IsoRedrawObject ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x100ad5f2)
 #define U_INSIDE 0xf6  /* short: the first unit inside, linked through +0xf6 */
@@ -414,7 +414,7 @@ void __cdecl occupant_eject(int id)
     P(uint8_t, u, U_KIND) = 0x14;
     P(uint8_t, u, 0x148) = P(uint8_t, u, U_KIND);
     if (P(uint8_t, u, U_PLAYER) == I(uint32_t, ISO_LOCAL_PLAYER))
-        tutorial_event(u, 8, 0, 0);
+        unit_voice(u, 8, 0, 0);
     if (P(int16_t, u, U_INSIDE) || P(int16_t, u, U_ON_TOP)) {
         uint32_t args[3] = {0, 0, 0};
         kill_units_on(u, 0, 0);

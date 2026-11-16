@@ -1,12 +1,12 @@
 /* The game logic, 0x10018edb-0x10019b52: what a selected unit does when the player
  * clicks another unit: board a vehicle, enter a structure, attack it, an engineer's
- * capture or repair. Each sets *tutorial to the tutorial's answer the first time. */
+ * capture or repair. The first unit to take the order speaks (*voice: its voice handle). */
 #include "iso_core.h"
+#include "sound.h"
 #include "sector.h"
 #include "orders.h"
 
 /* not rewritten yet (names ours, provisional) */
-#define tutorial_event ORIG(int(__cdecl *)(uint8_t *, int, int, int), 0x1001b5ec)
 #define net_unit_order ORIG(void(__cdecl *)(uint16_t, uint16_t, uint8_t), 0x10040706)
 #define unit_set_target ORIG(void(__cdecl *)(uint16_t, uint16_t), 0x100dcabd)
 #define unit_set_action ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cf5b)
@@ -30,14 +30,14 @@
 #define U_INSIDE 0x10e  /* bit 0: inside a vehicle or structure */
 #define U_WAKE 0x199    /* tick of its next action */
 
-static void tutorial_once(int *tutorial, uint8_t *u, int what)
+static void voice_once(int *voice, uint8_t *u, int what)
 {
-    if (!*tutorial)
-        *tutorial = tutorial_event(u, what, 0, 1);
+    if (!*voice)
+        *voice = unit_voice(u, what, 0, 1);
 }
 
 /* 0x10018edb: unit `id` boards the vehicle or enters the structure `into` */
-int __cdecl order_board(uint32_t id, uint32_t into, int *tutorial)
+int __cdecl order_board(uint32_t id, uint32_t into, int *voice)
 {
     uint8_t *v = iso_unit((int)(into & 0xffff));
     uint8_t *u = iso_unit((int)(id & 0xffff));
@@ -49,8 +49,8 @@ int __cdecl order_board(uint32_t id, uint32_t into, int *tutorial)
     if (P(int32_t, u, U_CLASS) > 0x18 || P(uint8_t, u, 0x147) == 'E' || !P(int32_t, P(uint8_t *, u, 0x32), 0xe4) ||
         (P(uint32_t, u, U_INSIDE) & 0x30))
         return 0;
-    if (tutorial)
-        tutorial_once(tutorial, u, 3);
+    if (voice)
+        voice_once(voice, u, 3);
     if (I(int, 0x175) && unit_is_local(into))
         net_unit_order((uint16_t)id, (uint16_t)into, 0);
     if (!(P(uint8_t, u, U_INSIDE) & 1) && P(uint16_t, u, U_VEHICLE) && P(uint16_t, u, U_VEHICLE) != (into & 0xffff) &&
@@ -92,7 +92,7 @@ int __cdecl order_board(uint32_t id, uint32_t into, int *tutorial)
 /* 0x100192ef: unit `id` and the structure `building` of class 100: if its owner has
  * none chosen yet (0xd6f9) and its flags allow, the structure becomes the choice;
  * otherwise an infantry unit goes in (action 0x12) */
-int __cdecl order_enter(uint32_t id, uint32_t building, int *tutorial)
+int __cdecl order_enter(uint32_t id, uint32_t building, int *voice)
 {
     uint8_t *b = iso_unit((int)(building & 0xffff));
     uint8_t *u = iso_unit((int)(id & 0xffff));
@@ -106,7 +106,7 @@ int __cdecl order_enter(uint32_t id, uint32_t building, int *tutorial)
     uint8_t c = P(uint8_t, u, 0x147);
     if (c == 'E' || c == 'F' || !(c != 'G' && P(uint8_t, u, 0x196) != ';'))
         return 0;
-    tutorial_once(tutorial, u, 3);
+    voice_once(voice, u, 3);
     unit_set_target((uint16_t)id, (uint16_t)building);
     unit_set_action(id, 0x12, 1, 0);
     return 1;
@@ -114,7 +114,7 @@ int __cdecl order_enter(uint32_t id, uint32_t building, int *tutorial)
 
 /* 0x10019443: unit `id` of type 0x21 is ordered at `target` (it attacks it, unless it
  * is already in it) */
-int __cdecl order_type21(uint32_t id, uint16_t target, int *tutorial)
+int __cdecl order_type21(uint32_t id, uint16_t target, int *voice)
 {
     uint8_t *u = iso_unit((int)(id & 0xffff));
     uint8_t *t = iso_unit(target);
@@ -124,22 +124,22 @@ int __cdecl order_type21(uint32_t id, uint16_t target, int *tutorial)
         unit_stop_attack(id);
         unit_attack_target(id, target, 0, 1);
     }
-    tutorial_once(tutorial, t, 0x10);
+    voice_once(voice, t, 0x10);
     return 1;
 }
 
 /* 0x10019535: an engineer (types 0x10-0x13) and a friendly unit: board it, enter a
  * building of class 100, or repair a damaged structure */
-int __cdecl order_engineer(uint32_t id, uint32_t target, int *tutorial, int *stagger)
+int __cdecl order_engineer(uint32_t id, uint32_t target, int *voice, int *stagger)
 {
     uint8_t *u = iso_unit((int)(id & 0xffff));
     uint8_t *t = iso_unit((int)(target & 0xffff));
     unit_max_health(t, 0);
     if (P(int32_t, P(uint8_t *, t, 0x32), 0xe0))
-        return order_board(id, target, tutorial);
+        return order_board(id, target, voice);
     uint32_t f = P(uint32_t, t, U_FLAGS);
     if (P(int32_t, t, U_CLASS) == 100 && !(f & 0x1000) && !(f & 4))
-        return order_enter(id, target, tutorial);
+        return order_enter(id, target, voice);
     int32_t tt = P(int32_t, t, U_ID_TYPE);
     if (!((tt >= 0x40 && tt <= 0x4f) || (tt >= 0x50 && tt <= 0x87)) || (!(f & 0x1000) && !(f & 4)))
         return 0;
@@ -151,13 +151,13 @@ int __cdecl order_engineer(uint32_t id, uint32_t target, int *tutorial, int *sta
     P(int32_t, u, 0xc2) = 0;
     if (P(uint8_t, u, 0x195) & 2)
         P(uint8_t, u, 0x195) ^= 2;
-    tutorial_once(tutorial, u, 0);
+    voice_once(voice, u, 0);
     return 1;
 }
 
 /* 0x10019715: unit `id` and an enemy (or forced) `target`: attack it; an engineer
  * captures a structure */
-int __cdecl order_attack(uint32_t id, uint32_t target, int *tutorial, int *stagger)
+int __cdecl order_attack(uint32_t id, uint32_t target, int *voice, int *stagger)
 {
     uint8_t *u = iso_unit((int)(id & 0xffff));
     uint8_t ttype = P(uint8_t, iso_unit((int)(target & 0xffff)), U_ID_TYPE);
@@ -213,6 +213,6 @@ int __cdecl order_attack(uint32_t id, uint32_t target, int *tutorial, int *stagg
             }
         }
     }
-    tutorial_once(tutorial, u, 0);
+    voice_once(voice, u, 0);
     return 1;
 }

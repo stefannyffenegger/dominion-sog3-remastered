@@ -2,6 +2,7 @@
  * drag) on the map: selecting, ordering the selection to a unit or a place, the box
  * selection. */
 #include "iso_core.h"
+#include "sound.h"
 #include "power.h"
 #include "view.h"
 #include "display.h"
@@ -13,7 +14,6 @@
 /* not rewritten yet (names ours, provisional) */
 #define unit_selectable ORIG(int(__cdecl *)(uint16_t), 0x100f4167)
 #define unit_selected ORIG(void(__cdecl *)(uint32_t, int), 0x1004ebe6)
-#define tutorial_event ORIG(int(__cdecl *)(uint8_t *, int, int, int), 0x1001b5ec)
 #define order_move ORIG(void(__cdecl *)(int, int, uint32_t, int, uint32_t, int, int), 0x100b39aa)
 #define unit_can_reach ORIG(int(__cdecl *)(uint32_t, uint32_t, int, int), 0x1006b6d3)
 #define unit_can_order ORIG(uint32_t(__cdecl *)(uint16_t), 0x100f4301)
@@ -58,17 +58,17 @@ static void select_into(int32_t player, uint16_t id, uint8_t *u)
         P(uint8_t, u, U_SEL_STATE) = 2;
 }
 
-/* 0x10019b52: adds the local player's unit `id` to the selection; *tutorial gets the
- * tutorial's answer to the first selection */
-int __cdecl selection_add(uint32_t id, int *tutorial)
+/* 0x10019b52: adds the local player's unit `id` to the selection; it says its "selected"
+ * line unless *voice already holds one */
+int __cdecl selection_add(uint32_t id, int *voice)
 {
     uint8_t *u = iso_unit((int)(id & 0xffff));
     if (!unit_selectable((uint16_t)id))
         return 0;
     select_into(LOCAL, (uint16_t)id, u);
     unit_selected(id, 0);
-    if (!*tutorial)
-        *tutorial = tutorial_event(u, 1, 0, 1);
+    if (!*voice)
+        *voice = unit_voice(u, 1, 0, 1);
     return 1;
 }
 
@@ -180,7 +180,7 @@ int __cdecl structure_link(uint32_t id)
 /* 0x10018711: a left click (or a drag) on the map has ended */
 int __cdecl map_click(void)
 {
-    int tutorial = 0, tutorial2 = 0, done = 0;
+    int voice = 0, stagger = 0, done = 0;
     uint8_t kind;
     uint16_t id;
     if (I(int32_t, 0xdaf0))
@@ -225,7 +225,7 @@ int __cdecl map_click(void)
             selection_remove(id, (uint32_t)LOCAL, 1);
             return 1;
         }
-        return selection_add(id, &tutorial);
+        return selection_add(id, &voice);
     }
     if (n) {
         if (n == 1) {
@@ -237,7 +237,7 @@ int __cdecl map_click(void)
                 return 1;
             }
             if (unit_can_reach(first, id, 1, 0))
-                done = order_type21(first, id, &tutorial);
+                done = order_type21(first, id, &voice);
             else
                 done = structure_link(id);
         }
@@ -260,15 +260,15 @@ int __cdecl map_click(void)
                 int engineer = vt >= 0x10 && vt <= 0x13;
                 if (own && friendly && !engineer) {
                     if (P(int32_t, u, U_CLASS) == 100)
-                        done |= order_enter(v, id, &tutorial);
+                        done |= order_enter(v, id, &voice);
                     else if (P(int32_t, P(uint8_t *, u, 0x32), 0xe0))
-                        done |= order_board(v, id, &tutorial);
+                        done |= order_board(v, id, &voice);
                 }
                 if (friendly) {
                     if (engineer)
-                        done |= order_engineer(v, id, &tutorial, &tutorial2);
+                        done |= order_engineer(v, id, &voice, &stagger);
                 } else {
-                    done |= order_attack(v, id, &tutorial, &tutorial2);
+                    done |= order_attack(v, id, &voice, &stagger);
                 }
             }
     }
@@ -276,7 +276,7 @@ int __cdecl map_click(void)
         for (int p = 0; p < I(int32_t, 0x1b1f); p++)
             if (LOCAL != p || !MOD_FORCE)
                 selection_clear(p);
-        selection_add(id, &tutorial);
+        selection_add(id, &voice);
     } else if (!own && !done) {
         for (int p = 0; p < I(int32_t, 0x1b1f); p++)
             selection_clear(p);

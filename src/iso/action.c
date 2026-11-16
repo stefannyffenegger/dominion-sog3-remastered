@@ -3,6 +3,7 @@
  * entering and leaving vehicles and buildings, turning, attacking); then the unit takes
  * one step of it. */
 #include "iso_core.h"
+#include "sound.h"
 #include "sector.h"
 #include "combat.h"
 #include "unit.h"
@@ -39,7 +40,6 @@
 #define unit_attack ORIG(int(__cdecl *)(uint32_t), 0x100e7b9b)
 #define unit_guard ORIG(int(__cdecl *)(uint32_t), 0x100e80fa)
 #define unit_fire_at ORIG(void(__cdecl *)(uint8_t *), 0x100dbdae)
-#define tutorial_event ORIG(int(__cdecl *)(uint8_t *, int, int, int), 0x1001b5ec)
 #define unit_dying ORIG(void(__cdecl *)(uint32_t), 0x100e83f5)
 #define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 
@@ -417,13 +417,13 @@ void __cdecl unit_action_tick(uint32_t id)
         case 0x26: /* built */
             P(uint32_t, u, U_FLAGS2) &= 0xffff7fff;
             if (I(int, 0x17f5) == 4)
-                tutorial_event(u, 7, 0, 0);
+                unit_voice(u, 7, 0, 0);
             unit_set_anim(id, 0, 1, 0);
             P(uint32_t, u, 0x1a7) = 0;
             break;
         case 0x27:
             if (I(int, 0x17f5) == 4)
-                tutorial_event(u, 7, 0, 0);
+                unit_voice(u, 7, 0, 0);
             unit_set_anim(id, 0x4d, 1, 0);
             unit_dying(id);
             break;
