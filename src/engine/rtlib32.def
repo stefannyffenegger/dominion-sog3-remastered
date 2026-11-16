@@ -11,6 +11,8 @@ EXPORTS
     RtGetDisplayMode
     RtGetHAL
     RtGetHResfile
+    ResLoadResource@12
+    RtSetTileBackground
     RtGetGameInfo
     RtGetHSL
     RtGetResource

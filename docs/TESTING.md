@@ -62,7 +62,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 
 `tests/game/statecheck.sh` runs ours with the scripted input and the virtual clock and compares it with four saved original runs, `work/cmp/state_o1.log` to `state_o4.log`. It prints up to which tick ours equals each of them and up to which tick they equal each other.
 
-* **Reading the result:** original runs agree with each other up to about tick 950-1000, varying from run to run. Ours must agree at least that far. One low value is not an error (single runs have come out as low as 857 with no code change); three runs of ours all diverging earlier than any pair of originals is.
+* **Reading the result:** original runs agree with each other up to about tick 950-1000, varying from run to run. Ours must agree at least that far. One low value is not an error (single runs have come out as low as 857 with no code change). **A busy machine pulls this down a lot**: with another heavy process running, even all-original runs (`DOMINION_ISO_ORIGINAL=all,-IsoDisplayLoop`) came out at 718, and runs of ours at 246 and 718. When values are low, run the all-original configuration at the same time to compare, or wait for an idle machine; three runs of ours all diverging earlier than any pair of originals is.
 * **When it diverges early:** `DOMINION_ISO_STATELOG_UNITS=from-to` around the tick on both builds, then `python3 tools/iso/statediff.py A.log B.log` shows the unit fields that differ; then bisect with `DOMINION_ISO_ORIGINAL`.
 * **Recording the original runs again** (after changing the scripted input; about 12 minutes, run it in the background):
   ```
@@ -76,7 +76,7 @@ Screenshots cannot tell a logic change from timing. `statelog.c` in our `ISO.R32
 * Fields left out of the hash because the display writes them every frame: 0x2d, bit 0x40 of 0x3e, bit 0x100 of 0x10e.
 
 ## 4. What the tests do not reach
-Ported but never run by a test (as of part 24):
+Ported but never run by a test (as of part 25):
 * building and placing structures, power grids changing, relays and their ring;
 * vehicles: boarding, loading, entering buildings;
 * destroyed structures and bridges, units under a new building;
@@ -88,7 +88,7 @@ Ported but never run by a test (as of part 24):
 * the action buttons other than the stances, and the toggle buttons (`iso_check_state`);
 * clicks on structures and on other players' units, Shift+click, structure links (`structure_link`);
 * the random map generator (`IsoGenerateMap`, `mapgen_*`);
-* the sector path helpers (`paths.c`);
+* the sector path helpers (`paths.c`), the tile library and the map editor helpers (`mapedit.c`);
 * boarding vehicles, entering buildings, engineers' orders (`order_board`, `order_enter`, `order_engineer`);
 * the popup menu's items for structures, vehicles and other players' units (`menu_for_unit`).
 

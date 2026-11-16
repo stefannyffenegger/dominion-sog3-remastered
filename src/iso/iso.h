@@ -29,5 +29,6 @@
 #include "mapgen.h"
 #include "sound.h"
 #include "paths.h"
+#include "mapedit.h"
 
 #endif
