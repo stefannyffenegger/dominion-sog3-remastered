@@ -37,5 +37,6 @@
 #include "tilelib.h"
 #include "aiglue.h"
 #include "sdl.h"
+#include "sdlexec.h"
 
 #endif

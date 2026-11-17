@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 266 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 267 of about 1,986 game functions are ours (the scenario record executor partly) |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -741,3 +741,7 @@ Six more AI script commands (an AI player's group leader of type 0x14 or 0x19, a
 
 ### Left for later: the map editor's saving (0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603)
 Saving a map from the editor: the map file (`IsoSaveScenario`) and its scenario description, written as text (build info, briefing, players with race, colour, tech level and resources, terrain analysis, energy wells, the units grouped into bases and groups; 0x10026aac with a sort comparison 0x10028308 and 0x10028549). Nothing in the tests can reach the editor, so these stay original until it is known whether the editor can still be started (see `HIDDEN_AND_UNUSED.md`).
+
+### Part 38, step 1: the scenario record executor, main records (`sdlexec.c`, 0x10028603)
+The executor (16.7 KB) carries out one record of the scenario description; `IsoLoadSDCFile`'s loader runs it for every timer, hot spot and settings record of a mission. Ported a part at a time: our function handles the subtypes rewritten so far and hands the others to the original's code through a trampoline (its 9-byte prologue, then a jump past the hook). Step 1: the main records (subtype 0): timers (`TIMER_EVENT`), hot spots (sector flags per player), the briefing's line count, the cinematics, the briefing's wave, designer, version and date.
+* Checked: the unit state log (970), Human mission 1, Alt+F4. Mission 1 has one timer-free set of main records (types 0x28-0x50).
