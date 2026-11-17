@@ -12,7 +12,7 @@
 #define P(type, p, off) (*(type *)((uint8_t *)(p) + (off)))
 
 /* state fields */
-#define ISO_HAVE_SPRITES 0x0154   /* sprites are shown (not a dedicated server run) */
+#define ISO_HAVE_SPRITES 0x0154   /* sprites are shown: 0 in the map editor */
 #define ISO_FLAGS 0x0174           /* byte: power hints given (1 low, 8 none, 0x10 back); 0x80 scrolled by keys */
 #define ISO_APP 0x180e            /* the engine's app (rt) */
 #define ISO_HSL 0x181e            /* the engine's sprite state */

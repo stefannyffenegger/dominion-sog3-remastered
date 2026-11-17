@@ -80,7 +80,7 @@ int32_t __stdcall IsoGetTile(uint8_t *iso, int x, int y)
 }
 
 /* 0x10021a7e: cell (x, y) gets tile `tile` (also in the tile background). Only in the
- * editor (0x10c) or without sprites; otherwise it does nothing and returns 1. */
+ * debug mode (0x10c, DebuggingOn) or the map editor; otherwise it does nothing and returns 1. */
 int __stdcall IsoSetTile(uint8_t *iso, uint32_t tile, int x, int y)
 {
     g_iso = iso;
