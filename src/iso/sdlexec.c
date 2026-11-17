@@ -1,8 +1,7 @@
 /* The game logic, 0x10028603-0x1002c74e: carrying out one scenario description record
  * (from IsoLoadSDCFile's loader for the shipped .sdc files, and the text loader): the
  * main records (subtype 0: timers, hot spots, mission info) and the game settings,
- * units, objects, AI and events (by subtype). Ported a part at a time: subtypes not
- * rewritten yet run the original's code through a trampoline. */
+ * units, objects, AI and events (by subtype). */
 #include "iso_core.h"
 #include "scenario.h"
 #include "sdlexec.h"
@@ -36,6 +35,17 @@
 #define destroy_unit ORIG(void(__cdecl *)(uint32_t, int32_t), 0x1002e606)
 #define sdl_4b03a ORIG(void(__cdecl *)(uint8_t *), 0x1004b03a)
 #define sdl_4b119 ORIG(void(__cdecl *)(uint8_t *), 0x1004b119)
+#define unit_by_place ORIG(int32_t(__stdcall *)(uint8_t *, int32_t, int32_t), 0x10028549)
+#define unit_convoy ORIG(void(__cdecl *)(int32_t, int32_t *, int32_t), 0x10076787)
+#define unit_follow ORIG(void(__cdecl *)(int32_t, int32_t, int), 0x10075f93)
+#define unit_patrol ORIG(void(__cdecl *)(int32_t, int32_t *, int32_t *, int32_t, int32_t), 0x100764b2)
+#define unit_entry_point ORIG(void(__cdecl *)(int32_t, int16_t *, int16_t *, int16_t *), 0x100bf0c2)
+#define unit_change_player ORIG(void(__cdecl *)(uint32_t, int32_t, int), 0x10058bf5)
+#define uncover_fog ORIG(void(__cdecl *)(int32_t, int32_t, uint32_t, int32_t, int, uint32_t, int), 0x10090223)
+#define sdl_8c755 ORIG(void(__cdecl *)(void), 0x1008c755)
+#define IsoAddEnergyWell ORIG(void(__stdcall *)(uint8_t *, int32_t, int32_t, int32_t, int32_t, int32_t, uint32_t, int), 0x100ad1d9)
+#define IsoEnableAlliances ORIG(void(__cdecl *)(uint8_t *, int, int), 0x10056eae)
+#define IsoSetAlliance ORIG(void(__cdecl *)(uint8_t *, int32_t, int32_t, int, int), 0x10057b3b)
 #define timer_set ORIG(void(__cdecl *)(int, int32_t, int32_t, void *, void *), 0x1002de13)
 
 #define S(addr) ((const char *)ORIG_PTR(addr))
@@ -43,17 +53,6 @@
 #define REC(i) (I(uint8_t *, 0xc2e5) + (i) * 0x5a)
 #define V(r, n) P(int32_t, r, 10 + (n) * 4) /* the record's n-th value */
 #define TITLE S(0x101351fc)                 /* "IsoLoadSDLFile() Error" */
-
-/* the original's code after its 9-byte prologue (the hook overwrote the first 5) */
-void *g_sdl_exec_body;
-__attribute__((naked)) static int __cdecl sdl_exec_orig(uint32_t rec)
-{
-    (void)rec;
-    __asm__ volatile("pushl %ebp\n\t"
-                     "movl %esp, %ebp\n\t"
-                     "subl $0x22c, %esp\n\t"
-                     "jmp *_g_sdl_exec_body");
-}
 
 static const char *designer(uint32_t fallback)
 {
@@ -537,6 +536,261 @@ static int def_group(uint8_t *r)
     return 1;
 }
 
+/* subtype 320: SET_START_CONVOY x, y (the unit there), then way points */
+static int start_convoy(uint8_t *r)
+{
+    int32_t pts[64];
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    DebugStr(S(0x10135c3c));
+    int32_t x = V(r, 0), y = V(r, 1);
+    int32_t id = unit_by_place(g_iso, x, y);
+    if (id < 1) {
+        DebugStr(S(0x10135c54), x, y, id);
+        return 1;
+    }
+    int n = 0;
+    for (int k = 0; k < P(int16_t, r, 8) - 2; k++, n++) {
+        pts[n * 2] = V(r, 2 + k);
+        k++;
+        pts[n * 2 + 1] = V(r, 2 + k);
+    }
+    unit_convoy(id, pts, n);
+    return 1;
+}
+
+/* subtype 340: SET_PATROL_PATH x, y (the unit there), mode, then (x, y, time) points */
+static int patrol_path(uint8_t *r)
+{
+    int32_t pts[64], times[32];
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    DebugStr(S(0x10135cf0));
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    int32_t mode = V(r, 2);
+    int32_t id = IsoFindUnit(g_iso, V(r, 0), V(r, 1));
+    if (id <= 0)
+        return 1;
+    int n = 0;
+    for (int k = 0; k < P(int16_t, r, 8) - 3; k++, n++) {
+        pts[n * 2] = V(r, 3 + k);
+        k++;
+        pts[n * 2 + 1] = V(r, 3 + k);
+        k++;
+        times[n] = V(r, 3 + k);
+    }
+    unit_patrol(id, pts, times, n, mode);
+    return 1;
+}
+
+/* subtype 350: DEFBASE [player]: the player's next base number */
+static int def_base(uint8_t *r)
+{
+    g_group_player = P(int16_t, r, 8) == 1 ? V(r, 0) : 0;
+    G(int32_t, 0x1017bb10 + g_group_player * 4)++;
+    g_base_number = G(int32_t, 0x1017bb10 + g_group_player * 4);
+    g_last_player = g_group_player;
+    if (I(int, 0x175)) {
+        g_last_player = g_group_player;
+        return 1;
+    }
+    if (!ai_needed(0x10135b20, 0x10135b0c))
+        return 0;
+    if (I(int32_t, ISO_HAVE_SPRITES))
+        ai_init_record(2, g_last_player, g_base_number);
+    return 1;
+}
+
+/* subtype 370: SET_DEFAULT_OBJ n (0-163), a, b */
+static int default_obj(uint8_t *r)
+{
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    DebugStr(S(0x10135d20));
+    int32_t n = V(r, 0);
+    uint32_t a = (uint32_t)V(r, 1), b = (uint32_t)V(r, 2);
+    if (n < 0 || n > 0xa3 || (b | a) > 0xff) {
+        wsprintfA(TEXT_BUF, S(0x10135d4c), n, a, b, designer(0x10135d38));
+        return bad();
+    }
+    I(uint8_t, 0xf1e + n * 2) = (uint8_t)a;
+    I(uint8_t, 0xf1f + n * 2) = (uint8_t)b;
+    return 1;
+}
+
+/* subtype 380: CHANGE_PLAYER_ID objective (0: the unit at x, y), x, y, player */
+static int change_player(uint8_t *r)
+{
+    DebugStr(S(0x10135d8c));
+    uint32_t obj = (uint32_t)V(r, 0), p = (uint32_t)V(r, 3);
+    int32_t x = V(r, 1), y = V(r, 2);
+    if (p > 7) {
+        wsprintfA(TEXT_BUF, S(0x10135e88), obj, x, y, p, designer(0x10135e74));
+        return bad();
+    }
+    if (!obj) {
+        int32_t id = IsoFindUnit(g_iso, x, y);
+        if (!id || !iso_unit(id)) {
+            wsprintfA(TEXT_BUF, S(0x10135db8), obj, x, y, p, designer(0x10135da4));
+            return bad();
+        }
+        unit_change_player((uint32_t)id, (int32_t)p, 1);
+        return 1;
+    }
+    int n = 0;
+    for (int k = 0; k < I(int32_t, ISO_UNIT_COUNT); k++) {
+        uint32_t v = I(uint32_t *, ISO_UNIT_LIST)[k];
+        uint8_t *u = I(uint8_t **, ISO_UNITS)[v];
+        if (u && (P(uint8_t, u, 0x2b) == obj || P(uint8_t, u, 0x2c) == obj)) {
+            unit_change_player(v, (int32_t)p, 1);
+            n++;
+        }
+    }
+    if (!n) {
+        wsprintfA(TEXT_BUF, S(0x10135e1c), obj, x, y, p, designer(0x10135e08));
+        return bad();
+    }
+    return 1;
+}
+
+/* subtype 390: UNCOVER_FOG objective (0: at x, y), x, y, player, small */
+static int uncover(uint8_t *r)
+{
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    DebugStr(S(0x10135f68));
+    uint32_t obj = (uint32_t)V(r, 0), p = (uint32_t)V(r, 3);
+    int32_t x = V(r, 1), y = V(r, 2), small = V(r, 4);
+    if (p >= 8) {
+        wsprintfA(TEXT_BUF, S(0x10135ffc), obj, x, y, p, small, designer(0x10135fe8));
+        return bad();
+    }
+    int radius = small ? 8 : 6;
+    if (!obj) {
+        uncover_fog(x, y, p, radius, -1, 0, 1);
+        return 1;
+    }
+    int n = 0;
+    for (int k = 0; k < I(int32_t, ISO_UNIT_COUNT); k++) {
+        uint32_t v = I(uint32_t *, ISO_UNIT_LIST)[k];
+        uint8_t *u = I(uint8_t **, ISO_UNITS)[v];
+        if (u && (P(uint8_t, u, 0x2b) == obj || P(uint8_t, u, 0x2c) == obj)) {
+            /* the high half of the player argument is the unit's address, as in the original */
+            uncover_fog(P(int16_t, u, U_X), P(int16_t, u, U_Y), ((uint32_t)(uintptr_t)u & 0xffff0000u) | P(uint8_t, u, U_PLAYER),
+                        radius, -1, v, 1);
+            n++;
+        }
+    }
+    if (!n) {
+        wsprintfA(TEXT_BUF, S(0x10135f90), obj, x, y, p, small, designer(0x10135f7c));
+        return bad();
+    }
+    return 1;
+}
+
+/* subtype 410: CHANGE_OBJECTIVE player, type, a, b, new a, new b */
+static int change_objective(uint8_t *r)
+{
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    DebugStr(S(0x10135ee0));
+    uint32_t p = (uint32_t)V(r, 0), a = (uint32_t)V(r, 2), b = (uint32_t)V(r, 3);
+    int32_t type = V(r, 1), na = V(r, 4), nb = V(r, 5);
+    int n = 0;
+    for (int k = 0; k < I(int32_t, ISO_UNIT_COUNT); k++) {
+        uint8_t *u = I(uint8_t **, ISO_UNITS)[I(int32_t *, ISO_UNIT_LIST)[k]];
+        if (u && P(uint8_t, u, U_PLAYER) == p && P(int32_t, u, U_ID_TYPE) == type && P(uint8_t, u, 0x2b) == a &&
+            P(uint8_t, u, 0x2c) == b) {
+            P(uint8_t, u, 0x2b) = (uint8_t)na;
+            P(uint8_t, u, 0x2c) = (uint8_t)nb;
+            n++;
+        }
+    }
+    if (!n) {
+        wsprintfA(TEXT_BUF, S(0x10135f0c), p, type, a, b, na, nb, designer(0x10135ef8));
+        return bad();
+    }
+    return 1;
+}
+
+/* subtype 600: ADD_ENERGYWELL x, y, a, b, c */
+static int add_energy_well(uint8_t *r)
+{
+    if (!I(void *, ISO_MAP)) {
+        wsprintfA(TEXT_BUF, S(0x10135648), designer(0x10135634));
+        return bad();
+    }
+    int32_t x = V(r, 0), y = V(r, 1), a = V(r, 2), b = V(r, 3), c = V(r, 4);
+    if (!a || b < 2) {
+        wsprintfA(TEXT_BUF, S(0x101356b0), x, y, a, b, designer(0x1013569c));
+        message_box(0, TEXT_BUF, TITLE, 0); /* only a warning */
+    } else {
+        IsoAddEnergyWell(g_iso, x - 0x20, y - 0x10, a, b, c, I(uint16_t, 0xc340), 0);
+    }
+    return 1;
+}
+
+/* subtype 610: SET_ENTRY_POINT x, y (the unit there), then two or three points */
+static int entry_point(uint8_t *r)
+{
+    int16_t pt[6];
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    DebugStr(S(0x10135d08));
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        return 1;
+    int32_t id = unit_by_place(g_iso, V(r, 0), V(r, 1));
+    if (id <= 0)
+        return 1;
+    pt[0] = (int16_t)V(r, 2);
+    pt[1] = (int16_t)V(r, 3);
+    pt[2] = (int16_t)V(r, 4);
+    pt[3] = (int16_t)V(r, 5);
+    int16_t *third = &pt[2];
+    if (P(int16_t, r, 8) == 8) {
+        pt[4] = (int16_t)V(r, 6);
+        pt[5] = (int16_t)V(r, 7);
+        third = &pt[4];
+    }
+    unit_entry_point(id, &pt[0], &pt[2], third);
+    return 1;
+}
+
+/* subtype 650: show the countdown for n seconds (sprite resource 0xcd8e, its image +1) */
+static int countdown_show(uint8_t *r)
+{
+    RtLoad(I(void *, ISO_APP), I(uint32_t, 0xcd8e));
+    I(void *, 0xcd96) = RtGetResource(I(void *, ISO_APP), I(uint32_t, 0xcd8e))[1];
+    if (!I(void *, 0xcd96)) {
+        I(int32_t, 0xcd8a) = 0;
+        return 1;
+    }
+    SpriteSetLevel(I(void *, ISO_HSL), I(void *, 0xcd96), 0x6144);
+    I(void *, 0xcd92) = *RtGetResource(I(void *, ISO_APP), I(uint32_t, 0xcd8e) + 1);
+    if (!I(void *, 0xcd92)) {
+        I(int32_t, 0xcd8a) = 0;
+        return 1;
+    }
+    int32_t x = (int32_t)((P(uint32_t, I(uint8_t *, 0xcd92), 0xc) >> 1) - (uint32_t)(I(int32_t, 0xd722) >> 1)) + 2;
+    SpriteSetPosition(I(void *, ISO_HSL), I(void *, 0xcd96), 0, x, 0);
+    I(int32_t, 0xcd9a) = V(r, 0) * 1000 + I(int32_t, 0x1093);
+    I(int32_t, 0xcd8a) = 1;
+    return 1;
+}
+
+/* subtype 660: hide the countdown */
+static int countdown_hide(void)
+{
+    I(int32_t, 0xcd8a) = 0;
+    I(int32_t, 0xcd9a) = 0;
+    SpriteHide(I(void *, ISO_HSL), I(void *, 0xcd96), 1);
+    I(void *, 0xcd96) = NULL;
+    I(void *, 0xcd92) = NULL;
+    RtUnload(I(void *, ISO_APP), I(uint32_t, 0xcd8e));
+    return 1;
+}
+
 /* 0x10028603: record `i`; 0 when it is bad (a message box has said why) */
 int __cdecl sdl_exec(uint32_t i)
 {
@@ -646,12 +900,73 @@ int __cdecl sdl_exec(uint32_t i)
             ai_init_record(5);
         g_group_number = 1;
         return 1;
+    case 320:
+        return start_convoy(r);
+    case 330: { /* SET_FOLLOW_UNIT: the unit at x2, y2 follows the one at x1, y1 */
+        if (!I(int32_t, ISO_HAVE_SPRITES))
+            return 1;
+        DebugStr(S(0x10135c80));
+        int32_t lead = IsoFindUnit(g_iso, V(r, 0), V(r, 1)), id = IsoFindUnit(g_iso, V(r, 2), V(r, 3));
+        if ((id | lead) < 1) {
+            wsprintfA(TEXT_BUF, S(0x10135cac), V(r, 0), V(r, 1), V(r, 2), V(r, 3), designer(0x10135c98));
+            return bad();
+        }
+        unit_follow(id, lead, 1);
+        return 1;
+    }
+    case 340:
+        return patrol_path(r);
+    case 350:
+        return def_base(r);
+    case 360: /* the end of a base */
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            ai_init_record(3);
+        g_base_number = 1;
+        return 1;
+    case 370:
+        return default_obj(r);
+    case 380:
+        return change_player(r);
+    case 390:
+        return uncover(r);
+    case 400:
+        return 1;
+    case 410:
+        return change_objective(r);
+    case 520:
+        sdl_8c755();
+        return 1;
+    case 600:
+        return add_energy_well(r);
+    case 605: /* SET_ALLIANCE a, b */
+        if (I(int32_t, ISO_HAVE_SPRITES)) {
+            int32_t a = V(r, 0), b = V(r, 1);
+            if (a >= 0 && a < 8 && b >= 0 && b < 8) {
+                IsoEnableAlliances(g_iso, 1, 0);
+                IsoSetAlliance(g_iso, a, b, 1, 0);
+                IsoSetAlliance(g_iso, b, a, 1, 0);
+            }
+        }
+        return 1;
+    case 610:
+        return entry_point(r);
+    case 620: /* the game's end condition */
+        I(int32_t, 0x158) = 0;
+        I(int32_t, 0x150) = 0;
+        if (V(r, 0) == 1)
+            I(int32_t, 0x158) = 1;
+        else if (V(r, 0) == 2)
+            I(int32_t, 0x150) = 1;
+        return 1;
+    case 650:
+        return countdown_show(r);
+    case 660:
+        return countdown_hide();
     case 130:
         DebugStr(S(0x10135928), I(int32_t, 0x17dd) + 0x40);
         show_text((const char *)r + 10, 0);
         return 1;
     }
-    if (!g_sdl_exec_body)
-        g_sdl_exec_body = ORIG_PTR(0x1002860c);
-    return sdl_exec_orig(i);
+    wsprintfA(TEXT_BUF, S(0x10136068), i & 0xffff, type, sub, designer(0x10136054));
+    return bad();
 }
