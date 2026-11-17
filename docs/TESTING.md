@@ -89,7 +89,7 @@ Ported but never run by a test (as of part 34):
 * clicks on structures and on other players' units, Shift+click, structure links (`structure_link`);
 * the random map generator (`IsoGenerateMap`, `mapgen_*`);
 * the sector path helpers (`paths.c`), the tile library and the map editor helpers (`mapedit.c`);
-* most AI script commands (`aiglue.c`);
+* most AI script commands (`aiglue.c`), the text scenario description parser (`sdl.c`; the game loads compiled `.sdc` files);
 * boarding vehicles, entering buildings, engineers' orders (`order_board`, `order_enter`, `order_engineer`);
 * the popup menu's items for structures, vehicles and other players' units (`menu_for_unit`).
 
