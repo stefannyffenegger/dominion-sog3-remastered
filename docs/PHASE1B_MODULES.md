@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 287 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 289 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 43)
-* **Next part:** 44, from 0x10030760 (live; then 0x10030d7d `unit_action_done`, live). Parts go on in address order.
+### Open items (as of part 44)
+* **Next part:** 45, from 0x100313e0. Parts go on in address order.
 * **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
 * **Left original until the editor question is answered** (no test can reach them): the editor's saving, 0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603 (writing the description as text) and 0x1002cbfa with `IsoSaveSDCFile` (writing compiled `.sdc` files).
 * **The two-player chat test** (`tests/game/chat.sh`): either player's screenshot often comes out as garbage, also with the original. A more reliable check is needed, for example a two-player state log or reading the chat lines from the game's state.
@@ -778,3 +778,8 @@ For the menus: looks through the description's records of a type for player 0's 
 ### Part 43: `unit_action_tick2` (`step.c`, 1 function, 0x1002e8e0)
 The second variant of a unit's action each tick, a sibling of `unit_action_tick` (part 5): it chooses the next action when the current one's steps are used up, then takes one step. Unlike the first variant, its units keep no place on their cell. It has timers at 0x1b3/0x1c9 and turns with the 0x13/0x14 turning animations, using three [to][from] direction tables (0x1015b5a0, 0x1015b5e0, 0x1015b620). Types 0x24 and 0x27 only move on even ticks. Added `SpriteHitDetect@20` to the engine imports.
 * Checked: the trace shows the unit state log run reaches it. Unit state log at 847, with an all-original run at the same time at 656. Human mission 1 and Alt+F4 also checked.
+
+### Part 44: `unit_path_next`, `unit_action_done` (`step.c`, 2 functions, 0x10030760-0x100313d0)
+* **`unit_path_next`:** moves the unit on to its next path point, using the order records at I(0x1984). The next record is at +0xe; -1, -2, -3 and 0 end the path, and then the unit stops with the fitting animation. With `set`, it also takes the point's position (+4/+6), facing (+9) and waiting time (+0), turns towards the point and, in multiplayer, sends the new path for the local player's units.
+* **`unit_action_done`:** chooses the action that follows a finished one in `unit_action_tick2`. When there is still turning to do, it picks a turn on the spot (0x13/0x14, or 0xd-0x10 when the animation record allows the long way round).
+* Checked: the trace shows the unit state log run reaches both. Unit state log at 950 and 950, the full range two original runs share. Human mission 1 and Alt+F4 also checked.

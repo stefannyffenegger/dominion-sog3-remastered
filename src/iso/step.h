@@ -5,5 +5,7 @@
 #include <stdint.h>
 
 void __cdecl unit_action_tick2(uint32_t id);
+int __cdecl unit_path_next(uint32_t id, int set);
+void __cdecl unit_action_done(uint32_t id);
 
 #endif

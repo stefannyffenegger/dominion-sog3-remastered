@@ -1,4 +1,4 @@
-/* The game logic, 0x1002e8e0-0x1003075f: the second variant of a unit's action once per
+/* The game logic, 0x1002e8e0-0x100313d0: the second variant of a unit's action once per
  * game tick (the first is unit_action_tick, action.c), for the kinds that turn through
  * the turning animations 0x13/0x14 and keep no place on their cell. When the current
  * action's steps are used up the next one is chosen; then the unit takes one step. */
@@ -38,9 +38,13 @@
 #define unit_guard ORIG(int(__cdecl *)(uint32_t), 0x100e80fa)
 #define unit_dying ORIG(void(__cdecl *)(uint32_t), 0x100e83f5)
 #define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
-#define unit_action_done ORIG(void(__cdecl *)(uint32_t), 0x10030d7d)
 #define unit_moved ORIG(void(__cdecl *)(uint32_t), 0x100bdbeb)
 #define debug_log ORIG(void(__cdecl *)(int, const char *, ...), 0x10095f64)
+#define debug_printf ORIG(void(__cdecl *)(int, const char *, ...), 0x10095e98)
+#define action_set ORIG(void(__cdecl *)(uint32_t, uint8_t), 0x1009cc60)
+#define order_free ORIG(void(__cdecl *)(uint16_t), 0x100e9bbc)
+#define cell_mark ORIG(void(__cdecl *)(int32_t, int), 0x10067214)
+#define unit_path_send ORIG(void(__cdecl *)(uint32_t), 0x10032a32)
 
 #define U_FLAGS2 0x10e
 #define U_TYPEINFO 0x32
@@ -103,6 +107,164 @@ static void turn_between(uint8_t *u, uint32_t id, uint8_t to, uint8_t from, uint
     else
         unit_set_anim(id, b, 1, 0);
     P(uint32_t, u, U_FLAGS2) |= 0x40000000;
+}
+
+/* 0x10030760: on to the unit's next path point (the order records I(0x1984): +4/+6 the
+ * point, +9 the facing, +0xe the next record; -1, -2, -3 and 0 end the path). At the end
+ * it stops with the fitting animation and 1 is returned when it goes on; `set` also
+ * takes the point's position, facing and waiting time, and turns towards it. */
+int __cdecl unit_path_next(uint32_t id, int set)
+{
+    uint8_t *u = iso_unit((int)(id & 0xffff));
+    if (!u)
+        return 0;
+    debug_log(4, (const char *)ORIG_PTR(0x1013655c));
+    if (P(int16_t, u, 0x113) > 0 && I(int32_t, 0xe113)) {
+        int32_t x = P(int16_t, ORDER(P(int16_t, u, 0x113)), 4), y = P(int16_t, ORDER(P(int16_t, u, 0x113)), 6);
+        int32_t cx, cy;
+        int32_t cell = IsoVTilePos(g_iso, &x, &y, &cx, &cy);
+        cell_mark(cell, 2);
+    }
+    if (P(int16_t, u, 0x113) < 1 || P(int16_t, ORDER(P(int16_t, u, 0x113)), 0xe) == -3) {
+        if (P(int16_t, u, 0x113) > 0) {
+            order_free(P(uint16_t, u, 0x113));
+            P(int16_t, u, 0x113) = 0;
+        }
+        if (P(int16_t, u, 0x6c) == P(int16_t, u, U_X) && P(int16_t, u, 0x6e) == P(int16_t, u, U_Y)) {
+            unit_set_anim(id, 0, 1, 0);
+        } else {
+            switch (P(uint8_t, u, U_ACTION)) {
+            case 1: case 4: case 6: case 0xe: case 0x10:
+                unit_set_anim(id, 0x11, 1, 0);
+                break;
+            case 2: case 3: case 5: case 0xd: case 0xf:
+                unit_set_anim(id, 0x12, 1, 0);
+                break;
+            case 0x17:
+                unit_set_anim(id, 0x1a, 1, 0);
+                break;
+            case 0x18:
+                unit_set_anim(id, 0x19, 1, 0);
+                break;
+            case 0x20: case 0x21: case 0x4c:
+                unit_set_anim(id, 0x4c, 1, 0);
+                break;
+            default: /* and 0x13, 0x14 */
+                unit_set_anim(id, 0, 1, 0);
+                break;
+            }
+        }
+        P(uint32_t, u, U_FLAGS2) |= 0x8000000;
+        return 0;
+    }
+    int16_t cur = P(int16_t, u, 0x113);
+    int16_t next = P(int16_t, ORDER(cur), 0xe);
+    if (next == -1 || next == -2 || next < 1)
+        return 0;
+    if (set) {
+        P(int16_t, u, 0x68) = P(int16_t, ORDER(cur), 4);
+        P(int16_t, u, 0x6a) = P(int16_t, ORDER(cur), 6);
+    }
+    P(int16_t, u, 0x113) = next;
+    order_free((uint16_t)cur);
+    if (set) {
+        P(int16_t, u, 0x6c) = P(int16_t, ORDER(next), 4);
+        P(int16_t, u, 0x6e) = P(int16_t, ORDER(next), 6);
+        P(uint8_t, u, 0x7a) = P(uint8_t, ORDER(next), 9);
+        P(uint32_t, u, 0x149) = P(uint32_t, ORDER(next), 0);
+        uint8_t *v = iso_unit((int)(id & 0xffff));
+        debug_printf(0, (const char *)ORIG_PTR(0x10136580), id, P(int16_t, v, 0x6c), P(int16_t, v, 0x6e),
+                     P(uint8_t, v, 0x7a), P(int16_t, v, U_X), P(int16_t, v, U_Y), P(uint8_t, v, 0x79));
+        debug_printf(4, (const char *)ORIG_PTR(0x101365c0), id, P(int16_t, u, 0x6c), P(int16_t, u, 0x6e),
+                     P(uint8_t, u, 0x7a));
+        uint32_t tmp, out;
+        uint32_t anim = path_turn(id, P(char, u, U_ACTION), P(int16_t, u, 0x113), P(uint8_t, u, 0x79),
+                                  P(uint8_t, u, 0x7a), u + 0x7b, P(uint8_t, u, 0x79) != P(uint8_t, u, 0x7a), &tmp,
+                                  &out);
+        unit_set_anim(id, anim, 1, 0);
+        P(uint32_t, u, U_FLAGS2) = (P(uint32_t, u, U_FLAGS2) & 0xbfffffff) | (out & 1) << 0x1e;
+        if (I(int, 0x175) && P(uint8_t, u, U_PLAYER) == I(uint32_t, 0x1b65))
+            unit_path_send(id & 0xffff);
+    }
+    return 1;
+}
+
+/* 0x10030d7d: the action that follows a finished one, by the facing still to turn
+ * (0x79 now, 0x7a wanted): a turn on the spot (0x13/0x14 or 0xd-0x10) or standing,
+ * walking, kneeling */
+void __cdecl unit_action_done(uint32_t id)
+{
+    uint8_t *u = iso_unit((int)(id & 0xffff));
+    if (!u)
+        return;
+    uint8_t now = P(uint8_t, u, 0x79);
+    int big = now > 2 && now < 6 && P(int8_t, P(uint8_t *, u, 0x15f), 0x346); /* turning the long way */
+    int way = TURN_WAY(iso_unit((int)(id & 0xffff)));
+    int none = TURN_NONE(iso_unit((int)(id & 0xffff)));
+    int dir = TURN_DIR(iso_unit((int)(id & 0xffff)));
+    uint8_t a = P(uint8_t, u, U_ACTION);
+    if (P(uint8_t, u, 0x7a) == now) {
+        switch (a) {
+        case 0: case 0x11: case 0x12: case 0x13: case 0x14: case 0x1b: case 0x1f: case 0x26: case 0x47: case 0x48:
+            action_set(id, P(int16_t, u, 0x113) < 1 ? 0 : 1);
+            break;
+        case 1: action_set(id, 5); break;
+        case 2: action_set(id, 6); break;
+        case 3: action_set(id, 4); break;
+        case 4: action_set(id, 3); break;
+        case 5: action_set(id, 6); break;
+        case 6: action_set(id, 5); break;
+        case 0xd: case 0xe: case 0xf: case 0x10:
+            P(uint8_t, u, U_ACTION) = P(uint8_t, u, U_NEXT);
+            break;
+        }
+    } else {
+        switch (a) {
+        case 0: case 0x11: case 0x12: case 0x13: case 0x14: case 0x1b: case 0x1f: case 0x26: case 0x40: case 0x44:
+        case 0x47: case 0x48:
+            if (big)
+                action_set(id, (uint8_t)((way > 0) + 0x13));
+            else
+                action_set(id, (uint8_t)((way < 1) + 0x13));
+            if (((P(int32_t, u, U_ID_TYPE) > 0x17 && P(int32_t, u, U_ID_TYPE) < 0x28) || P(int32_t, u, 0x10) == 8) &&
+                now == 2 && dir == 3)
+                action_set(id, 0x14);
+            if (I(uint8_t, 0xeea) & 1)
+                debug_log(4, (const char *)ORIG_PTR(0x101365e8), P(uint8_t, u, U_ACTION));
+            unit_face(u, 1);
+            P(uint32_t, u, U_FLAGS2) |= 0x40000000;
+            break;
+        case 1: case 2: case 3: case 4: case 5: case 6: case 0xd: case 0xe: case 0xf: case 0x10:
+            if (!none) {
+                switch (a) {
+                case 1: case 3: case 5:
+                    if (way > 0)
+                        action_set(id, big ? 0xe : 0x10);
+                    else
+                        action_set(id, big ? 0x10 : 0xe);
+                    P(uint32_t, u, U_FLAGS2) |= 0x40000000;
+                    break;
+                case 2: case 4: case 6:
+                    if (way > 0)
+                        action_set(id, big ? 0xd : 0xf);
+                    else
+                        action_set(id, big ? 0xf : 0xd);
+                    P(uint32_t, u, U_FLAGS2) |= 0x40000000;
+                    break;
+                }
+                unit_face(u, 1);
+            } else if (a == 3 || a == 5 || a == 2) {
+                action_set(id, 0x12);
+            } else {
+                action_set(id, 0x11);
+            }
+            break;
+        }
+    }
+    if (I(uint8_t, 0xeea) & 1)
+        debug_log(4, (const char *)ORIG_PTR(0x101365f8));
+    unit_face(u, 1);
+    P(uint8_t, u, U_STATE) = 1;
 }
 
 /* 0x1002e8e0 */
