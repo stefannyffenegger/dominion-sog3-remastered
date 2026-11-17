@@ -25,6 +25,10 @@
 #define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 #define show_text ORIG(void(__cdecl *)(const char *, int), 0x1005878b)
 #define game_over_cb ORIG_PTR(0x100562c2)
+#define IsoFindUnit ORIG(int32_t(__stdcall *)(uint8_t *, int32_t, int32_t), 0x100a9ec9)
+#define ai_player_race ORIG(void(__cdecl *)(int, uint8_t), 0x100e2bf6)
+#define ai_player_computer ORIG(void(__cdecl *)(uint32_t, uint8_t, int32_t, int), 0x100e2c82)
+#define ai_player_reset ORIG(void(__cdecl *)(int, int), 0x100e2a64)
 #define timer_set ORIG(void(__cdecl *)(int, int32_t, int32_t, void *, void *), 0x1002de13)
 
 #define S(addr) ((const char *)ORIG_PTR(addr))
@@ -347,6 +351,139 @@ static int play_wave(uint8_t *r)
     return 1;
 }
 
+#define PL(p, off) I(int32_t, (off) + (p) * ISO_PLAYER_SIZE)
+#define PLB(p, off) I(uint8_t, (off) + (p) * ISO_PLAYER_SIZE)
+
+/* subtype 120: SET_OBJECTIVE type, x, y (the unit there), a, b */
+static int set_objective(uint8_t *r)
+{
+    DebugStr(S(0x1013577c));
+    int32_t type = V(r, 1), a = V(r, 4), b = V(r, 5);
+    int32_t id = IsoFindUnit(g_iso, V(r, 2), V(r, 3));
+    if (id < 1 || P(int32_t, iso_unit(id), U_ID_TYPE) != type) {
+        wsprintfA(TEXT_BUF, S(0x101357a4), id, designer(0x10135790));
+        return bad();
+    }
+    P(uint8_t, iso_unit(id), 0x2b) = (uint8_t)a;
+    P(uint8_t, iso_unit(id), 0x2c) = (uint8_t)b;
+    return 1;
+}
+
+/* subtype 140: SET_COMPUTER_PLAYER player [, posture] */
+static int set_computer_player(uint8_t *r)
+{
+    DebugStr(S(0x101357f0));
+    int32_t p = V(r, 0);
+    int32_t posture = P(int16_t, r, 8) < 2 ? 0 : V(r, 1);
+    if (!I(int, 0x175)) {
+        if (p < 0 || p > 7) {
+            wsprintfA(TEXT_BUF, S(0x10135820), p, designer(0x1013580c));
+            return bad();
+        }
+        PL(p, 0x1b69) = 2;
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            ai_player_computer((uint32_t)p, PLB(p, 0x1b9f), posture, -1);
+    }
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        *I(uint8_t *, 0x2dfd + p * ISO_PLAYER_SIZE) = (uint8_t)posture;
+    return 1;
+}
+
+/* subtype 150: SET_PLAYER_RACE player, race (0 Human, 1 Darken, 2 Scorp, 3 Merc): also
+ * the player's name ("Human (AI)" for a computer player) */
+static int set_player_race(uint8_t *r)
+{
+    static const uint32_t ai_names[5] = {0x101358a0, 0x101358ac, 0x101358b8, 0x101358c4, 0x101358d0};
+    static const uint32_t names[5] = {0x10135878, 0x10135880, 0x10135888, 0x10135890, 0x10135898};
+    DebugStr(S(0x10135860));
+    int32_t p = V(r, 0), race = V(r, 1);
+    if (p < 0 || p >= 8)
+        return 1;
+    int k = race >= 0 && race <= 3 ? race : 4;
+    char *name = (char *)(g_iso + 0x1b6d + p * ISO_PLAYER_SIZE);
+    if (PL(p, 0x1b69) == 2) {
+        lstrcpyA(name, S(ai_names[k]));
+    } else {
+        PL(p, 0x1b69) = 1;
+        if (!I(int, 0x175))
+            lstrcpyA(name, S(names[k]));
+    }
+    PLB(p, 0x1ba0) = 0;
+    PLB(p, 0x1ba0) |= (uint8_t)(1 << (p & 0x1f)); /* allied with itself */
+    PLB(p, 0x1b9f) = (uint8_t)(race >= 0 && race < 4 ? race : 0);
+    if (I(int32_t, ISO_HAVE_SPRITES))
+        ai_player_race(p, PLB(p, 0x1b9f));
+    return 1;
+}
+
+/* subtype 170: SET_MAX_PLAYERS n */
+static int set_max_players(uint8_t *r)
+{
+    DebugStr(S(0x101358f8));
+    if (I(int32_t, ISO_HAVE_SPRITES) && !I(int, 0x175)) {
+        I(int32_t, 0x1b1f) = V(r, 0);
+        I(int32_t, 0x1b1b) = I(int32_t, 0x1b1f);
+        for (int p = 0; p < I(int32_t, 0x1b1b); p++)
+            ai_player_reset(p, 0);
+        DebugStr(S(0x10135910), I(int32_t, 0x1b1b));
+    }
+    return 1;
+}
+
+/* subtype 180: SET_MEN_MATERIAL player, how (0 set, 1 none, 2 add), men, material
+ * [, men and material at difficulty 1, at difficulty 2] */
+static int set_men_material(uint8_t *r)
+{
+    DebugStr(S(0x10135954));
+    int32_t p = V(r, 0), how = V(r, 1), men = V(r, 2), mat = V(r, 3);
+    int16_t n = P(int16_t, r, 8);
+    if (!I(int32_t, ISO_HAVE_SPRITES)) {
+        I(int32_t, 0xd9e6 + p * 4) = men;
+        I(int32_t, 0xda46 + p * 4) = mat;
+        I(int32_t, 0xda06 + p * 4) = n == 8 ? V(r, 4) : men;
+        I(int32_t, 0xda66 + p * 4) = n == 8 ? V(r, 5) : mat;
+        I(int32_t, 0xda26 + p * 4) = n == 8 ? V(r, 6) : men;
+        I(int32_t, 0xda86 + p * 4) = n == 8 ? V(r, 7) : mat;
+    }
+    if ((how == 0 || how == 2) && n > 4) {
+        if (n < 8) {
+            wsprintfA(TEXT_BUF, S(0x10135980), designer(0x1013596c));
+            return bad();
+        }
+        if (I(uint8_t, 0x106a) == 1) {
+            men = V(r, 4);
+            mat = V(r, 5);
+        } else if (I(uint8_t, 0x106a) == 2) {
+            men = V(r, 6);
+            mat = V(r, 7);
+        }
+    }
+    if (how == 0) {
+        PL(p, 0x1b97) = men;
+        PL(p, 0x1b9b) = mat;
+    } else if (how == 1) {
+        PL(p, 0x1b97) = 0;
+        PL(p, 0x1b9b) = 0;
+    } else if (how == 2) {
+        PL(p, 0x1b97) += men;
+        PL(p, 0x1b9b) += mat;
+    }
+    if (I(int32_t, 0x17f5) == 4)
+        I(uint8_t, 0xd696) = 1;
+    return 1;
+}
+
+/* subtype 200: SET_DEBUG_LEVEL bits... */
+static int set_debug_level(uint8_t *r)
+{
+    DebugStr(S(0x10135a94));
+    I(uint32_t, 0xeea) = 0;
+    for (int k = 0; k < P(int16_t, r, 8); k++)
+        I(uint32_t, 0xeea) |= (uint32_t)V(r, k);
+    DebugStr(S(0x10135aac), I(uint32_t, 0xeea));
+    return 1;
+}
+
 /* 0x10028603: record `i`; 0 when it is bad (a message box has said why) */
 int __cdecl sdl_exec(uint32_t i)
 {
@@ -383,6 +520,29 @@ int __cdecl sdl_exec(uint32_t i)
         return 1;
     case 110:
         return play_wave(r);
+    case 120:
+        return set_objective(r);
+    case 140:
+        return set_computer_player(r);
+    case 150:
+        return set_player_race(r);
+    case 160: { /* SET_PLAYER_COLOR player, colour (0-8) */
+        DebugStr(S(0x101358e0));
+        int32_t c = V(r, 1);
+        I(int32_t, 0x1ba2 + V(r, 0) * ISO_PLAYER_SIZE) = c < 0 || c > 8 ? 0 : c;
+        return 1;
+    }
+    case 170:
+        return set_max_players(r);
+    case 180:
+        return set_men_material(r);
+    case 190: /* SET_NEXT_SCENARIO name */
+        DebugStr(S(0x10135a68));
+        DebugStr(S(0x10135a80), r + 10);
+        I(uint8_t *, 0x1928) = r + 10;
+        return 1;
+    case 200:
+        return set_debug_level(r);
     case 130:
         DebugStr(S(0x10135928), I(int32_t, 0x17dd) + 0x40);
         show_text((const char *)r + 10, 0);
