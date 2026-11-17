@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 289 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 294 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,11 +553,12 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 44)
-* **Next part:** 45, from 0x100313e0. Parts go on in address order.
+### Open items (as of part 45)
+* **Next part:** 46, the live functions from 0x100443d3 on (0x10045c72, `IsoInitSDLShowText`, `IsoGetWXPInvalid`, `IsoInitCRCCheck`, `IsoDebugScriptMessageProc`, `IsoInitNetworkSprites`, ...). Parts go on in address order.
+* **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
 * **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
 * **Left original until the editor question is answered** (no test can reach them): the editor's saving, 0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603 (writing the description as text) and 0x1002cbfa with `IsoSaveSDCFile` (writing compiled `.sdc` files).
-* **The two-player chat test** (`tests/game/chat.sh`): either player's screenshot often comes out as garbage, also with the original. A more reliable check is needed, for example a two-player state log or reading the chat lines from the game's state.
+* **The two-player chat test** (`tests/game/chat.sh`): either player's screenshot often comes out as garbage, also with the original. A more reliable check is needed, for example a two-player state log or reading the chat lines from the game's state. In part 45 the first shots were garbage in three runs in a row, including one with the changed functions kept original; the later shots showed both players in the match.
 * **Coverage:** the code no test reaches is listed in `TESTING.md` section 4.
 
 ### Checking the game logic: the unit state log
@@ -783,3 +784,7 @@ The second variant of a unit's action each tick, a sibling of `unit_action_tick`
 * **`unit_path_next`:** moves the unit on to its next path point, using the order records at I(0x1984). The next record is at +0xe; -1, -2, -3 and 0 end the path, and then the unit stops with the fitting animation. With `set`, it also takes the point's position (+4/+6), facing (+9) and waiting time (+0), turns towards the point and, in multiplayer, sends the new path for the local player's units.
 * **`unit_action_done`:** chooses the action that follows a finished one in `unit_action_tick2`. When there is still turning to do, it picks a turn on the spot (0x13/0x14, or 0xd-0x10 when the animation record allows the long way round).
 * Checked: the trace shows the unit state log run reaches both. Unit state log at 950 and 950, the full range two original runs share. Human mission 1 and Alt+F4 also checked.
+
+### Part 45: the network flags (`netflags.c`, 5 functions)
+From the network code (from 0x100313e0 on), only the parts every game runs: `net_delay` (0x1003f390: the two counters 0xd857 + 0xd86b, read under the network lock while the network thread runs; the due tick for a path point sent to the others) and `IsoSetServerFlag`, `IsoGetServerFlag`, `IsoSetNetworkPlay`, `IsoGetNetworkPlay` (stdcall). The rest of that range is left original for now (see Open items).
+* Checked: unit state log (847), Human mission 1, Alt+F4, and a two-player match (`tests/game/chat.sh`: both players in the match; the chat shots came out as garbage, the same as with these functions original).

@@ -41,5 +41,6 @@
 #include "sdcget.h"
 #include "events.h"
 #include "step.h"
+#include "netflags.h"
 
 #endif
