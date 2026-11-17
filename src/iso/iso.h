@@ -42,5 +42,6 @@
 #include "events.h"
 #include "step.h"
 #include "netflags.h"
+#include "terrain.h"
 
 #endif

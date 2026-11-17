@@ -106,7 +106,7 @@ void __cdecl energywall_link(int x1, int y1, int x2, int y2)
 }
 
 #define g_strlen ORIG(size_t(__cdecl *)(const char *), 0x100f5750)
-#define sdl_start ORIG(void(__stdcall *)(uint8_t *), 0x10048270)
+#define ta_run ORIG(void(__stdcall *)(uint8_t *), 0x10048270) /* the terrain analysis */
 #define g_brief_lines G(uint8_t, 0x101347c8) /* briefing lines still to collect */
 
 /* 0x1002cf1c: loads compiled scenario description `file` (in folder `dir`): a 0x18-byte
@@ -184,7 +184,7 @@ int __cdecl sdc_load(char *file, char *dir, int run)
     if (run && I(int32_t, ISO_HAVE_SPRITES) && !G(int32_t, 0x10139e68)) {
         if (I(int, 0x175) && !I(int32_t, 0x138))
             return 1;
-        sdl_start(g_iso);
+        ta_run(g_iso);
     }
     return 1;
 }

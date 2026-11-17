@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 300 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 310 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,9 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 46)
-* **Next part:** 47, the live functions from 0x10047322 on. Parts go on in address order.
+### Open items (as of part 47)
+* **Next part:** 48, from 0x1004b181. Parts go on in address order.
+* **The AI's terrain analysis, 0x10048270-0x1004b181** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. A skirmish or random-map game might reach it; check with a trace before porting it.
 * **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
 * **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
 * **Left original until the editor question is answered** (no test can reach them): the editor's saving, 0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603 (writing the description as text) and 0x1002cbfa with `IsoSaveSDCFile` (writing compiled `.sdc` files).
@@ -794,3 +795,7 @@ From the network code (from 0x100313e0 on), only the parts every game runs: `net
 * **`IsoInitCRCCheck`:** the CRC32 (WAVEPLAY's ordinal 48, `calc_crc32`) of five tile and mask libraries, which the players compare before a network game.
 * **Small ones:** `IsoInitSDLShowText`, `IsoGetWXPInvalid`, `IsoDebugScriptMessageProc`, `IsoInitNetworkSprites`.
 * Checked: unit state log (867), menu tour, Human mission 1, Alt+F4. Also a two-player match: the host shows both chat lines, the joiner's first shot came out as garbage (as often), and both later shots show the match.
+
+### Part 47: the terrain analysis' set-up and the scenario's AOAs and key terrain (`terrain.c`, 10 functions)
+The AI's terrain analysis (0x10048270-0x1004b181) finds corridors, key terrain ("KT"), areas of approach ("AOA") and base locations on the sector grid. The shipped missions give their AOAs and key terrain as scenario records instead (`sdl_exec` hands them to `sdl_aoa` 0x1004b03a and `sdl_kt` 0x1004b119). Ported: those two; the set-up and teardown (`ta_init`: the corridor width and nearness limits from the grid size; `ta_free`; and 0x10049720, which clears a 0x800-byte table and which Ghidra misnamed `AfxResetMsgCache`); AOAs (`aoa_new`, `aoa_add_sector`, `aoa_free`); and key terrain (`kt_add`, which does nothing when one of the same type lies within `ta_near` sectors, and `kt_find`). The analysis' state stays in the original's data (0x10139e60-0x10139e84), and its lists use the original's list library (0x100c9cf0-0x100ca30a).
+* Checked: the trace shows the unit state log run reaches all of them except `ta_run`. Unit state log at 952/953, the full range. Human mission 1 and Alt+F4 also checked.

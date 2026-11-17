@@ -28,7 +28,7 @@
 #define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
 #define sdl_record_check sdl_exec
 #define sdl_load_client sdc_load
-#define sdl_start ORIG(void(__stdcall *)(uint8_t *), 0x10048270)
+#define ta_run ORIG(void(__stdcall *)(uint8_t *), 0x10048270) /* the terrain analysis */
 
 #define ISO_RECORDS 0xc2e5   /* the records: +0 type, +4 subtype, +8 short count, +10 values */
 #define ISO_RECORD_COUNT 0xc2e9
@@ -273,7 +273,7 @@ int __cdecl sdl_load(char *file, char *dir, int check)
     if (check && I(int32_t, ISO_HAVE_SPRITES) && !G(int32_t, 0x10139e68)) {
         if (I(int, 0x175) && !I(int32_t, 0x138))
             return 1;
-        sdl_start(g_iso);
+        ta_run(g_iso);
     }
     if (!I(int32_t, ISO_HAVE_SPRITES))
         I(int32_t, 0xdaae) = 0;

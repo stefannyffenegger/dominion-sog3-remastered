@@ -3,6 +3,7 @@
  * main records (subtype 0: timers, hot spots, mission info) and the game settings,
  * units, objects, AI and events (by subtype). */
 #include "iso_core.h"
+#include "terrain.h"
 #include "scenario.h"
 #include "sdlexec.h"
 #include "sdcget.h"
@@ -31,8 +32,6 @@
 #define ai_player_computer ORIG(void(__cdecl *)(uint32_t, uint8_t, int32_t, int), 0x100e2c82)
 #define ai_player_reset ORIG(void(__cdecl *)(int, int), 0x100e2a64)
 #define ai_init_record ORIG(void(__cdecl *)(int, ...), 0x100e1073)
-#define sdl_4b03a ORIG(void(__cdecl *)(uint8_t *), 0x1004b03a)
-#define sdl_4b119 ORIG(void(__cdecl *)(uint8_t *), 0x1004b119)
 #define unit_by_place ORIG(int32_t(__stdcall *)(uint8_t *, int32_t, int32_t), 0x10028549)
 #define unit_convoy ORIG(void(__cdecl *)(int32_t, int32_t *, int32_t), 0x10076787)
 #define unit_follow ORIG(void(__cdecl *)(int32_t, int32_t, int), 0x10075f93)
@@ -884,11 +883,11 @@ int __cdecl sdl_exec(uint32_t i)
         return 1;
     case 280:
         if (I(int32_t, ISO_HAVE_SPRITES))
-            sdl_4b03a(r);
+            sdl_aoa(r); /* an area of approach */
         return 1;
     case 290:
         if (I(int32_t, ISO_HAVE_SPRITES))
-            sdl_4b119(r);
+            sdl_kt(r); /* key terrain */
         return 1;
     case 300:
         return def_group(r);
