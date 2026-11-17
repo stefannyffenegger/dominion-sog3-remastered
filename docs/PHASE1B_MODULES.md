@@ -738,3 +738,6 @@ Six more AI script commands (an AI player's group leader of type 0x14 or 0x19, a
 * All C runtime calls are the original's (the files are the original runtime's FILE objects, and `strtok` keeps its state there).
 * Original quirks kept: the record before the first is read for a text line's type; an empty line takes no record; in the editor the AI temp file is closed again on every line of the second pass.
 * Checked: the unit state log (980; mission 1's description parsed alike), Human mission 1 (the objectives on the pause screen come from it), menu tour, the two-player chat run (both players in the match), Alt+F4.
+
+### Left for later: the map editor's saving (0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603)
+Saving a map from the editor: the map file (`IsoSaveScenario`) and its scenario description, written as text (build info, briefing, players with race, colour, tech level and resources, terrain analysis, energy wells, the units grouped into bases and groups; 0x10026aac with a sort comparison 0x10028308 and 0x10028549). Nothing in the tests can reach the editor, so these stay original until it is known whether the editor can still be started (see `HIDDEN_AND_UNUSED.md`).
