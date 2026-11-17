@@ -33,5 +33,6 @@
 #include "createmap.h"
 #include "scenario.h"
 #include "maptiles.h"
+#include "filelist.h"
 
 #endif
