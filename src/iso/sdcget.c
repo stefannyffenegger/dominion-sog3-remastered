@@ -203,3 +203,39 @@ int __cdecl IsoLoadSDCFile(uint8_t *iso, uint32_t file_id, uint32_t dir_id, int 
     DebugStr((const char *)ORIG_PTR(0x10136390), file);
     return sdc_load(file, dir, run);
 }
+
+/* 0x1002e6f7: looks through the description for records of type `type` until the one of
+ * subtype `want`: SET_PLAYER_RACE (0x28/0x96: player 0's race is returned), the next
+ * scenario (0x28/0xbe) and the cinematics (0x46, the first such record). -1 when no
+ * race was found. */
+int32_t __cdecl IsoProcessSDCRecord(uint8_t *iso, int32_t type, int32_t want)
+{
+    int32_t race = -1;
+    int done = 0;
+    g_iso = iso;
+    for (int i = 0; i < (int)I(uint16_t, 0xc2e9) && !done; i++) {
+        uint8_t *r = I(uint8_t *, 0xc2e5) + i * 0x5a;
+        int32_t sub = P(int32_t, r, 4);
+        if (P(int32_t, r, 0) != type)
+            continue;
+        if (type == 0x28) {
+            if (sub == 0x96) {
+                if (!P(int32_t, r, 10)) {
+                    race = P(int32_t, r, 0xe);
+                    if (want == 0x96)
+                        done = 1;
+                }
+            } else if (sub == 0xbe) {
+                I(uint8_t *, 0x1928) = r + 10;
+                if (want == 0xbe)
+                    done = 1;
+            }
+        } else if (type == 0x46) {
+            I(uint8_t *, 0x1908) = r + 10;
+            I(uint8_t *, 0x190c) = r + 0x1e;
+            I(uint8_t *, 0x1910) = r + 0x32;
+            done = 1;
+        }
+    }
+    return race;
+}

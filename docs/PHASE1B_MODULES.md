@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 285 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 286 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 41)
-* **Next part:** 42, from 0x1002e6f7 (`IsoProcessSDCRecord`). Parts go on in address order.
+### Open items (as of part 42)
+* **Next part:** 43, from 0x1002e8e0 (a 7.8 KB function, live). Parts go on in address order.
 * **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
 * **Left original until the editor question is answered** (no test can reach them): the editor's saving, 0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603 (writing the description as text) and 0x1002cbfa with `IsoSaveSDCFile` (writing compiled `.sdc` files).
 * **The two-player chat test** (`tests/game/chat.sh`): either player's screenshot often comes out as garbage, also with the original. A more reliable check is needed, for example a two-player state log or reading the chat lines from the game's state.
@@ -770,3 +770,7 @@ For the scripts: a briefing line, the briefing's wave, a cinematic (appended to 
 The mission's events: timers (32 slots of 0x1a bytes, kept sorted by time with the original's `qsort`; a due timer runs its callback, such as the end of the game or units leaving a destroyed building, or the records after its `TIMER_EVENT` record, with the AI players held meanwhile, and is set again when it repeats), hot spots (a unit entering a flagged sector runs the records after the first matching `HOTSPOT_EVENT` record, clearing its sectors when it fires once), event counters (type 0x1e records counting down, for example when a group's leader dies), enabling and disabling timers, destroying the units of an objective, and the map information of `.sdc` files for the menus (`IsoGetSDCInfo`). The records "after" an event are those up to the next record of the same type and subtype.
 * Original quirks kept: a repeating callback timer is set again with its arguments read from its slot after the slots were cleared and sorted; `IsoGetSDCInfo` returns the stack's contents as the map information when a multiplayer client lacks the file.
 * Checked: the unit state log (867, with an all-original run at the same time at 847; a trace shows the event counter and the timers running in its fight), Human mission 1, Alt+F4.
+
+### Part 42: `IsoProcessSDCRecord` (`sdcget.c`, 1 function, 0x1002e6f7)
+For the menus: looks through the description's records of a type for player 0's race, the next scenario or the cinematics.
+* Checked: the unit state log (858, with an all-original run at the same time at 656: the machine had just started), menu tour, Human mission 1 (normal after the start-up load was over), Alt+F4.
