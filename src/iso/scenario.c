@@ -3,15 +3,13 @@
  * its tiles (from the tile library, or embedded), the objects, and the AI's choke
  * points (versions x.3-x.5). */
 #include "iso_core.h"
+#include "tilelib.h"
 #include "maptiles.h"
 #include "mapedit.h"
 #include "createmap.h"
 #include "scenario.h"
 
 /* not rewritten yet (names ours, provisional) */
-#define scenario_tiles_open ORIG(int(__stdcall *)(char *, void *, int32_t, uint32_t, int), 0x10023657)
-#define scenario_tiles_read ORIG(int(__stdcall *)(uint8_t *, uint32_t, uint32_t, int32_t), 0x10023b04)
-#define scenario_tiles_close ORIG(void(__cdecl *)(void), 0x10023559)
 #define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, int, int, int), 0x100aca6e)
 #define map_reset_view ORIG(void(__cdecl *)(void), 0x10050fc6)
 #define ai_player_setup ORIG(void(__cdecl *)(int32_t), 0x100a783d)
@@ -273,7 +271,7 @@ int __stdcall scenario_load(uint8_t *iso, const char *name, int no_embedded, int
     /* the high halves of two arguments are the header's address, as in the original */
     uint32_t hi = (uint32_t)(uintptr_t)h & 0xffff0000u;
     if (!P(uint32_t, h, 0x5a) || no_embedded) {
-        rc = scenario_tiles_open(lib, 0, 0, 0, 1);
+        rc = tilelib_load(lib, 0, 0, 0, 1);
         DebugStr((const char *)ORIG_PTR(0x101313e4), rc);
     } else {
         I(void *, 0x1974) = winmalloc(P(uint32_t, h, 0x5a), 1);
@@ -282,7 +280,7 @@ int __stdcall scenario_load(uint8_t *iso, const char *name, int no_embedded, int
             got = mmioRead(f, I(HPSTR, 0x1974), P(LONG, h, 0x5a));
         }
         if (!I(void *, 0x1974) || P(LONG, h, 0x5a) != got ||
-            !scenario_tiles_open(lib, I(void *, 0x1974), P(int32_t, h, 0x76), hi | P(uint16_t, h, 0x74), 0)) {
+            !tilelib_load(lib, I(void *, 0x1974), P(int32_t, h, 0x76), hi | P(uint16_t, h, 0x74), 0)) {
             forget_scenario();
             mmioClose(f, 0);
             return -0x5a;
@@ -293,9 +291,9 @@ int __stdcall scenario_load(uint8_t *iso, const char *name, int no_embedded, int
         }
     }
     IsoRescanMap(iso);
-    rc = scenario_tiles_read(iso, hi | P(uint16_t, h, 0x3a), hi | P(uint16_t, h, 0x38), I(int32_t, 0xcda2));
+    rc = tilelib_background(iso, hi | P(uint16_t, h, 0x3a), hi | P(uint16_t, h, 0x38), I(int32_t, 0xcda2));
     if (!rc) {
-        scenario_tiles_close();
+        tilelib_free();
         forget_scenario();
         mmioClose(f, 0);
         return -0x104;

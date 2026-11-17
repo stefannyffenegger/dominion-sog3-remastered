@@ -34,5 +34,6 @@
 #include "scenario.h"
 #include "maptiles.h"
 #include "filelist.h"
+#include "tilelib.h"
 
 #endif

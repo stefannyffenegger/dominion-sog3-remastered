@@ -2,6 +2,7 @@
  * the view's size in cells for the screen width, the map arrays, the tiles (from the
  * scenario's tile library, or the editor's autofill), the path finder and the AI. */
 #include "iso_core.h"
+#include "tilelib.h"
 #include "mapedit.h"
 #include "createmap.h"
 
@@ -10,9 +11,6 @@
 #define log2_of ORIG(int32_t(__stdcall *)(uint32_t), 0x100a78fe)
 #define map_reset_view ORIG(void(__cdecl *)(void), 0x10050fc6)
 #define IsoDeleteAllUnits ORIG(void(__stdcall *)(uint8_t *), 0x100ac51d)
-#define scenario_tiles_open ORIG(int(__stdcall *)(char *, int, int, int, int), 0x10023657)
-#define scenario_tiles_read ORIG(int(__stdcall *)(uint8_t *, uint32_t, uint32_t, int32_t), 0x10023b04)
-#define scenario_tiles_close ORIG(void(__cdecl *)(void), 0x10023559)
 #define pathfinder_init ORIG(int(__cdecl *)(int32_t, int32_t), 0x100c6d50)
 #define ai_init ORIG(int(__cdecl *)(void), 0x100a6e82)
 
@@ -111,7 +109,7 @@ int __stdcall IsoCreateMap(uint8_t *iso, uint32_t w, uint32_t h, int scenario, i
         return -30;
     if (load_tiles) {
         if (from_file) {
-            rc = scenario_tiles_open(name, 0, 0, 0, 1);
+            rc = tilelib_load(name, 0, 0, 0, 1);
             DebugStr((const char *)ORIG_PTR(0x101311f8), rc);
         }
         if (!rc) {
@@ -122,9 +120,9 @@ int __stdcall IsoCreateMap(uint8_t *iso, uint32_t w, uint32_t h, int scenario, i
     if (autofill)
         IsoAutofillMap(iso, (int)w, (int)h, scenario, fill_first, fill_count, 0);
     if (load_tiles && from_file) {
-        rc = scenario_tiles_read(iso, w, h, I(int32_t, 0xcda2));
+        rc = tilelib_background(iso, w, h, I(int32_t, 0xcda2));
         if (!rc) {
-            scenario_tiles_close();
+            tilelib_free();
             if (I(void *, 0x1974)) {
                 winfree(I(void *, 0x1974));
                 I(void *, 0x1974) = NULL;
