@@ -105,3 +105,86 @@ int __stdcall IsoSetTileSet(uint8_t *iso, int16_t tile, int x, int y)
     P(int16_t *, I(uint8_t *, 0x1960), 8)[(y << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + x] = tile;
     return 1;
 }
+
+#define cell_has_unit ORIG(int(__cdecl *)(uint32_t), 0x100672b3)
+
+/* 0x10021c65: the tile background's view of the map: in the game only flags (0xeeb bit
+ * 0x40: show blocking, 0x80: the local player's view); in the editor (or without
+ * sprites) the cells' tiles, with debug colours for marks */
+int __stdcall IsoResetTileSet(uint8_t *iso)
+{
+    g_iso = iso;
+    uint32_t n = (uint32_t)(I(int32_t, ISO_MAP_H) * I(int32_t, ISO_MAP_W));
+    if (!I(int32_t, 0x10c) && I(int32_t, ISO_HAVE_SPRITES)) {
+        P(uint32_t, I(uint8_t *, 0x1960), 0x30) = 0;
+        P(uint32_t, I(uint8_t *, 0x1960), 0x34) = 0;
+        P(uint32_t, I(uint8_t *, 0x1960), 0x38) = 0;
+        if (I(uint8_t, 0xeeb) & 0x40) {
+            P(uint32_t, I(uint8_t *, 0x1960), 0x30) |= 1;
+            P(uint32_t, I(uint8_t *, 0x1960), 0x38) = 1;
+        } else if (I(uint8_t, 0xeeb) & 0x80) {
+            P(uint32_t, I(uint8_t *, 0x1960), 0x30) |= 2;
+            P(uint32_t, I(uint8_t *, 0x1960), 0x34) |= 1u << ((I(uint32_t, ISO_LOCAL_PLAYER) + 0x10) & 0x1f);
+        }
+        return 1;
+    }
+    for (uint32_t i = 0; i < n; i++) {
+        int16_t *t = &P(int16_t *, I(uint8_t *, 0x1960), 8)[i];
+        uint32_t m = I(uint32_t *, ISO_MAP)[i];
+        *t = (int16_t)(m & 0x7fff);
+        if ((I(uint8_t, 0xeeb) & 0x80) && (uint8_t)(m >> 16))
+            *t = 2;
+        if (I(uint8_t, 0xeeb) & 0x40) {
+            uint32_t o = I(uint32_t *, ISO_OBJ_MAP)[i];
+            if ((o & 1) || (o & 2))
+                *t = 3;
+            if ((o & 4) || (o & 8) || ((o >> 16) & 0xfff))
+                *t = 1;
+            if ((o >> 4) & 0xf)
+                *t = 2;
+            if ((o >> 8) & 0xf)
+                *t = 99;
+            if (o & 8)
+                *t = 4;
+            if (o & (1u << 0x1c))
+                *t = 5;
+            if (o & 0x8000)
+                *t = 5;
+            if ((int16_t)cell_has_unit(i) > 0)
+                *t = 0;
+        }
+    }
+    return 1;
+}
+
+/* 0x1002200c: the object map's word of cell (x, y) (0 off the map); a debug option
+ * (0xeea bit 1) marks the cell on the screen */
+uint32_t __stdcall IsoGetObstruction(uint8_t *iso, int x, int y)
+{
+    uint32_t v = 0;
+    g_iso = iso;
+    if (I(uint8_t, 0xeea) & 1) {
+        IsoSetTileSet(iso, 1, x, y);
+        IsoRefreshScreen(iso);
+    }
+    if (!I(void *, ISO_OBJ_MAP) || x < 0 || x > I(int32_t, ISO_MAP_W) || y < 0 || y > I(int32_t, ISO_MAP_H))
+        return 0;
+    memcpy(&v, &I(uint32_t *, ISO_OBJ_MAP)[(y << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + x], 4);
+    return v;
+}
+
+/* 0x100220ed: cell (x, y) blocks (`on`) or not */
+int __stdcall IsoSetObstruction(uint8_t *iso, int on, int x, int y)
+{
+    g_iso = iso;
+    if (!I(void *, ISO_OBJ_MAP) || x < 0 || x > I(int32_t, ISO_MAP_W) || y < 0 || y > I(int32_t, ISO_MAP_H))
+        return 0;
+    uint32_t *o = &I(uint32_t *, ISO_OBJ_MAP)[(y << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + x];
+    if (!on) {
+        *o &= ~1u;
+        *o &= ~2u;
+    } else {
+        *o |= 1;
+    }
+    return 1;
+}

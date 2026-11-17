@@ -12,4 +12,8 @@ int32_t __stdcall IsoGetTile(uint8_t *iso, int x, int y);
 int __stdcall IsoSetTile(uint8_t *iso, uint32_t tile, int x, int y);
 int __stdcall IsoSetTileSet(uint8_t *iso, int16_t tile, int x, int y);
 
+int __stdcall IsoResetTileSet(uint8_t *iso);
+uint32_t __stdcall IsoGetObstruction(uint8_t *iso, int x, int y);
+int __stdcall IsoSetObstruction(uint8_t *iso, int on, int x, int y);
+
 #endif

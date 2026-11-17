@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 213 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 216 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -699,3 +699,7 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 `IsoRescanMap` (run by the scenario loader: clears the cells' top byte and marks which cells block, the edge and cells of blocking tiles), `IsoGetTile`, `IsoSetTile` and `IsoSetTileSet` (only in the editor or without sprites; otherwise they return 1 and do nothing), `IsoSetTileLib`, clearing the object map's marks, and `IsoMessageBox`.
 * Original quirk kept: the cell checks allow x equal to the map width and y equal to its height (one past the end).
 * Checked: the unit state log (980/990), Human mission 1, Alt+F4.
+
+### Part 29: the tile background's view, obstructions (`maptiles.c`, 3 functions, 0x10021c65-0x100221d9)
+`IsoResetTileSet` (in the game it only sets the tile background's flags: show blocking cells, or the local player's view; in the editor it fills the background with the cells' tiles and, as debug colours, their marks), `IsoGetObstruction` and `IsoSetObstruction` (a cell's object-map word; whether it blocks).
+* Checked: the unit state log (950), Human mission 1, Alt+F4.
