@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 272 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 274 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -754,3 +754,7 @@ The executor (16.7 KB) carries out one record of the scenario description; `IsoL
 ### Part 39: the description's getters, energy wall links (`sdcget.c`, 5 functions, 0x1002c74e-0x1002cbfa)
 For the scripts: a briefing line, the briefing's wave, a cinematic (appended to a variable) and the next scenario's name; and linking two energy wall towers by their places (the `ENERGYWALL_LINK` record: the towers must be aligned and the line free; both towers' power is checked first). The first three run in mission 1 (briefing).
 * Checked: the unit state log (867), Human mission 1 (briefing and pause screens), Alt+F4.
+
+### Part 40: loading the compiled scenario description (`sdcget.c`, 2 functions, 0x1002cf1c-0x1002d589)
+`IsoLoadSDCFile` and its loader, run for every mission: the `.sdc` file (a 0x18-byte header with the record count, then 0x5a-byte records), read whole; the timers, hot spots and settings records are carried out by the executor of part 38, the lines after the briefing record are collected as the briefing, and the mission is started (0x10048270). A multiplayer client without the host's file reads its text form (part 37) instead. The editor's writing of `.sdc` files (0x1002cbfa, `IsoSaveSDCFile`) stays original with the rest of the editor's saving.
+* Checked: the unit state log (one run equal to an original run to its end, tick 1677), Human mission 1 (4_moved pixel-identical), Alt+F4.

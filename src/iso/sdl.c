@@ -7,6 +7,7 @@
 #include "aiglue.h"
 #include "sdl.h"
 #include "sdlexec.h"
+#include "sdcget.h"
 
 #define g_fopen ORIG(void *(__cdecl *)(const char *, const char *), 0x100f5e30)
 #define g_fclose ORIG(int(__cdecl *)(void *), 0x100f5e60)
@@ -26,7 +27,7 @@
 #define g_memset ORIG(void *(__cdecl *)(void *, int, size_t), 0x100f4c10)
 #define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
 #define sdl_record_check sdl_exec
-#define sdl_load_client ORIG(int(__cdecl *)(char *, char *, int), 0x1002cf1c)
+#define sdl_load_client sdc_load
 #define sdl_start ORIG(void(__stdcall *)(uint8_t *), 0x10048270)
 
 #define ISO_RECORDS 0xc2e5   /* the records: +0 type, +4 subtype, +8 short count, +10 values */
