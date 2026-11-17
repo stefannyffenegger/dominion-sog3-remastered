@@ -4,6 +4,7 @@
  * units, objects, AI and events (by subtype). Ported a part at a time: subtypes not
  * rewritten yet run the original's code through a trampoline. */
 #include "iso_core.h"
+#include "scenario.h"
 #include "sdlexec.h"
 
 #define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
@@ -18,7 +19,13 @@
 #define player_count_type ORIG(void(__cdecl *)(uint32_t, uint8_t), 0x100b1e2c)
 #define unit_set_mode ORIG(void(__cdecl *)(uint32_t, uint8_t), 0x1009ce9f)
 #define wall_link ORIG(void(__cdecl *)(uint32_t, int), 0x100b2953)
-#define timer_set ORIG(void(__cdecl *)(int, int32_t, int32_t, int, void *), 0x1002de13)
+#define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, uint32_t, int, int), 0x100aca6e)
+#define ai_map_loaded ORIG(void(__cdecl *)(void), 0x100e1e80)
+#define player_tech_changed ORIG(void(__cdecl *)(int), 0x1005a67b)
+#define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
+#define show_text ORIG(void(__cdecl *)(const char *, int), 0x1005878b)
+#define game_over_cb ORIG_PTR(0x100562c2)
+#define timer_set ORIG(void(__cdecl *)(int, int32_t, int32_t, void *, void *), 0x1002de13)
 
 #define S(addr) ((const char *)ORIG_PTR(addr))
 #define TEXT_BUF ((char *)(g_iso + 0xdea))
@@ -70,7 +77,7 @@ static int main_record(uint32_t i, uint8_t *r, int32_t type)
                 at = t;
                 period = 0;
             }
-            timer_set(id, at, period, 0, NULL);
+            timer_set(id, at, period, NULL, NULL);
         }
         break;
     }
@@ -237,6 +244,109 @@ static int add_unit(uint8_t *r)
     return 1;
 }
 
+/* subtype 20: ADD_APC_UNIT, a unit with fewer settings */
+static int add_apc_unit(uint8_t *r)
+{
+    if (!I(void *, ISO_MAP)) {
+        wsprintfA(TEXT_BUF, S(0x101354f8), designer(0x101354e4));
+        return bad();
+    }
+    if (I(int, 0x175))
+        return 1;
+    if (I(int32_t, ISO_HAVE_SPRITES) && !ai_ready()) {
+        wsprintfA(TEXT_BUF, S(0x10135560), designer(0x1013554c));
+        return bad();
+    }
+    int32_t player = V(r, 0), b = V(r, 2), a = V(r, 3), mode = V(r, 4), x = V(r, 6);
+    uint32_t type = (uint32_t)V(r, 1), y = (uint32_t)V(r, 7);
+    uint8_t count;
+    if (P(int16_t, r, 8) < 8) {
+        count = 1;
+    } else {
+        count = P(uint8_t, r, 0x2a);
+        if (count < 2)
+            count = 1;
+    }
+    int32_t id = IsoAddUnit(g_iso, player, type, I(uint8_t, 0x1b9f + player * ISO_PLAYER_SIZE), x, y, 0, 0, count, 0);
+    if (id <= 0)
+        return 1;
+    DebugStr(S(0x1013559c), id);
+    P(uint8_t, iso_unit(id), 0x2b) = (uint8_t)a;
+    P(uint8_t, iso_unit(id), 0x2c) = (uint8_t)b;
+    P(uint32_t, iso_unit(id), U_FLAGS) &= 0xfffbffff;
+    if (mode > 0) {
+        if (mode == 0x1f) {
+            unit_guard_at((uint32_t)id, P(int16_t, iso_unit(id), U_X), P(int16_t, iso_unit(id), U_Y), 0);
+        } else {
+            unit_set_mode((uint32_t)id, (uint8_t)mode);
+            unit_set_action((uint32_t)id, (uint32_t)mode, 1, 0);
+        }
+    }
+    return 1;
+}
+
+/* subtype 30: ADD_OBJECT type, x, y, flags (three values or-ed) */
+static int add_object(uint8_t *r)
+{
+    if (!I(void *, ISO_MAP)) {
+        wsprintfA(TEXT_BUF, S(0x101355cc), designer(0x101355b8));
+        return bad();
+    }
+    int32_t id = IsoAddObject(g_iso, V(r, 0), V(r, 1), V(r, 2), (uint32_t)(V(r, 3) | V(r, 4) | V(r, 5)), -1, -1);
+    if (id >= 0)
+        DebugStr(S(0x1013561c), id);
+    return 1;
+}
+
+/* subtypes 40, 50: the game is won or lost, 0x30 ticks later */
+static int game_over(int won)
+{
+    int32_t data[2] = {won, 0};
+    DebugStr(won ? S(0x101356fc) : S(0x1013570c));
+    timer_set(won ? 0x309 : 0x29a, I(int32_t, 0x17dd) + 0x30, 0, game_over_cb, data);
+    return 1;
+}
+
+/* subtype 70: LOAD_MAP */
+static int load_map(uint8_t *r)
+{
+    DebugStr(S(0x101359c4));
+    DebugStr(S(0x101359d4), r + 10);
+    int rc = scenario_load(g_iso, (const char *)r + 10, !I(int32_t, ISO_HAVE_SPRITES), 1);
+    DebugStr(S(0x101359e8), rc);
+    if (rc < 0) {
+        wsprintfA(TEXT_BUF, S(0x10135a08), g_iso + 0xc1e1, r + 10, designer(0x101359f4));
+        return bad();
+    }
+    if (I(int32_t, ISO_HAVE_SPRITES))
+        ai_map_loaded();
+    return 1;
+}
+
+/* subtype 90: SET_TECH_LEVEL player, level (21 and up: 13) */
+static int set_tech_level(uint8_t *r)
+{
+    int32_t player = V(r, 0), level = V(r, 1);
+    DebugStr(S(0x10135734));
+    I(uint8_t, 0x1baa + player * ISO_PLAYER_SIZE) = (uint8_t)(level < 0x15 ? level : 0xd);
+    if (!I(int32_t, ISO_HAVE_SPRITES))
+        I(uint8_t, 0xdaa6 + player) = I(uint8_t, 0x1baa + player * ISO_PLAYER_SIZE);
+    else
+        player_tech_changed(player);
+    return 1;
+}
+
+/* subtype 110: PLAYWAVE n (1-99: the local player's announcement n) */
+static int play_wave(uint8_t *r)
+{
+    DebugStr(S(0x10135764));
+    DebugStr(S(0x10135774), V(r, 0));
+    int32_t n = V(r, 0);
+    if (n > 0 && n < 100)
+        player_announce(I(uint32_t, ISO_LOCAL_PLAYER), n, 1);
+    return 1;
+}
+
 /* 0x10028603: record `i`; 0 when it is bad (a message box has said why) */
 int __cdecl sdl_exec(uint32_t i)
 {
@@ -246,8 +356,38 @@ int __cdecl sdl_exec(uint32_t i)
         return main_record(i, r, type);
     if (sub == 5)
         return 1;
-    if (sub == 10)
+    switch (sub) {
+    case 10:
         return add_unit(r);
+    case 20:
+        return add_apc_unit(r);
+    case 30:
+        return add_object(r);
+    case 40:
+        return game_over(1);
+    case 50:
+        return game_over(0);
+    case 60:
+        DebugStr(S(0x1013571c)); /* TRANSPORT_LINK: nothing */
+        return 1;
+    case 70:
+        return load_map(r);
+    case 80:
+        DebugStr(S(0x10135a44)); /* LOAD_SDL: nothing */
+        DebugStr(S(0x10135a54), r + 10);
+        return 1;
+    case 90:
+        return set_tech_level(r);
+    case 100:
+        DebugStr(S(0x1013574c)); /* SET_MAX_GAME_TIME: nothing */
+        return 1;
+    case 110:
+        return play_wave(r);
+    case 130:
+        DebugStr(S(0x10135928), I(int32_t, 0x17dd) + 0x40);
+        show_text((const char *)r + 10, 0);
+        return 1;
+    }
     if (!g_sdl_exec_body)
         g_sdl_exec_body = ORIG_PTR(0x1002860c);
     return sdl_exec_orig(i);
