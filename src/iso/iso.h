@@ -40,5 +40,6 @@
 #include "sdlexec.h"
 #include "sdcget.h"
 #include "events.h"
+#include "step.h"
 
 #endif

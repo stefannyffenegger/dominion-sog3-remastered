@@ -57,6 +57,7 @@ EXPORTS
     SpriteSetSync@8
     RtUnload
     SpriteGetBounds@12
+    SpriteHitDetect@20
     SpriteIsPicked@16
     SpriteRefreshInterfaceArea@8
     SpriteRefreshRect@8

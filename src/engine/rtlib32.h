@@ -84,6 +84,7 @@ void __stdcall SpriteSetBlitFX(void *sprite, uint32_t fx, uint32_t arg);
 void __stdcall SpriteSetSync(void *hsl, uint32_t on);
 unsigned __cdecl RtUnload(void *app, unsigned id);
 int __stdcall SpriteGetBounds(void *hsl, void *sprite, RECT *r);
+uint32_t __stdcall SpriteHitDetect(void *s1, void *s2, int hidden1, int hidden2, int same_level);
 int __stdcall SpriteIsPicked(void *hsl, void *sprite, int x, int y);
 void __stdcall SpriteRefreshInterfaceArea(void *hsl, void *sprite);
 void __stdcall SpriteRefreshRect(void *hsl, const RECT *r);
