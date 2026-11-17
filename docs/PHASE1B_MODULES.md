@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 264 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 266 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -732,3 +732,9 @@ Ten more: marking an AI unit record, setting values of an AI player's first task
 ### Part 36: AI script commands, the editor's AI temp files (`aiglue.c`, 10 functions, 0x1002511b-0x10025747)
 Six more AI script commands (an AI player's group leader of type 0x14 or 0x19, an idle unit of a type, and orders passed on), the map editor's AI temp files ("_AITemp<n>.txt") and `IsoInitMapEditAITempFiles` (the editor's AI defaults per player), and sorting the AI's table of 201 names (with the original's `qsort`).
 * Checked: the unit state log (952, one run equal to an original to its end), Human mission 1, Alt+F4.
+
+### Part 37: the scenario description (`sdl.c`, 2 functions, 0x10025747-0x10026aac)
+`IsoLoadSDLFile` and its parser, run for every mission: the `.sdc` text file next to the map, read twice (the first pass counts the command lines and allocates 0x5a-byte records, the second parses them). A line loses its blanks (not inside quotes or text), quotes and comments (`/`, `;`); its first word is looked up among 64 commands (type, subtype, number of values, how many are required), the values are numbers, names from the AI's sorted table of 201 (binary search), or strings; commands of type 0x32 and 0x3c start a block of text lines (the briefing, collected at 0x1860). With `check` each record is checked as it is read (0x10028603) and the mission is then started (0x10048270). The map editor also copies the AI rule sets (`DEFRULESET`) to its temp files. A multiplayer client loads the host's description with another loader (0x1002cf1c, still original).
+* All C runtime calls are the original's (the files are the original runtime's FILE objects, and `strtok` keeps its state there).
+* Original quirks kept: the record before the first is read for a text line's type; an empty line takes no record; in the editor the AI temp file is closed again on every line of the second pass.
+* Checked: the unit state log (980; mission 1's description parsed alike), Human mission 1 (the objectives on the pause screen come from it), menu tour, the two-player chat run (both players in the match), Alt+F4.

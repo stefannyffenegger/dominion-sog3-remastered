@@ -36,5 +36,6 @@
 #include "filelist.h"
 #include "tilelib.h"
 #include "aiglue.h"
+#include "sdl.h"
 
 #endif
