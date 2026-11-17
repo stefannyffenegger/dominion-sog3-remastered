@@ -197,3 +197,127 @@ void __cdecl ai_script_249e0(uint32_t p, int what)
         t = next;
     }
 }
+
+#define g_ai_squads G(uint8_t *, 0x1018b608) /* 0x130 bytes a squad */
+#define ai_60d40 ORIG(int(__cdecl *)(int, uint32_t, int), 0x10060d40)
+#define ai_64919 ORIG(void(__cdecl *)(int, int), 0x10064919)
+#define ai_62b12 ORIG(void(__cdecl *)(int, int, int), 0x10062b12)
+#define ai_631c5 ORIG(int(__cdecl *)(int, int), 0x100631c5)
+#define ai_squad_order ORIG(void(__cdecl *)(int, int, int, int), 0x100645a1)
+#define ai_squad_next ORIG(int(__cdecl *)(int), 0x100c038c)
+#define ai_squad_mode ORIG(void(__cdecl *)(int, int), 0x10092dfc)
+
+/* 0x10024acc */
+void __cdecl ai_script_24acc(uint32_t unused, int n)
+{
+    (void)unused;
+    P(int32_t, ai_unit_record(n - 1), 0xc) = 1;
+}
+
+/* 0x10024b10: only a line in the (silent) debug log */
+void __cdecl ai_script_24b10(void)
+{
+}
+
+/* 0x10024b57 */
+void __cdecl ai_script_24b57(int p, int32_t a, uint32_t b)
+{
+    int t;
+    for (t = ai_task_first((uint32_t)p, 7); t != -1; t = ai_task_next(t))
+        if (TASK(t, 0x30) == 1) {
+            TASK(t, 0x50) = a;
+            TASK(t, 0x4c) = (int32_t)b;
+            return;
+        }
+    t = ai_60d40(p, b, 10);
+    TASK(t, 0x50) = a;
+}
+
+/* 0x10024c5c */
+void __cdecl ai_script_24c5c(int p)
+{
+    ai_64919(p, 10);
+}
+
+/* 0x10024c8d */
+void __cdecl ai_script_24c8d(int p, int what)
+{
+    char name[0x80];
+    ai_name(what, name);
+    ai_64919(p, 10);
+}
+
+/* 0x10024cd5 */
+void __cdecl ai_script_24cd5(int p, int n)
+{
+    char name[0x84];
+    ai_name(n, name);
+    if (!n)
+        n = 0x14;
+    ai_62b12(p, n, 3);
+}
+
+/* 0x10024d38 */
+void __cdecl ai_script_24d38(int p, int n)
+{
+    char name[0x84];
+    ai_name(n, name);
+    if (!n)
+        n = 0x14;
+    int t = ai_631c5(p, 10);
+    if (t != -1)
+        TASK(t, 0x50) = n;
+}
+
+/* 0x10024dbb: an order with value -v to AI player p's squads: -30 the main squad
+ * (0x123), -20 the first, -10 all, otherwise those of type `type` */
+void __cdecl ai_script_24dbb(int p, int type, int v)
+{
+    for (int s = ai_task_first((uint32_t)p, 3); s != -1;) {
+        if (type == -30) {
+            if (P(int16_t, g_ai_players + p * 0x143, 0x123) == s)
+                ai_squad_order(p, s, -v, 1);
+            return;
+        }
+        if (type == -20) {
+            ai_squad_order(p, s, -v, 1);
+            return;
+        }
+        if (type == -10)
+            ai_squad_order(p, s, -v, 1);
+        else if (P(int32_t, g_ai_squads + s * 0x130, 0x18) == type)
+            ai_squad_order(p, s, -v, 1);
+        s = ai_squad_next(s);
+    }
+}
+
+/* 0x10024f1a */
+void __cdecl ai_script_24f1a(int p, int type, int v)
+{
+    char name[0x80];
+    ai_name(v, name);
+    ai_script_24dbb(p, type, -v);
+}
+
+/* 0x10024f74: squad mode 1-4 (as 3, 4, 5, 2) for group `g`, or all squads (-10) */
+void __cdecl ai_script_24f74(int p, int g, int32_t how)
+{
+    int group = ai_group_of((uint32_t)p, g);
+    int mode;
+    switch (how) {
+    case 1: mode = 3; break;
+    case 2: mode = 4; break;
+    case 3: mode = 5; break;
+    case 4: mode = 2; break;
+    default: mode = 3; break;
+    }
+    if (g == -10) {
+        for (int s = ai_task_first((uint32_t)p, 3); s != -1; s = ai_squad_next(s)) {
+            P(int32_t, g_ai_squads + s * 0x130, 300) = mode != 2;
+            ai_squad_mode(s, mode);
+        }
+    } else {
+        P(int32_t, g_ai_squads + group * 0x130, 300) = mode != 2;
+        ai_squad_mode(group, mode);
+    }
+}

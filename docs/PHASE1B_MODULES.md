@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 244 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 254 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -724,3 +724,7 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 ### Part 34: AI script commands (`aiglue.c`, 10 functions, 0x100241a0-0x10024acc)
 Ten commands of the AI's scripts: they find an AI player's group or task (tasks are 0x74-byte records at 0x1018b600, players 0x143-byte records at 0x1018b604), add tasks, hand groups orders, and mark tasks done. They only glue the AI's own functions together, which stay original; their names are by address until the AI is worked out. The debug log lines between them are silent in the shipped build; the name lookups for those lines are kept.
 * Checked: the unit state log (970, with an all-original run at the same time 980), Human mission 1, Alt+F4. None of the ten ran in the earlier trace.
+
+### Part 35: more AI script commands (`aiglue.c`, 10 functions, 0x10024acc-0x1002511b)
+Ten more: marking an AI unit record, setting values of an AI player's first task of a type, orders with a value to an AI player's squads (0x130-byte records at 0x1018b608: the main one, the first, all, or those of a type), and setting the squads' mode (1-4 as 3, 4, 5, 2). 0x10024b57 runs in mission 1.
+* Checked: the unit state log (ours 847 with an all-original run at the same time at 656: a busy machine), Human mission 1, Alt+F4.
