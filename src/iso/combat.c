@@ -3,6 +3,7 @@
  * hit's sprite, allies called for help, killing a unit, destroyed structures and what is
  * in, on or under them. */
 #include "iso_core.h"
+#include "events.h"
 #include "sound.h"
 #include "sector.h"
 #include "damage.h"
@@ -22,7 +23,7 @@
 #define reveal_around ORIG(void(__cdecl *)(int, int, uint32_t, int, uint32_t, uint16_t, int), 0x10090223)
 #define net_unit_hit ORIG(int(__cdecl *)(uint32_t, char), 0x10034aef)
 #define net_unit_killed ORIG(int(__cdecl *)(uint32_t, int, char, char), 0x10034dcf)
-#define team_lost_leader ORIG(void(__cdecl *)(int), 0x1002dc7f)
+#define team_lost_leader event_count
 #define unit_set_target ORIG(void(__cdecl *)(uint16_t, uint16_t), 0x100dcabd)
 #define unit_can_reach ORIG(int(__cdecl *)(uint32_t, uint32_t, int, int), 0x1006b6d3)
 #define unit_attack_target ORIG(void(__cdecl *)(uint32_t, uint16_t, int, uint16_t), 0x100dc75c)
@@ -340,7 +341,6 @@ void __cdecl unit_kill(uint32_t id, uint32_t anim, int sync, uint32_t quiet)
 
 /* ---- structures and what is on or in them ---- */
 
-#define schedule ORIG(void(__cdecl *)(uint16_t, uint32_t, uint32_t, uint32_t, uint32_t *), 0x1002de13)
 #define IsoRemoveObject ORIG(void(__stdcall *)(uint8_t *, uint32_t, int, int), 0x100ad9ea)
 #define IsoRedrawObject ORIG(void(__stdcall *)(uint8_t *, uint32_t), 0x100ad5f2)
 #define U_INSIDE 0xf6  /* short: the first unit inside, linked through +0xf6 */
@@ -368,7 +368,7 @@ static void occupants(uint32_t id, uint16_t event, uint32_t step, uint32_t handl
                 P(uint8_t, w, U_KIND) = 0x14;
             args[0] = v;
             tick += step;
-            schedule(event, tick, 0, handler, args);
+            timer_set(event, (int32_t)tick, 0, (void *)(uintptr_t)handler, (int32_t *)args);
             kill_units_on(w, 0, 0);
             v = P(uint16_t, w, link);
             P(uint16_t, w, U_INSIDE) = 0;

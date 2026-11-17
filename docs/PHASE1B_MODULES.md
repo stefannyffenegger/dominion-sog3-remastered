@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 274 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 285 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -758,3 +758,8 @@ For the scripts: a briefing line, the briefing's wave, a cinematic (appended to 
 ### Part 40: loading the compiled scenario description (`sdcget.c`, 2 functions, 0x1002cf1c-0x1002d589)
 `IsoLoadSDCFile` and its loader, run for every mission: the `.sdc` file (a 0x18-byte header with the record count, then 0x5a-byte records), read whole; the timers, hot spots and settings records are carried out by the executor of part 38, the lines after the briefing record are collected as the briefing, and the mission is started (0x10048270). A multiplayer client without the host's file reads its text form (part 37) instead. The editor's writing of `.sdc` files (0x1002cbfa, `IsoSaveSDCFile`) stays original with the rest of the editor's saving.
 * Checked: the unit state log (one run equal to an original run to its end, tick 1677), Human mission 1 (4_moved pixel-identical), Alt+F4.
+
+### Part 41: the scenario's timers and events (`events.c`, 11 functions, 0x1002d589-0x1002e6f7)
+The mission's events: timers (32 slots of 0x1a bytes, kept sorted by time with the original's `qsort`; a due timer runs its callback, such as the end of the game or units leaving a destroyed building, or the records after its `TIMER_EVENT` record, with the AI players held meanwhile, and is set again when it repeats), hot spots (a unit entering a flagged sector runs the records after the first matching `HOTSPOT_EVENT` record, clearing its sectors when it fires once), event counters (type 0x1e records counting down, for example when a group's leader dies), enabling and disabling timers, destroying the units of an objective, and the map information of `.sdc` files for the menus (`IsoGetSDCInfo`). The records "after" an event are those up to the next record of the same type and subtype.
+* Original quirks kept: a repeating callback timer is set again with its arguments read from its slot after the slots were cleared and sorted; `IsoGetSDCInfo` returns the stack's contents as the map information when a multiplayer client lacks the file.
+* Checked: the unit state log (867, with an all-original run at the same time at 847; a trace shows the event counter and the timers running in its fight), Human mission 1, Alt+F4.

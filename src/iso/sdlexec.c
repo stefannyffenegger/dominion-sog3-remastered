@@ -6,6 +6,7 @@
 #include "scenario.h"
 #include "sdlexec.h"
 #include "sdcget.h"
+#include "events.h"
 
 #define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
 #define ai_ready ORIG(int(__cdecl *)(void), 0x100e1e48)
@@ -30,9 +31,6 @@
 #define ai_player_computer ORIG(void(__cdecl *)(uint32_t, uint8_t, int32_t, int), 0x100e2c82)
 #define ai_player_reset ORIG(void(__cdecl *)(int, int), 0x100e2a64)
 #define ai_init_record ORIG(void(__cdecl *)(int, ...), 0x100e1073)
-#define timer_enable ORIG(int(__cdecl *)(int32_t), 0x1002e14f)
-#define timer_disable ORIG(void(__cdecl *)(int32_t), 0x1002e0ad)
-#define destroy_unit ORIG(void(__cdecl *)(uint32_t, int32_t), 0x1002e606)
 #define sdl_4b03a ORIG(void(__cdecl *)(uint8_t *), 0x1004b03a)
 #define sdl_4b119 ORIG(void(__cdecl *)(uint8_t *), 0x1004b119)
 #define unit_by_place ORIG(int32_t(__stdcall *)(uint8_t *, int32_t, int32_t), 0x10028549)
@@ -46,7 +44,6 @@
 #define IsoAddEnergyWell ORIG(void(__stdcall *)(uint8_t *, int32_t, int32_t, int32_t, int32_t, int32_t, uint32_t, int), 0x100ad1d9)
 #define IsoEnableAlliances ORIG(void(__cdecl *)(uint8_t *, int, int), 0x10056eae)
 #define IsoSetAlliance ORIG(void(__cdecl *)(uint8_t *, int32_t, int32_t, int, int), 0x10057b3b)
-#define timer_set ORIG(void(__cdecl *)(int, int32_t, int32_t, void *, void *), 0x1002de13)
 
 #define S(addr) ((const char *)ORIG_PTR(addr))
 #define TEXT_BUF ((char *)(g_iso + 0xdea))
@@ -87,7 +84,7 @@ static int main_record(uint32_t i, uint8_t *r, int32_t type)
                 at = t;
                 period = 0;
             }
-            timer_set(id, at, period, NULL, NULL);
+            timer_set((uint16_t)id, at, period, NULL, NULL);
         }
         break;
     }
@@ -876,13 +873,13 @@ int __cdecl sdl_exec(uint32_t i)
     case 260: /* DISABLE_TIMER id */
         if (I(int32_t, ISO_HAVE_SPRITES)) {
             DebugStr(S(0x10135c14));
-            timer_disable(V(r, 0));
+            timer_disable((uint32_t)V(r, 0));
         }
         return 1;
     case 270: /* DESTROY_UNIT */
         if (I(int32_t, ISO_HAVE_SPRITES)) {
             DebugStr(S(0x10135c28));
-            destroy_unit((uint32_t)V(r, 0), V(r, 1));
+            destroy_units((uint32_t)V(r, 0), V(r, 1));
         }
         return 1;
     case 280:

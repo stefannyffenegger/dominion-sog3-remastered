@@ -2,6 +2,7 @@
  * the player's upgrades for it, keeping track of the map sector it is in, its sprite
  * following its state every frame, and making room where a structure is put down. */
 #include "iso_core.h"
+#include "events.h"
 #include "sector.h"
 #include "combat.h"
 #include "unit.h"
@@ -18,7 +19,7 @@
 #define turret_new ORIG(uint8_t *(__cdecl *)(uint32_t), 0x10085e60)
 #define sprite_recolour ORIG(void(__cdecl *)(void *, uint8_t, int32_t, int, int), 0x100b1ce0)
 #define unit_set_frame ORIG(void(__cdecl *)(uint32_t), 0x1004ea01)
-#define sector_seen ORIG(void(__cdecl *)(int, uint32_t), 0x1002d9c8)
+#define sector_seen hotspot_entered
 #define unit_remove unit_kill
 
 #define HSL I(void *, ISO_HSL)

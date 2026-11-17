@@ -39,5 +39,6 @@
 #include "sdl.h"
 #include "sdlexec.h"
 #include "sdcget.h"
+#include "events.h"
 
 #endif
