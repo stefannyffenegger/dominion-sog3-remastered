@@ -29,6 +29,13 @@
 #define ai_player_race ORIG(void(__cdecl *)(int, uint8_t), 0x100e2bf6)
 #define ai_player_computer ORIG(void(__cdecl *)(uint32_t, uint8_t, int32_t, int), 0x100e2c82)
 #define ai_player_reset ORIG(void(__cdecl *)(int, int), 0x100e2a64)
+#define ai_init_record ORIG(void(__cdecl *)(int, ...), 0x100e1073)
+#define energywall_link ORIG(void(__cdecl *)(int32_t, int32_t, int32_t, int32_t), 0x1002ca08)
+#define timer_enable ORIG(int(__cdecl *)(int32_t), 0x1002e14f)
+#define timer_disable ORIG(void(__cdecl *)(int32_t), 0x1002e0ad)
+#define destroy_unit ORIG(void(__cdecl *)(uint32_t, int32_t), 0x1002e606)
+#define sdl_4b03a ORIG(void(__cdecl *)(uint8_t *), 0x1004b03a)
+#define sdl_4b119 ORIG(void(__cdecl *)(uint8_t *), 0x1004b119)
 #define timer_set ORIG(void(__cdecl *)(int, int32_t, int32_t, void *, void *), 0x1002de13)
 
 #define S(addr) ((const char *)ORIG_PTR(addr))
@@ -484,6 +491,52 @@ static int set_debug_level(uint8_t *r)
     return 1;
 }
 
+#define g_group_player G(int32_t, 0x1017bb58)  /* the player of the group or base being defined */
+#define g_group_number G(int32_t, 0x1017bb5c)  /* its group number */
+#define g_base_number G(int32_t, 0x1017bb30)   /* its base number */
+#define g_last_player G(int32_t, 0x1017bb60)
+
+/* the AI's records need the AI started first */
+static int ai_needed(uint32_t text, uint32_t fallback)
+{
+    if (I(int32_t, ISO_HAVE_SPRITES) && !ai_ready()) {
+        wsprintfA(TEXT_BUF, S(text), designer(fallback));
+        return bad();
+    }
+    return 1;
+}
+
+/* subtype 210: DEFRULE [player] */
+static int def_rule(uint8_t *r)
+{
+    g_group_player = P(int16_t, r, 8) == 1 ? V(r, 0) : 0;
+    if (I(int, 0x175))
+        return 1;
+    if (!ai_needed(0x10135ad8, 0x10135ac4))
+        return 0;
+    if (I(int32_t, ISO_HAVE_SPRITES))
+        ai_init_record(6, V(r, 0));
+    return 1;
+}
+
+/* subtype 300: DEFGROUP [player]: the player's next group number */
+static int def_group(uint8_t *r)
+{
+    g_group_player = P(int16_t, r, 8) == 1 ? V(r, 0) : 0;
+    G(int32_t, 0x1017bb38 + g_group_player * 4)++;
+    g_group_number = G(int32_t, 0x1017bb38 + g_group_player * 4);
+    g_last_player = g_group_player;
+    if (I(int, 0x175)) {
+        g_last_player = g_group_player;
+        return 1;
+    }
+    if (!ai_needed(0x10135b68, 0x10135b54))
+        return 0;
+    if (I(int32_t, ISO_HAVE_SPRITES))
+        ai_init_record(4, V(r, 0));
+    return 1;
+}
+
 /* 0x10028603: record `i`; 0 when it is bad (a message box has said why) */
 int __cdecl sdl_exec(uint32_t i)
 {
@@ -543,6 +596,56 @@ int __cdecl sdl_exec(uint32_t i)
         return 1;
     case 200:
         return set_debug_level(r);
+    case 210:
+        return def_rule(r);
+    case 220:
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            ai_init_record(8, V(r, 0), V(r, 1), V(r, 2), V(r, 3), V(r, 4));
+        return 1;
+    case 230:
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            ai_init_record(7);
+        return 1;
+    case 240: /* ENERGYWALL_LINK */
+        DebugStr(S(0x10135b9c));
+        energywall_link(V(r, 0), V(r, 1), V(r, 2), V(r, 3));
+        return 1;
+    case 250: /* ENABLE_TIMER id */
+        if (I(int32_t, ISO_HAVE_SPRITES)) {
+            DebugStr(S(0x10135bb4));
+            if (!timer_enable(V(r, 0))) {
+                wsprintfA(TEXT_BUF, S(0x10135bdc), V(r, 0), designer(0x10135bc8));
+                return bad();
+            }
+        }
+        return 1;
+    case 260: /* DISABLE_TIMER id */
+        if (I(int32_t, ISO_HAVE_SPRITES)) {
+            DebugStr(S(0x10135c14));
+            timer_disable(V(r, 0));
+        }
+        return 1;
+    case 270: /* DESTROY_UNIT */
+        if (I(int32_t, ISO_HAVE_SPRITES)) {
+            DebugStr(S(0x10135c28));
+            destroy_unit((uint32_t)V(r, 0), V(r, 1));
+        }
+        return 1;
+    case 280:
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            sdl_4b03a(r);
+        return 1;
+    case 290:
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            sdl_4b119(r);
+        return 1;
+    case 300:
+        return def_group(r);
+    case 310: /* the end of a group */
+        if (I(int32_t, ISO_HAVE_SPRITES))
+            ai_init_record(5);
+        g_group_number = 1;
+        return 1;
     case 130:
         DebugStr(S(0x10135928), I(int32_t, 0x17dd) + 0x40);
         show_text((const char *)r + 10, 0);
