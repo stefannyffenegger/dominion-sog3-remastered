@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 322 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 332 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,10 +553,10 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 48)
-* **Next part:** 49, from 0x1004c950 (the AI: squads and targets). Parts go on in address order.
+### Open items (as of part 49)
+* **Next part:** 50, from 0x1004e360 (`map_reset_objects`, `IsoLoadExternalTable`, ...). Parts go on in address order.
 * **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it.
-* **Not reached, left original in the AI:** 0x1004c1bf (finishing a task, 1.4 KB).
+* **Not reached, left original in the AI:** 0x1004c1bf (finishing a task, 1.4 KB); 0x1004d392-0x1004e360 (8 functions, the base integrity checks: "Check base integrity compromised/perimeter").
 * **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
 * **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
 * **Left original until the editor question is answered** (no test can reach them): the editor's saving, 0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603 (writing the description as text) and 0x1002cbfa with `IsoSaveSDCFile` (writing compiled `.sdc` files).
@@ -804,3 +804,9 @@ The AI's terrain analysis (0x10048270-0x1004b181) finds corridors, key terrain (
 ### Part 48: the AI's task pool (`aitasks.c`, 12 functions, 0x1004baf0-0x1004c950)
 Tasks are 0x74-byte records (G(0x1018b600)). Each AI player (G(0x1018b604), 0x143 bytes each) keeps its tasks in a doubly linked list (list 7, through the original's player-list helpers 0x100e2e62-0x100e2f15); the free tasks are linked from the players' block +4. `ai_run_tasks` (0x1004be3b) is one AI turn: each of the player's tasks takes a step (`task_step`), and when a task's steps are used up its handler runs (`task_run`, by type: 16 handlers, still original). A task without the repeat flag (+0x20) then finishes (0x1004c1bf, still original). The turn's time goes to the AI's timing log. Also `task_new` and `task_link`, and the getters and setters.
 * Checked: the trace shows the unit state log run reaches `ai_run_tasks`, `task_new`, `task_link`, `task_step` and `task_run`. Unit state log at 858 and 951. Human mission 1 and Alt+F4 also checked.
+
+### Part 49: the AI's targets and squads (`aisquads.c`, 10 functions, 0x1004c950-0x1004d392)
+Squads are 0x130-byte records (G(0x1018b608)), targets 0x120-byte records (G(0x1018b610): +0x1c the owner, +0x20 the unit, +0x90 + player * 4 each player's squad that attacks it). Each squad keeps its targets in a list (+0x24 first, +0x28 last), through the original's per-player list helpers 0x1007225e-0x10072505.
+* **The functions:** `ai_assign_targets` gives each target the player knows a squad (`target_assign`). It skips targets of allies and dead units, and, with the AI's fog flag (+0xa2c), unspotted ones. It takes the first squad of list 4 (units) or 5 (structures) that can hit the target (`squad_find_for`, `squad_can_attack`), or a new squad. Also `squad_add_target`, `squad_drop_target`, `target_tell_players`, `unit_attacked_by`, and `unit_tile_value`.
+* **`ai_set_lethality`:** the summed squad strength scaled by the difficulty: none, x1.2 on the x87 truncated as `__ftol` does, x2, or x3.
+* Checked: the trace shows the unit state log run reaches all of them except `unit_attacked_by`. Unit state log at 952-1002, the full range. Human mission 1 and Alt+F4 also checked.

@@ -44,5 +44,6 @@
 #include "netflags.h"
 #include "terrain.h"
 #include "aitasks.h"
+#include "aisquads.h"
 
 #endif
