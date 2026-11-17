@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 234 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 244 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -720,3 +720,7 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 ### Part 33: script file commands, small AI callbacks (`filelist.c`, `aiglue.c`, 7 functions, 0x10023ee6-0x100241a0)
 `IsoRenameFile`, `IsoDeleteFile` (optionally in the save folder) and `IsoGetMapFilename` for the scripts (the first two take the state from the global, not from their first argument, as the original does), and four functions of the AI's callback tables: calling a callback with 0-4 more arguments, a debug log line (silent in the shipped build), setting an AI player's value at 0x6a, and passing a unit order on.
 * Checked: the unit state log (970), Human mission 1, Alt+F4.
+
+### Part 34: AI script commands (`aiglue.c`, 10 functions, 0x100241a0-0x10024acc)
+Ten commands of the AI's scripts: they find an AI player's group or task (tasks are 0x74-byte records at 0x1018b600, players 0x143-byte records at 0x1018b604), add tasks, hand groups orders, and mark tasks done. They only glue the AI's own functions together, which stay original; their names are by address until the AI is worked out. The debug log lines between them are silent in the shipped build; the name lookups for those lines are kept.
+* Checked: the unit state log (970, with an all-original run at the same time 980), Human mission 1, Alt+F4. None of the ten ran in the earlier trace.

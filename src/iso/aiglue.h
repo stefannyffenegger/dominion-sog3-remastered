@@ -10,4 +10,15 @@ void __cdecl ai_log(uint32_t a);
 void __cdecl ai_set_6a(int p, uint32_t v);
 void __cdecl ai_unit_order_cb(uint32_t unused, int a, uint32_t b);
 
+void __cdecl ai_script_241a0(uint32_t p, int g, int target, uint32_t a, int b);
+void __cdecl ai_script_24267(uint32_t p, int g, int target, int32_t a, int32_t b);
+void __cdecl ai_script_243d6(uint32_t p, int g, int target);
+void __cdecl ai_script_244f6(uint32_t p, int target);
+void __cdecl ai_script_24611(int p);
+void __cdecl ai_script_2466e(uint32_t unused, int n);
+void __cdecl ai_script_246b2(int p, int g);
+void __cdecl ai_script_2478b(uint32_t p, int n);
+void __cdecl ai_script_248c3(uint32_t p, uint32_t what);
+void __cdecl ai_script_249e0(uint32_t p, int what);
+
 #endif
