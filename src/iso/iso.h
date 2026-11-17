@@ -43,5 +43,6 @@
 #include "step.h"
 #include "netflags.h"
 #include "terrain.h"
+#include "aitasks.h"
 
 #endif
