@@ -100,6 +100,8 @@ Needed to close this: a scenario with a base (a later mission or a saved game), 
 2. `python3 tools/iso/retinfo.py work/dh/game/ISO.R32.orig ADDR...` for the part's functions **and every function they call**: many `Iso*` exports and some internals are stdcall. `tools/iso/proto.py ADDR...` prints the decompile's prototypes.
 3. Read the assembly (`work/tmp/iso/iso.asm`) wherever the decompile shows `__ftol`, `extraout_`, `CONCAT`, `fastcall` or a 64-bit return: Ghidra hides x87 arithmetic, invents register arguments for plain cdecl functions, and has dropped whole computations (the attacker's health in the damage formula).
 4. Write the C in `src/iso/`, add `PORTED(address, name)` lines to `ported.h`, test as in section 1, add the part to `PHASE1B_MODULES.md`, commit.
+5. Before claiming a test reaches a function, check `work/tmp/iso/live.txt` (or trace it with `DOMINION_ISO_TRACE`).
+6. A very large function can be ported a piece at a time: our function handles the cases rewritten so far and hands the rest to the original's body through a naked trampoline that replays the original's prologue (the bytes the hook overwrote) and jumps past it (see the history of `sdlexec.c`).
 
 Traps met so far:
 * a wrong calling convention unbalances the stack and crashes much later;
