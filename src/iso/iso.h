@@ -38,5 +38,6 @@
 #include "aiglue.h"
 #include "sdl.h"
 #include "sdlexec.h"
+#include "sdcget.h"
 
 #endif

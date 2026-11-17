@@ -5,6 +5,7 @@
 #include "iso_core.h"
 #include "scenario.h"
 #include "sdlexec.h"
+#include "sdcget.h"
 
 #define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
 #define ai_ready ORIG(int(__cdecl *)(void), 0x100e1e48)
@@ -29,7 +30,6 @@
 #define ai_player_computer ORIG(void(__cdecl *)(uint32_t, uint8_t, int32_t, int), 0x100e2c82)
 #define ai_player_reset ORIG(void(__cdecl *)(int, int), 0x100e2a64)
 #define ai_init_record ORIG(void(__cdecl *)(int, ...), 0x100e1073)
-#define energywall_link ORIG(void(__cdecl *)(int32_t, int32_t, int32_t, int32_t), 0x1002ca08)
 #define timer_enable ORIG(int(__cdecl *)(int32_t), 0x1002e14f)
 #define timer_disable ORIG(void(__cdecl *)(int32_t), 0x1002e0ad)
 #define destroy_unit ORIG(void(__cdecl *)(uint32_t, int32_t), 0x1002e606)
