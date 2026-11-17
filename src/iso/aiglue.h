@@ -30,5 +30,15 @@ void __cdecl ai_script_24d38(int p, int n);
 void __cdecl ai_script_24dbb(int p, int type, int v);
 void __cdecl ai_script_24f1a(int p, int type, int v);
 void __cdecl ai_script_24f74(int p, int g, int32_t how);
+void __cdecl ai_script_2511b(uint32_t unused, int32_t v);
+void __cdecl ai_script_25151(uint32_t p, int g);
+void __cdecl ai_script_2528c(int p, int g, int type);
+void __cdecl ai_script_2540b(int p, int what);
+void __cdecl ai_script_2547b(int p, int what);
+void __cdecl ai_script_254eb(uint32_t unused, uint32_t a, int b, uint32_t c, uint32_t d);
+void *__cdecl ai_temp_file(int n, int mode);
+int __cdecl IsoInitMapEditAITempFiles(void);
+int __cdecl ai_name_compare(const char *a, const char *b);
+void __cdecl ai_names_sort(void);
 
 #endif

@@ -49,6 +49,7 @@ void __cdecl ai_unit_order_cb(uint32_t unused, int a, uint32_t b)
 #define ai_order_group ORIG(void(__cdecl *)(uint32_t, int, uint32_t, int, uint32_t, int), 0x1009f112)
 #define ai_group_done ORIG(void(__cdecl *)(uint32_t), 0x100e4969)
 #define ai_group_free ORIG(void(__cdecl *)(uint32_t, int), 0x100921f5)
+#define ai_group_free_r ORIG(int(__cdecl *)(uint32_t, int), 0x100921f5)
 #define ai_task_first ORIG(int(__cdecl *)(uint32_t, int), 0x100e2ee5)
 #define ai_task_next ORIG(int(__cdecl *)(int), 0x1004bb2c)
 #define ai_task_add ORIG(int(__cdecl *)(uint32_t, int, int, int, int, int, int), 0x1005d140)
@@ -320,4 +321,133 @@ void __cdecl ai_script_24f74(int p, int g, int32_t how)
         P(int32_t, g_ai_squads + group * 0x130, 300) = mode != 2;
         ai_squad_mode(group, mode);
     }
+}
+
+#define g_ai_units G(uint8_t *, 0x1018b610) /* 0x120 bytes an AI unit entry */
+#define ai_squad_unit_next ORIG(int(__cdecl *)(uint32_t, int), 0x1007223b)
+#define ai_a03cf ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x100a03cf)
+#define ai_a0339 ORIG(int(__cdecl *)(int, int, uint32_t), 0x100a0339)
+#define unit_busy ORIG(int(__cdecl *)(uint32_t), 0x1009eeb4)
+#define ai_616d4 ORIG(void(__cdecl *)(int, int, int, int), 0x100616d4)
+#define AIUNIT(u, off) P(int32_t, g_ai_units + (u) * 0x120, off)
+
+/* 0x1002511b */
+void __cdecl ai_script_2511b(uint32_t unused, int32_t v)
+{
+    (void)unused;
+    P(int32_t, g_ai_players, 0xa2c) = v;
+}
+
+/* 0x10025151: group g's first unit of type 0x14 or 0x19 */
+void __cdecl ai_script_25151(uint32_t p, int g)
+{
+    int group = ai_group_of(p, g);
+    if (group == -1)
+        return;
+    int u = P(int32_t, g_ai_squads + group * 0x130, 0x24);
+    while (u != -1 && AIUNIT(u, 0x24) != 0x14 && AIUNIT(u, 0x24) != 0x19)
+        u = ai_squad_unit_next(p, u);
+    if (u != -1 && AIUNIT(u, 0x20)) {
+        ai_a03cf(p, (uint32_t)AIUNIT(u, 0x20));
+        P(int16_t, g_ai_players + p * 0x143, 0x123) = (int16_t)ai_group_free_r(p, group);
+    }
+}
+
+/* 0x1002528c: group g's first idle unit of type `type` */
+void __cdecl ai_script_2528c(int p, int g, int type)
+{
+    char name[0x30];
+    ai_name(type, name);
+    if (!P(int16_t, g_ai_players + p * 0x143, 0xac + type * 2) ||
+        !ai_a0339(p, type, P(uint8_t, g_ai_players + p * 0x143, 0xd)))
+        return;
+    int group = ai_group_of((uint32_t)p, g);
+    if (group == -1)
+        return;
+    for (int u = P(int32_t, g_ai_squads + group * 0x130, 0x24);; u = ai_squad_unit_next((uint32_t)p, u)) {
+        if (u == -1 || !AIUNIT(u, 0x20))
+            return;
+        if (AIUNIT(u, 0x24) == type && !unit_busy((uint16_t)AIUNIT(u, 0x20))) {
+            ai_616d4(p, u, -1, 10);
+            return;
+        }
+    }
+}
+
+#define ai_6559f ORIG(int(__cdecl *)(int, int, int), 0x1006559f)
+#define ai_6671b ORIG(int(__cdecl *)(int, int, int), 0x1006671b)
+#define ai_90223 ORIG(void(__cdecl *)(int, uint32_t, uint32_t, uint32_t, int, int, int), 0x10090223)
+#define g_fopen ORIG(void *(__cdecl *)(const char *, const char *), 0x100f5e30)
+#define g_fclose ORIG(int(__cdecl *)(void *), 0x100f5e60)
+#define g_strcmpi ORIG(int(__cdecl *)(const char *, const char *), 0x100f5680)
+#define g_qsort ORIG(void(__cdecl *)(void *, size_t, size_t, void *), 0x100f57d0)
+
+/* 0x1002540b */
+void __cdecl ai_script_2540b(int p, int what)
+{
+    char name[0x80];
+    ai_name(what, name);
+    ai_6559f(p, what, 0x14);
+}
+
+/* 0x1002547b */
+void __cdecl ai_script_2547b(int p, int what)
+{
+    char name[0x80];
+    ai_name(what, name);
+    ai_6671b(p, what, 0x14);
+}
+
+/* 0x100254eb */
+void __cdecl ai_script_254eb(uint32_t unused, uint32_t a, int b, uint32_t c, uint32_t d)
+{
+    (void)unused;
+    ai_90223(b, c, a, d, -1, 0, 1);
+}
+
+/* 0x10025540: the map editor's AI temp file n (0-8): "_AITemp<n>.txt", new (mode 0),
+ * appended (5, 10) or read */
+void *__cdecl ai_temp_file(int n, int mode)
+{
+    char name[20];
+    if (n < 0 || n > 8)
+        return NULL;
+    wsprintfA(name, (const char *)ORIG_PTR(0x101347cc), n);
+    if (!mode)
+        return g_fopen(name, (const char *)ORIG_PTR(0x101347dc));
+    if (mode == 5 || mode == 10)
+        return g_fopen(name, (const char *)ORIG_PTR(0x101347e0));
+    return g_fopen(name, (const char *)ORIG_PTR(0x101347e4));
+}
+
+/* 0x10025600: the map editor's AI defaults per player, and empty temp files */
+int __cdecl IsoInitMapEditAITempFiles(void)
+{
+    for (int i = 0; i < 8; i++) {
+        I(int32_t, 0xd9e6 + i * 4) = 1000;
+        I(int32_t, 0xda06 + i * 4) = 1000;
+        I(int32_t, 0xda26 + i * 4) = 1000;
+        I(int32_t, 0xda46 + i * 4) = 10000;
+        I(int32_t, 0xda66 + i * 4) = 10000;
+        I(int32_t, 0xda86 + i * 4) = 10000;
+        I(uint8_t, 0xd9e6 + 0xc0 + i) = 0xd;
+    }
+    for (int i = 0; i < 9; i++) {
+        void *f = ai_temp_file(i, 0);
+        if (f)
+            g_fclose(f);
+    }
+    return 1;
+}
+
+/* 0x100256ef */
+int __cdecl ai_name_compare(const char *a, const char *b)
+{
+    return g_strcmpi(a, b);
+}
+
+/* 0x1002571e: sorts the table of 0xc9 names (0x28 bytes each) at 0x10132860 */
+void __cdecl ai_names_sort(void)
+{
+    g_qsort(ORIG_PTR(0x10132860), 0xc9, 0x28, (void *)ai_name_compare);
 }
