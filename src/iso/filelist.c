@@ -268,3 +268,33 @@ int __stdcall IsoFreeFileList(uint8_t *iso)
     I(int32_t, ISO_FILE_COUNT) = 0;
     return 1;
 }
+
+#define path_to_save_dir ORIG(void(__cdecl *)(char *), 0x1005c073)
+
+/* 0x10023ee6: renames the file of string `from_id` to that of string `to_id` (the
+ * state pointer is not taken from the first argument) */
+MMRESULT __cdecl IsoRenameFile(uint8_t *iso, uint32_t from_id, uint32_t to_id)
+{
+    (void)iso;
+    const char *from = RtGetString(I(void *, ISO_APP), from_id);
+    const char *to = RtGetString(I(void *, ISO_APP), to_id);
+    return mmioRenameA(from, to, NULL, 2);
+}
+
+/* 0x10023f5a: deletes the file of string `name_id` (`in_save_dir`: in the save folder) */
+BOOL __cdecl IsoDeleteFile(uint8_t *iso, uint32_t name_id, int in_save_dir)
+{
+    char path[0x104];
+    (void)iso;
+    lstrcpyA(path, RtGetString(I(void *, ISO_APP), name_id));
+    if (in_save_dir)
+        path_to_save_dir(path);
+    return DeleteFileA(path);
+}
+
+/* 0x10023ff9: copies the current scenario's name into string `name_id` */
+void __cdecl IsoGetMapFilename(uint8_t *iso, uint32_t name_id)
+{
+    g_iso = iso;
+    lstrcpyA((char *)RtGetString(I(void *, ISO_APP), name_id), (const char *)(g_iso + 0x1994));
+}

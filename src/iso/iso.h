@@ -35,5 +35,6 @@
 #include "maptiles.h"
 #include "filelist.h"
 #include "tilelib.h"
+#include "aiglue.h"
 
 #endif

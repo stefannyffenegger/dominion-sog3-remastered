@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 227 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 234 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -716,3 +716,7 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 `IsoLoadMaskLibrary` (the fog masks, a "TLX" file; a mask of odd size is followed by a padding byte, moved in with the original's `memmove`), loading the scenario's tile library (a "TL2" file of 0x444-byte tiles: all, or the ones the map uses), freeing it, and the tile background the engine draws (tile numbers, mask list, map and object map). All run for every mission; the scenario loader and `IsoCreateMap` now call ours.
 * Original quirk kept: when the mask list cannot be allocated, the file stays open.
 * Checked: the unit state log (970), Human mission 1 (fog and tiles), menu tour, Alt+F4.
+
+### Part 33: script file commands, small AI callbacks (`filelist.c`, `aiglue.c`, 7 functions, 0x10023ee6-0x100241a0)
+`IsoRenameFile`, `IsoDeleteFile` (optionally in the save folder) and `IsoGetMapFilename` for the scripts (the first two take the state from the global, not from their first argument, as the original does), and four functions of the AI's callback tables: calling a callback with 0-4 more arguments, a debug log line (silent in the shipped build), setting an AI player's value at 0x6a, and passing a unit order on.
+* Checked: the unit state log (970), Human mission 1, Alt+F4.
