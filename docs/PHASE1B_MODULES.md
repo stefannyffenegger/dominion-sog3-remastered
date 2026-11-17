@@ -553,6 +553,13 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
+### Open items (as of part 41)
+* **Next part:** 42, from 0x1002e6f7 (`IsoProcessSDCRecord`). Parts go on in address order.
+* **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
+* **Left original until the editor question is answered** (no test can reach them): the editor's saving, 0x10020bea `IsoSaveScenario`, 0x10026aac-0x10028603 (writing the description as text) and 0x1002cbfa with `IsoSaveSDCFile` (writing compiled `.sdc` files).
+* **The two-player chat test** (`tests/game/chat.sh`): either player's screenshot often comes out as garbage, also with the original. A more reliable check is needed, for example a two-player state log or reading the chat lines from the game's state.
+* **Coverage:** the code no test reaches is listed in `TESTING.md` section 4.
+
 ### Checking the game logic: the unit state log
 Screenshots can't tell a logic change from a frame of timing (idle animations differ between runs), so the game logic is checked on its state instead. `DOMINION_ISO_STATELOG=<Windows path>` (`statelog.c`) writes a hash of every unit's state (position, facing, health, action, flags; not the fields the display changes every frame) once per game tick, from the call that runs the tick's logic in `IsoMovementLoop` (0x1008d375). `DOMINION_ISO_STATELOG_UNITS=1` (or `=from-to` for a few ticks, which disturbs the timing less) adds each unit's fields.
 * Input: with `DOMINION_ISO_STATELOG_ORDERS=1` the local player's units get move orders at fixed ticks (Human mission 1: into the enemy at tick 40, on at tick 500) and stances (kneel at 60, crawl at 120, stand at 200, through `IsoSetSelectedUnitState`). Clicks would land a tick early or late.
