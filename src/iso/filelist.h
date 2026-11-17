@@ -9,4 +9,10 @@ uint32_t __stdcall IsoBuildFileListIni(uint8_t *iso, uint32_t pattern_id, uint32
                                        uint32_t section_id, uint32_t n);
 int __stdcall IsoBuildFileList(uint8_t *iso, uint32_t pattern_id);
 
+int __stdcall IsoGetSDLFilenameIndex(uint8_t *iso, uint32_t var);
+int __stdcall IsoGetWXPInfo(uint8_t *iso, int index, uint32_t dir_var, uint32_t name_var, uint32_t title_var,
+                            uint32_t *info, int *is_wxm);
+int __cdecl map_file_info(char *path, uint32_t *info);
+int __stdcall IsoFreeFileList(uint8_t *iso);
+
 #endif

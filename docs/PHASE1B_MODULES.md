@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 219 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 223 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -707,3 +707,7 @@ Making the engine's tile background from the map's cells, freeing the map arrays
 ### Part 30: the map file list (`filelist.c`, 3 functions, 0x100221d9-0x100229d0)
 `IsoBuildFileList` (all files matching a pattern) and `IsoBuildFileListIni` (only those an ini file lists as "<key>1".."<key>n"), for the menus' map and mission lists: 0x104-byte names, sorted with the original's `qsort` and comparison (0x1004e9d2), so the order stays the same. A multiplayer client keeps the list it has.
 * Checked: menu tour, the unit state log (970), Human mission 1, Alt+F4.
+
+### Part 31: map file info (`filelist.c`, 4 functions, 0x100229d0-0x10023185)
+`IsoGetWXPInfo` (for the map lists: a map's header, its title, tile set, number of players and size, whether it is a .wxm; a multiplayer client compares the host's map with the header it got, and returns 0 only when it lacks the file), `IsoGetSDLFilenameIndex` (the current scenario's place in the list), `IsoFreeFileList`, and a map file's info by path.
+* Checked: menu tour, Human mission 1, the two-player chat run (both players reach the match; the joining player's screenshot is garbage in that test also with the original), Alt+F4.

@@ -20,6 +20,7 @@ typedef struct RtDib {
 /* Resources are returned as handles: a pointer to the object pointer. */
 void **__cdecl RtGetResource(void *app, unsigned id);
 const char *__cdecl RtGetString(void *app, unsigned id);
+char *__cdecl RtGetVariableString(void *app, unsigned id); /* a script string variable */
 void *__cdecl RtGetHSL(void *app); /* the app's sprite/screen object */
 void *__cdecl RtGetHResfile(void *app); /* the app's resource file */
 uint8_t *__stdcall ResLoadResource(void *rf, uint32_t id, uint32_t *size);

@@ -132,3 +132,139 @@ int __stdcall IsoBuildFileList(uint8_t *iso, uint32_t pattern_id)
     g_qsort(I(void *, ISO_FILES), I(uint32_t, ISO_FILE_COUNT), 0x104, name_compare);
     return count;
 }
+
+#define path_fix ORIG(void(__cdecl *)(char *), 0x1005bfc2)
+#define g_strcmp ORIG(int(__cdecl *)(const char *, const char *), 0x100f53a0)
+#define g_memcmp ORIG(int(__cdecl *)(const void *, const void *, size_t), 0x100f5b20)
+#define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
+
+/* the info a map header gives: tile set, players, height, width */
+static void header_info(const uint8_t *h, uint32_t *info)
+{
+    info[0] = h[0x2e];
+    info[1] = h[0x2f];
+    info[2] = P(uint32_t, h, 0x38) & 0xffff;
+    info[3] = P(uint32_t, h, 0x38) >> 16;
+}
+
+/* 0x100229d0: the index in the file list of the current scenario's name (0xbfd9), or
+ * -1 */
+int __stdcall IsoGetSDLFilenameIndex(uint8_t *iso, uint32_t var)
+{
+    char name[0x104];
+    g_iso = iso;
+    RtGetVariableString(I(void *, ISO_APP), var);
+    for (int i = 0; i < I(int32_t, ISO_FILE_COUNT); i++) {
+        lstrcpyA(name, NAME(i));
+        if (!g_strcmpi((const char *)(g_iso + 0xbfd9), name))
+            return i;
+    }
+    return -1;
+}
+
+/* 0x10022afd: the header of map `index` of the file list (in folder variable
+ * `dir_var`): its name (without extension) into variable `name_var`, its title into
+ * `title_var`, tile set, players and size into info[4], whether it is a .wxm into
+ * *is_wxm. A multiplayer client checks the host's map (the first entry) against the
+ * header it has. Returns 0 only when the client lacks the file. */
+int __stdcall IsoGetWXPInfo(uint8_t *iso, int index, uint32_t dir_var, uint32_t name_var, uint32_t title_var,
+                            uint32_t *info, int *is_wxm)
+{
+    char path[0x104];
+    uint8_t h[0x80];
+    int rc;
+    g_iso = iso;
+    char *name = RtGetVariableString(I(void *, ISO_APP), name_var);
+    char *title = RtGetVariableString(I(void *, ISO_APP), title_var);
+    char *dir = RtGetVariableString(I(void *, ISO_APP), dir_var);
+    DebugStr((const char *)ORIG_PTR(0x101315d0), index);
+    DebugStr((const char *)ORIG_PTR(0x101315e8), dir);
+    if (!I(void *, ISO_FILES))
+        return 1;
+    lstrcpyA(path, dir);
+    if (!I(int32_t, 0x148) && I(int, 0x175) && *I(char *, ISO_FILES)) {
+        lstrcpyA(name, NAME(0));
+        lstrcatA(path, name);
+        name[g_strlen(name) - 4] = 0;
+        path_fix(path);
+        HMMIO f = mmioOpenA(path, NULL, 0);
+        if (!f) {
+            rc = 0;
+            memcpy(h, g_iso + 0xbf40, 0x80);
+            DebugStr((const char *)ORIG_PTR(0x101315f4), path);
+        } else {
+            LONG got = mmioRead(f, (HPSTR)h, 0x80);
+            mmioClose(f, 0);
+            if (got != 0x80) {
+                wsprintfA((char *)(g_iso + 0xdea), (const char *)ORIG_PTR(0x10131608), path);
+                message_box(0, (const char *)(g_iso + 0xdea), (const char *)ORIG_PTR(0x1013161c), 0);
+                return 1;
+            }
+            if (g_strcmp((const char *)h, (const char *)ORIG_PTR(0x10131628)) &&
+                g_strcmp((const char *)h, (const char *)ORIG_PTR(0x1013162c))) {
+                wsprintfA((char *)(g_iso + 0xdea), (const char *)ORIG_PTR(0x10131630), path, h);
+                message_box(0, (const char *)(g_iso + 0xdea), (const char *)ORIG_PTR(0x1013164c), 0);
+                return 1;
+            }
+            if (g_memcmp(h, g_iso + 0xbf40, 0x80))
+                return 1;
+            rc = 1;
+        }
+    } else {
+        if (index < 0 || index > I(int32_t, ISO_FILE_COUNT))
+            return 1;
+        lstrcpyA(name, NAME(index));
+        lstrcatA(path, name);
+        name[g_strlen(name) - 4] = 0;
+        path_fix(path);
+        memset(h, 0, 0x80);
+        HMMIO f = mmioOpenA(path, NULL, 0);
+        if (!f) {
+            DebugStr((const char *)ORIG_PTR(0x10131658), path);
+            return 1;
+        }
+        LONG got = mmioRead(f, (HPSTR)h, 0x80);
+        if (got != 0x80 || (g_strcmp((const char *)h, (const char *)ORIG_PTR(0x1013166c)) &&
+                            g_strcmp((const char *)h, (const char *)ORIG_PTR(0x10131670)))) {
+            mmioClose(f, 0);
+            return 1;
+        }
+        mmioClose(f, 0);
+        rc = 1;
+    }
+    lstrcpyA(title, (const char *)h + 6);
+    header_info(h, info);
+    *is_wxm = !g_strcmp((const char *)h, (const char *)ORIG_PTR(0x10131674));
+    return rc;
+}
+
+/* 0x10023014: a map file's tile set, players and size into info[4] */
+int __cdecl map_file_info(char *path, uint32_t *info)
+{
+    uint8_t h[0x80];
+    HMMIO f = mmioOpenA(path, NULL, 0);
+    if (!f)
+        return 0;
+    LONG got = mmioRead(f, (HPSTR)h, 0x80);
+    if (got == 0x80 && (!g_strcmp((const char *)h, (const char *)ORIG_PTR(0x10131678)) ||
+                        !g_strcmp((const char *)h, (const char *)ORIG_PTR(0x1013167c)))) {
+        mmioClose(f, 0);
+        header_info(h, info);
+        return 1;
+    }
+    mmioClose(f, 0);
+    return 0;
+}
+
+/* 0x10023118 */
+int __stdcall IsoFreeFileList(uint8_t *iso)
+{
+    g_iso = iso;
+    DebugStr((const char *)ORIG_PTR(0x10131680));
+    if (I(void *, ISO_FILES)) {
+        winfree(I(void *, ISO_FILES));
+        I(void *, ISO_FILES) = NULL;
+    }
+    I(int32_t, ISO_FILE_COUNT) = 0;
+    return 1;
+}

@@ -38,7 +38,7 @@ The reference screenshots were recorded with the all-original game, before the e
 | `tests/game/groups.sh OUT` | drag-select, Ctrl+1, a right click on a unit (it opens the selection's popup menu, also in the original), 1; idle poses vary by up to about 300 pixels | two runs with `DOMINION_ISO_ORIGINAL=all` |
 | `tests/game/hover.sh OUT` | cursors and the unit name popup | the same |
 | `tests/game/keys.sh OUT` | arrow-key scrolling; needs `KeyboardScrolling=1` under `[Dominion]` in the test install's `Dominion.ini` (restore it afterwards) | the same |
-| `tests/game/chat.sh OUT` | two-player match, chat lines (start positions are random: compare the text area only) | the same |
+| `tests/game/chat.sh OUT` | two-player match, chat lines (start positions are random: compare the text area only; the joining player's screenshot `c*_join.png` comes out as garbage, also with the original) | the same |
 | `tests/game/popup.sh OUT` | the right-click popup menu: on the ground (a long click, the command points), on a unit and on the selection (the animated pool at the bottom left differs by about 50-90 pixels) | two runs with `DOMINION_ISO_ORIGINAL=all` |
 | `tests/game/orders.sh OUT` | Ctrl+click (force attack: the infantry destroy the Recon) and Alt+click (guard) with the infantry selected; the keys: Ctrl force, Shift add to the selection, Alt order | two runs with `DOMINION_ISO_ORIGINAL=all` |
 | `tests/game/recon.sh OUT` | double click on the Recon unit (its goal is random by wall clock: check that it runs, not pixels) | - |
