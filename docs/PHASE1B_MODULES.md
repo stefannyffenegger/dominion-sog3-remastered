@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 448 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 454 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,10 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 69)
-* **Next part:** 70, from 0x1006a268 (list the live ones with `work/tmp/iso/live.txt`). Parts go on in address order.
+### Open items (as of part 70)
+* **Next part:** 71, from 0x1006be2a (`IsoInitWeaponTable`, then the live ones up to 0x1006d9bd). Parts go on in address order.
+* **A second path at tick 847 in the unit state log:** since parts 63-67, two of eleven state checks of ours (s63b, s70a) left the originals at tick 847, both the same way (they agree with each other up to tick 948). The other nine reached 950-1002, and no all-original run has shown it so far. Four runs logged with the unit fields for ticks 840-850 did not hit it. Not found yet: run more logged checks until one does, compare its unit lines with an original's (`statediff.py`), and if it is ours, test parts 63-70 one by one with `DOMINION_ISO_ORIGINAL`.
+* **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
 * **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
 * **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
@@ -965,3 +967,18 @@ A weapon's shot is an entry of the effects list (0x44 bytes) with a sprite of it
 * **Explosions (0x10069010, and 0x10069f63, which first notes the target's report kind):** the explosion sprite starts where the shot is, flipped by the firer's facing. It is noted in the target's attachment slot when the target has a free one, and its sound plays. The shot's entry is then cleared and freed.
 * Left original, not reached in the tests: 0x10068ba2, 0x10068c89, 0x10068e16 and 0x1006a268 (another shot end, with a callback).
 * Checked: the trace shows all four run in the unit state log run. Unit state log (952-1002, twice), Human mission 1, the orders test (identical to one of the original runs in all four shots), Alt+F4.
+
+### Part 70: instant hits, area damage, attack checks, effect sprites (`weapons.c`, 6 functions, 0x1006ab64-0x1006be2a)
+* **`effect_slot_take` (0x1006bbee):** takes a free effect sprite, one not in use or not visible. The search starts where the last one ended (0x1ac1) and wraps around once. The sprite is hidden, unflipped and emptied, and gets its owner's id.
+* **`weapon_hit_instant` (0x1006ab64):** a bullet, with no flight.
+  * The impact animation plays; on a turret it is at a random point of its box (0x1006bb01).
+  * The sound plays.
+  * The target is hit through its type's handler, with a spread from the firer's accuracy.
+* **`effect_area_hit` (0x1006b00a):** area damage. Every unit in the effect's sector and its eight neighbours that is within the weapon's spread is hit. Excluded are the firer, optionally the target, turrets raised above a height (float 0x101130b8; a NaN counts as low, as the x87 test does) and units flagged 0x10e bit 15. The hit goes through a given function or the unit type's handler. The random numbers are seeded from the firer's id AND the victim's.
+* **`unit_can_attack` (0x1006b6d3):** whether a unit may attack another.
+  * The medic (type 0x21) may only treat friendly men.
+  * Otherwise: not a unit under repair (+0x84 = 1), not a flagged or hidden target, not structures or units of types 0x40-0x43 as attackers, and allies only when asked. Units of kind 0x10-0x13 may only attack structures.
+  * Weapon kind 5 hits only enemy ground units that are not turrets; kind 4 hits ground units that are not turrets and carry nothing, or units of type 0x40-0x4f.
+  * **`selection_can_attack` (0x1006b633)** asks this for each of the local player's selected units.
+* **Faithfully kept, with one exception:** the original passed unit ids with upper bits left over on its stack; ours pass 0 there.
+* Checked: the trace shows all six run in the unit state log run. Unit state log (970 and 847, see Open items), Human mission 1, the orders, popup and hover tests (identical to one of the original runs in every shot), Alt+F4.

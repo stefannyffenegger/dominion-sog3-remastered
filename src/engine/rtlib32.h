@@ -91,6 +91,7 @@ unsigned __cdecl RtGetVar(void *app, int n);
 unsigned __cdecl RtSetPos(void *app, unsigned id, int x, int y);
 void __stdcall SpriteSetBlitFX(void *sprite, uint32_t fx, uint32_t arg);
 int __stdcall SpriteLinePoint(int step, int steps, int x1, int y1, int x2, int y2, POINT *out);
+uint32_t __stdcall SpriteIsVisible(void *sprite);
 void __stdcall SpriteSetSync(void *hsl, uint32_t on);
 unsigned __cdecl RtUnload(void *app, unsigned id);
 int __stdcall SpriteGetBounds(void *hsl, void *sprite, RECT *r);

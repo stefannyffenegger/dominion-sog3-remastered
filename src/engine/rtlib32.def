@@ -64,6 +64,7 @@ EXPORTS
     RtSetPos
     SpriteSetBlitFX@12
     SpriteLinePoint@28
+    SpriteIsVisible@4
     SpriteSetSync@8
     RtUnload
     SpriteGetBounds@12

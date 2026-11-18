@@ -62,5 +62,6 @@
 #include "aitask1.h"
 #include "threatmap.h"
 #include "projectile.h"
+#include "weapons.h"
 
 #endif
