@@ -55,5 +55,6 @@
 #include "misc.h"
 #include "eject.h"
 #include "prefs.h"
+#include "aibuild.h"
 
 #endif

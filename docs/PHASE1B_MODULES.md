@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 394 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 396 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 60)
-* **Next part:** 61, from 0x1005d140 (the live ones: 0x1005d7c1, 0x1005e4b6, 0x1005e5e0 (4.8 KB), 0x1005f8c3, 0x1005fb7f, 0x1005fe4b). Parts go on in address order.
+### Open items (as of part 61)
+* **Next part:** 62, from 0x1005e5e0 (the live ones: 0x1005e5e0 (4.8 KB), 0x1005f8c3, 0x1005fb7f, 0x1005fe4b). Parts go on in address order.
 * **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
 * **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
 * **Not reached, left original:** `IsoCheckCheatCodes` (0x10052df4, 3 KB: no test enters a code) and 0x10053a65 (the fog-of-war command it and others use); `IsoHostSetStartLocations` and `IsoPlaceEggStartsRemote` (network).
@@ -880,3 +880,9 @@ The interface speaks waves "int_%04d.wav" (0-99), one at a time from a queue of 
 * **`IsoCopyProtection`:** switched off; see `HIDDEN_AND_UNUSED.md`. The `rand()` call it makes is kept, since it moves the random numbers.
 * **Also:** `IsoSetTextEntryFlag`, and the two `fabs` helpers 0x1005d110/0x1005d0f0, which return on the x87 stack (ours return `long double`).
 * Checked: the trace shows the unit state log run reaches the tab sets, graphics quality, copy protection and `fabs`. Unit state log (952-990), menu tour, Human mission 1, Alt+F4.
+
+### Part 61: the AI's building turn (`aibuild.c`, 2 functions, 0x1005d7c1-0x1005e5e0)
+* **`ai_build_turn` (0x1005d7c1):** a computer player's building turn. Its four build slots (+0x13f, +0x13b, +0x143, +0x147, for tab sets 3, 0, 1, 2) are freed (the task finished) when the tab set no longer has a building. Then its build tasks are tried by priority: 10, then 7-9, then 3-6; any that succeeds ends the turn. If tasks were found but none could start, it waits; otherwise it tries priorities 0-3.
+* **`ai_can_afford` (0x1005e4b6):** whether the player has the men (+0x10a) and materials (+0x10e) the next build asks for.
+* Left original: the task's own try 0x1005db67 (reached only through ours).
+* Checked: the trace shows the unit state log run reaches both. Unit state log (twice: 952-990), menu tour, Human mission 1, Alt+F4.
