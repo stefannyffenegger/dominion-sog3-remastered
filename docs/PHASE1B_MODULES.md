@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 332 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 338 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 49)
-* **Next part:** 50, from 0x1004e360 (`map_reset_objects`, `IsoLoadExternalTable`, ...). Parts go on in address order.
+### Open items (as of part 50)
+* **Next part:** 51, from 0x1004ea01. Parts go on in address order.
 * **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it.
 * **Not reached, left original in the AI:** 0x1004c1bf (finishing a task, 1.4 KB); 0x1004d392-0x1004e360 (8 functions, the base integrity checks: "Check base integrity compromised/perimeter").
 * **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
@@ -810,3 +810,9 @@ Squads are 0x130-byte records (G(0x1018b608)), targets 0x120-byte records (G(0x1
 * **The functions:** `ai_assign_targets` gives each target the player knows a squad (`target_assign`). It skips targets of allies and dead units, and, with the AI's fog flag (+0xa2c), unspotted ones. It takes the first squad of list 4 (units) or 5 (structures) that can hit the target (`squad_find_for`, `squad_can_attack`), or a new squad. Also `squad_add_target`, `squad_drop_target`, `target_tell_players`, `unit_attacked_by`, and `unit_tile_value`.
 * **`ai_set_lethality`:** the summed squad strength scaled by the difficulty: none, x1.2 on the x87 truncated as `__ftol` does, x2, or x3.
 * Checked: the trace shows the unit state log run reaches all of them except `unit_attacked_by`. Unit state log at 952-1002, the full range. Human mission 1 and Alt+F4 also checked.
+
+### Part 50: neighbour offsets, external tables, cel offsets (`tables.c`, 6 functions, 0x1004e360-0x1004ea01)
+* **`map_neighbour_offsets`** (0x1004e360, formerly `map_reset_objects` in `createmap.c`): the cell offsets of the eight neighbours for the map's row length, in the original's tables at 0x1017c4f8-0x1017c574.
+* **`IsoLoadExternalTable`** (stdcall): loads a text file of comma-separated numbers into an engine resource's array (layers x rows x columns of ints). Spaces are dropped, `;` or `/` starts a comment, empty lines are skipped, and values starting with a letter leave the entry as it was. It reads line by line with `mmioSeek`/`mmioRead` and needs CR LF line ends.
+* **Small ones:** `IsoSetCelOffset` (stdcall, moves two cels' offsets), `IsoFileExists`, `IsoGetShortUnitTypeString` (15-character names per race from a table at 0x1013b548), and the file list's comparator 0x1004e9d2 (`strcmpi`).
+* Checked: unit state log (952-970), menu tour, Human mission 1, Alt+F4. Coverage from `live.txt` (map offsets, the external tables and the comparator run; `IsoFileExists`, `IsoGetShortUnitTypeString` and `IsoSetCelOffset` are not reached).

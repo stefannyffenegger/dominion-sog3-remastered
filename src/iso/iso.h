@@ -45,5 +45,6 @@
 #include "terrain.h"
 #include "aitasks.h"
 #include "aisquads.h"
+#include "tables.h"
 
 #endif

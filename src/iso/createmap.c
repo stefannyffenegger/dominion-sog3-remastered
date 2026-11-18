@@ -5,9 +5,10 @@
 #include "tilelib.h"
 #include "mapedit.h"
 #include "createmap.h"
+#include "tables.h"
 
 /* not rewritten yet (names ours, provisional) */
-#define map_reset_objects ORIG(void(__cdecl *)(void), 0x1004e360)
+#define map_reset_objects map_neighbour_offsets
 #define log2_of ORIG(int32_t(__stdcall *)(uint32_t), 0x100a78fe)
 #define map_reset_view ORIG(void(__cdecl *)(void), 0x10050fc6)
 #define IsoDeleteAllUnits ORIG(void(__stdcall *)(uint8_t *), 0x100ac51d)
