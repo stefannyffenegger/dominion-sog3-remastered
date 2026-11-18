@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 442 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 444 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 67)
-* **Next part:** 68, from 0x10067abc (the live ones: 0x10067acc, launching a projectile, 2 KB; 0x10068286, its flight, 2.3 KB; then 0x10069010-0x10069f63). Parts go on in address order.
+### Open items (as of part 68)
+* **Next part:** 69, from 0x10068ba2 (the live ones: 0x10069010, 0x100692fe (2.3 KB), 0x10069be4, 0x10069f63). Parts go on in address order.
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
 * **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
 * **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
@@ -937,3 +937,20 @@ Each handler is run by `task_run` for its task type; next to each is the functio
 * **`unit_screen_box` (0x10067690):** a unit's box on the screen, from its sprite's frame. Turrets are raised by their height.
 * **Effects:** a timer per effect (0x100677e6) runs its kind's step from a table at 0x10157154. 0x10067883 shows an effect's next frame, and its second sprite's.
 * Checked: as part 63; the trace shows all run except raising a single cell, lowering a unit's cells and the two distances.
+
+### Part 68: projectiles (`projectile.c`, 2 functions, 0x10067acc-0x10068ba2)
+A weapon's shot is an entry of the effects list (0x44 bytes) with a sprite of its own.
+* **Launching (0x10067acc):**
+  * The shot starts at the muzzle of the firing unit's current frame: the muzzle table (0x1988) is indexed by the facing and the frame, and mirrored sprites use the right side's frames for the left. Turrets add their mount offset (0x1964).
+  * It aims at a point or at a target unit.
+  * It gets a box around the aim point that counts as arrived: half the firer's accuracy radius, or twice the weapon's speed.
+  * Its flight time is three times the distance divided by the speed. Its heading comes from the firer's facing, through the tables at 0x10140578 and 0x10140588.
+  * The firer's cooldown and ammunition fields are updated, and the weapon's sound plays.
+* **Flying (0x10068286):**
+  * **Arriving:** if the target unit is still within 16 pixels of its box, it is hit, through its type's handler (table 0x101545c8). A random spread is passed with the hit: from the firer's accuracy, or from the weapon's spread when the firer has none. The random numbers are seeded from the firer's or the shot's serial number. Otherwise the ground is marked.
+  * **Running out:** when the shot's range or time runs out, the ground is marked as well.
+  * **Ending:** either way, the effect kind's end handler (0x10157158) runs.
+  * **On the way:** the shot speeds up to full speed, and guided kinds turn towards the aim point by at most their turn rate per step (3600 units to a circle). With trails on, every few steps a trail sprite is left.
+* **Faithfully kept:** unit and effect ids passed on carry the upper half of a pointer, as the original's registers did.
+* Left original: the empty 0x10067abc (16 bytes, too short to hook).
+* Checked: the trace shows both run in the unit state log run. Unit state log (952-1002, twice), Human mission 1, the orders test (fights; identical to one of the original runs in all four shots), Alt+F4.

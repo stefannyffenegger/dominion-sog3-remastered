@@ -61,5 +61,6 @@
 #include "plugin.h"
 #include "aitask1.h"
 #include "threatmap.h"
+#include "projectile.h"
 
 #endif
