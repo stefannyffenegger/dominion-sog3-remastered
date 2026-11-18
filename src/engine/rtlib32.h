@@ -26,6 +26,7 @@ void *__cdecl RtGetHResfile(void *app); /* the app's resource file */
 uint8_t *__stdcall ResLoadResource(void *rf, uint32_t id, uint32_t *size);
 void __cdecl RtSetTileBackground(void *app, uint32_t map, int repaint);
 void __cdecl DebugStr(const char *fmt, ...);
+void __stdcall SpriteSetGraphicsQuality(void *hsl, int32_t *a, int32_t *b, int c, int d);
 unsigned __cdecl RtSetBriefingScreenStatus(void *app, int on);
 void __stdcall SpriteSetMergeDefault(void *hsl, int merge);
 uint32_t __cdecl MemMgrSize(void);

@@ -98,6 +98,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[resource]` | | data files copied to the hard disk, deleted at the next start (see below) |
 
 ## Leftovers from earlier versions
+* **code.** The copy protection is switched off in the shipped game. `IsoCopyProtection` (`ISO.R32` 0x1005cfc7) passes check 100 through a function that just returns 1 (0x100c6d20), and checks 200 and 300 pass after a `rand()` call whose result is thrown away. With the flag at iso+0x170 set, every check passes at once. `IsoCheckForCD` (0x1005c252) is not reached in the tests.
 * **code.** Resource files: the engine still reads an older, shorter header format (version 2), converting it on load.
 * **code.** Playing from CD: the resource library can copy data files to the hard disk while playing, and list them in `[resource]` so leftovers are deleted at the next start. Dominion doesn't use it.
 * **code.** `SpritePaintDirectDrawSurfacesBlack1`, an older version of the function that clears the screen, kept alongside the new one. `ClearVideoMem` (clear all video memory) is never called.
