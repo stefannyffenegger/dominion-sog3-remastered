@@ -46,5 +46,6 @@
 #include "aitasks.h"
 #include "aisquads.h"
 #include "tables.h"
+#include "healthbar.h"
 
 #endif

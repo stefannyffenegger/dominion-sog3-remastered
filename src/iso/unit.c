@@ -2,6 +2,7 @@
  * the player's upgrades for it, keeping track of the map sector it is in, its sprite
  * following its state every frame, and making room where a structure is put down. */
 #include "iso_core.h"
+#include "healthbar.h"
 #include "events.h"
 #include "sector.h"
 #include "combat.h"
@@ -10,7 +11,6 @@
 /* not rewritten yet (names ours, provisional) */
 #define unit_set_rank ORIG(void(__cdecl *)(uint32_t, int16_t, int), 0x10058bf5)
 #define slot_offset ORIG(void(__cdecl *)(uint32_t, int16_t, int16_t *), 0x10091860)
-#define unit_clear_path ORIG(void(__cdecl *)(uint16_t), 0x1004f34e)
 #define unit_max_health ORIG(int(__cdecl *)(uint8_t *, int), 0x100a23e0)
 #define unit_set_anim ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cc91)
 #define unit_set_action ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cf5b)
@@ -18,7 +18,6 @@
 #define reveal_around ORIG(void(__cdecl *)(int, int, uint32_t, int, uint32_t, uint16_t, int), 0x10090223)
 #define turret_new ORIG(uint8_t *(__cdecl *)(uint32_t), 0x10085e60)
 #define sprite_recolour ORIG(void(__cdecl *)(void *, uint8_t, int32_t, int, int), 0x100b1ce0)
-#define unit_set_frame ORIG(void(__cdecl *)(uint32_t), 0x1004ea01)
 #define sector_seen hotspot_entered
 #define unit_remove unit_kill
 
@@ -126,7 +125,7 @@ int __cdecl unit_place(uint32_t id, uint8_t a16, uint8_t player, int16_t x, int1
     P(uint16_t, u, 0x8c) = 0xffff;
     P(uint16_t, u, 0x8e) = 0xffff;
     P(uint16_t, u, 0x1b3) = 0xffff;
-    unit_clear_path((uint16_t)id);
+    unit_set_report_kind((uint16_t)id);
     P(uint16_t, u, 0x1c9) = 0xffff;
     int32_t type = P(int32_t, u, U_ID_TYPE);
     if (type < 0x30 || type > 0x37)
@@ -318,7 +317,7 @@ int __cdecl unit_place(uint32_t id, uint8_t a16, uint8_t player, int16_t x, int1
         }
         P(uint16_t, u, 0x191) = 0xffff;
         P(uint16_t, u, 399) = 0xffff;
-        unit_set_frame(id);
+        unit_health_bar_init(id);
     }
     P(uint32_t, u, U_FLAGS2) &= 0xffefffff;
     P(uint8_t, u, 0x112) &= 0xfd;

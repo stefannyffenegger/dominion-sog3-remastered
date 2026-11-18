@@ -29,6 +29,9 @@ EXPORTS
     SpriteCreateDirectDrawSurfaces@4
     SpriteDibColorMapMerge@40
     SpriteDibMerge@32
+    SpriteDibCreate@16
+    SpriteAppendBitmap@12
+    SpriteGetNumCels@4
     SpriteDibSet@24
     SpriteGetDDraw@4
     SpritePaintRect@12

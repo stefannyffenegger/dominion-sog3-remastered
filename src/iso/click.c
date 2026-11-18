@@ -2,6 +2,7 @@
  * drag) on the map: selecting, ordering the selection to a unit or a place, the box
  * selection. */
 #include "iso_core.h"
+#include "healthbar.h"
 #include "sound.h"
 #include "power.h"
 #include "view.h"
@@ -13,7 +14,6 @@
 
 /* not rewritten yet (names ours, provisional) */
 #define unit_selectable ORIG(int(__cdecl *)(uint16_t), 0x100f4167)
-#define unit_selected ORIG(void(__cdecl *)(uint32_t, int), 0x1004ebe6)
 #define order_move ORIG(void(__cdecl *)(int, int, uint32_t, int, uint32_t, int, int), 0x100b39aa)
 #define unit_can_reach ORIG(int(__cdecl *)(uint32_t, uint32_t, int, int), 0x1006b6d3)
 #define unit_can_order ORIG(uint32_t(__cdecl *)(uint16_t), 0x100f4301)
@@ -66,7 +66,7 @@ int __cdecl selection_add(uint32_t id, int *voice)
     if (!unit_selectable((uint16_t)id))
         return 0;
     select_into(LOCAL, (uint16_t)id, u);
-    unit_selected(id, 0);
+    unit_health_bar(id, 0);
     if (!*voice)
         *voice = unit_voice(u, 1, 0, 1);
     return 1;
@@ -81,7 +81,7 @@ int __cdecl selection_foreign(uint32_t id)
         return 0;
     selection_clear((int)owner);
     select_into((int32_t)owner, (uint16_t)id, u);
-    unit_selected(id, 0);
+    unit_health_bar(id, 0);
     return 1;
 }
 
@@ -140,7 +140,7 @@ int __cdecl box_select(void)
             P(int32_t, u, U_ID_TYPE) < 0x50 && P(int32_t, u, U_CLASS) != 0x40 &&
             (P(uint8_t, u, 0x147) != 'E' || P(int32_t, P(uint8_t *, u, 0x32), 0x74) == 1)) {
             select_into(LOCAL, id, u);
-            unit_selected(id, 0);
+            unit_health_bar(id, 0);
         }
     }
     return 1;

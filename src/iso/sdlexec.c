@@ -3,6 +3,7 @@
  * main records (subtype 0: timers, hot spots, mission info) and the game settings,
  * units, objects, AI and events (by subtype). */
 #include "iso_core.h"
+#include "healthbar.h"
 #include "terrain.h"
 #include "scenario.h"
 #include "sdlexec.h"
@@ -14,7 +15,6 @@
 #define ai_adding ORIG(void(__cdecl *)(int, int), 0x100e4a10)
 #define IsoAddUnit ORIG(int(__stdcall *)(uint8_t *, int, uint32_t, uint32_t, int, uint32_t, uint32_t, int, uint32_t, uint32_t), 0x100aa140)
 #define unit_health_changed ORIG(void(__cdecl *)(uint32_t), 0x1006cff3)
-#define unit_selected ORIG(void(__cdecl *)(uint32_t, int), 0x1004ebe6)
 #define IsoUnitCanEnter ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x100f0c6c)
 #define unit_set_action ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cf5b)
 #define unit_guard_at ORIG(void(__cdecl *)(uint32_t, int, int, int), 0x1007618a)
@@ -190,12 +190,12 @@ static int add_unit(uint8_t *r)
     case 2000: /* half health */
         P(int16_t, iso_unit(id), 0xd6) = (int16_t)(P(int16_t, iso_unit(id), 0xd6) / 2);
         unit_health_changed((uint32_t)id);
-        unit_selected((uint32_t)id, 1);
+        unit_health_bar((uint32_t)id, 1);
         break;
     case 3000: /* a quarter */
         P(int16_t, iso_unit(id), 0xd6) = (int16_t)(P(int16_t, iso_unit(id), 0xd6) / 4);
         unit_health_changed((uint32_t)id);
-        unit_selected((uint32_t)id, 1);
+        unit_health_bar((uint32_t)id, 1);
         break;
     }
     if (P(int32_t, iso_unit(id), U_CLASS) == 0x38 && P(uint8_t, iso_unit(id), 0x79) == 3) {

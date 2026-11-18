@@ -3,6 +3,7 @@
  * hit's sprite, allies called for help, killing a unit, destroyed structures and what is
  * in, on or under them. */
 #include "iso_core.h"
+#include "healthbar.h"
 #include "events.h"
 #include "sound.h"
 #include "sector.h"
@@ -32,7 +33,6 @@
 #define effect_slot_take ORIG(uint32_t(__cdecl *)(uint8_t, uint16_t), 0x1006bbee)
 #define effect_start                                                                         \
     ORIG(void(__cdecl *)(void *, int, int, int, uint32_t, int, int, int, int, uint32_t, uint32_t), 0x1006d9bd)
-#define unit_selected ORIG(void(__cdecl *)(uint32_t, int), 0x1004ebe6)
 #define path_stop ORIG(int(__cdecl *)(uint32_t, int), 0x100d4947)
 #define path_release ORIG(int(__cdecl *)(uint32_t, int, int, int), 0x100d559a)
 #define structure_wreck ORIG(void(__cdecl *)(uint32_t, int), 0x100b2953)
@@ -111,7 +111,7 @@ void __cdecl hit_effect(uint32_t id)
                          P(uint32_t, ti, 0x58), P(int32_t, ti, 0x5c), 0, 0, 0, 0x40, 0);
         }
     }
-    unit_selected(id, 1);
+    unit_health_bar(id, 1);
 }
 
 /* 0x1000f2e9: the player's units in the sector, not already busy, take on the attacker

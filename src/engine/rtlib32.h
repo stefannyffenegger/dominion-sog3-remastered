@@ -27,6 +27,9 @@ uint8_t *__stdcall ResLoadResource(void *rf, uint32_t id, uint32_t *size);
 void __cdecl RtSetTileBackground(void *app, uint32_t map, int repaint);
 void __cdecl DebugStr(const char *fmt, ...);
 
+uint8_t *__stdcall SpriteDibCreate(int w, int h, int clear, uint32_t bpp);
+int __stdcall SpriteAppendBitmap(void *hsl, void *sprite, void *bitmap);
+uint32_t __stdcall SpriteGetNumCels(void *sprite);
 void __stdcall SpriteDibMerge(RtDib *dst, RtDib *src, int w, int h, int x, int y, int src_x,
                               int src_y);
 void __stdcall SpriteDibColorMapMerge(RtDib *dst, RtDib *src, int w, int h, int x, int y,

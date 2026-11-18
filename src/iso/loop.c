@@ -2,6 +2,7 @@
  * hidden, the unit under the mouse, the cursor, effects, the interface), the map
  * editor's loop, the debug sprites, "next unit" and selecting groups. */
 #include "iso_core.h"
+#include "healthbar.h"
 #include "mouse.h"
 #include "cursor.h"
 #include "view.h"
@@ -32,7 +33,6 @@
 #define find_event_pos ORIG(int(__cdecl *)(int *, int *, int, int), 0x1005c77a)
 #define unit_selectable ORIG(int(__cdecl *)(uint16_t), 0x100f4167)
 #define unit_max_health ORIG(int(__cdecl *)(uint8_t *, int), 0x100a23e0)
-#define unit_selected ORIG(void(__cdecl *)(uint32_t, int), 0x1004ebe6)
 #define group_clear ORIG(void(__cdecl *)(uint32_t), 0x10095214)
 #define group_made ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x1009519a)
 
@@ -320,7 +320,7 @@ static void select_one(uint32_t player, uint8_t *u, uint16_t id)
     selected(player)[SELECTED_N(player)] = id;
     SELECTED_N(player)++;
     P(uint8_t, u, U_SELECTED) = 1;
-    unit_selected(id, 0);
+    unit_health_bar(id, 0);
     if (P(int8_t, u, U_SEL_STATE) == 1)
         P(int8_t, u, U_SEL_STATE) = 2;
 }
@@ -381,7 +381,7 @@ int __stdcall IsoFindNextUnit(uint8_t *iso, uint32_t start, uint32_t player, int
             selected(player)[0] = id;
             SELECTED_N(player) = 1;
             P(uint8_t, u, U_SELECTED) = 1;
-            unit_selected(id, 0);
+            unit_health_bar(id, 0);
             P(uint8_t, u, U_SEL_STATE) = 2;
             IsoSetFollowUnit(g_iso, 1);
             pass = 0;

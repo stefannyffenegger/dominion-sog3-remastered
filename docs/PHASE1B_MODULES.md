@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 338 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 341 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 50)
-* **Next part:** 51, from 0x1004ea01. Parts go on in address order.
+### Open items (as of part 51)
+* **Next part:** 52, from 0x1004f45a (`IsoBuildSuperTile`, ...). Parts go on in address order.
 * **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it.
 * **Not reached, left original in the AI:** 0x1004c1bf (finishing a task, 1.4 KB); 0x1004d392-0x1004e360 (8 functions, the base integrity checks: "Check base integrity compromised/perimeter").
 * **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
@@ -816,3 +816,11 @@ Squads are 0x130-byte records (G(0x1018b608)), targets 0x120-byte records (G(0x1
 * **`IsoLoadExternalTable`** (stdcall): loads a text file of comma-separated numbers into an engine resource's array (layers x rows x columns of ints). Spaces are dropped, `;` or `/` starts a comment, empty lines are skipped, and values starting with a letter leave the entry as it was. It reads line by line with `mmioSeek`/`mmioRead` and needs CR LF line ends.
 * **Small ones:** `IsoSetCelOffset` (stdcall, moves two cels' offsets), `IsoFileExists`, `IsoGetShortUnitTypeString` (15-character names per race from a table at 0x1013b548), and the file list's comparator 0x1004e9d2 (`strcmpi`).
 * Checked: unit state log (952-970), menu tour, Human mission 1, Alt+F4. Coverage from `live.txt` (map offsets, the external tables and the comparator run; `IsoFileExists`, `IsoGetShortUnitTypeString` and `IsoSetCelOffset` are not reached).
+
+### Part 51: health bars (`healthbar.c`, 3 functions, 0x1004ea01-0x1004f45a)
+Each unit has two small 8-bit DIBs (+0x90/+0x94) appended to its sprite as cels (+0x8c/+0x8e; for types 0x30-0x37 to the turret's sprite). They hold the health bar and, for the local player's units that have them, a row of pips above it (6x8 pictures, full or empty: the counts come from the type at +0xe0 and +0xf3, or for class 0x30 from the type's +0x28 and +0xdc divided by the tile record's +0x1c).
+* **`unit_health_bar` (0x1004ebe6):** draws the bar. Network games use the palette's last four entries; single player uses 10, 0x4f, 0x77 and 0xdd, with the missing part in the high colour above half health and the low one below. With `hit` set, a unit at half health or less reports the damage, once every 500 ticks (+0x1b3). It was named `unit_selected` in five files and has been renamed.
+* **`unit_health_bar_init` (0x1004ea01):** creates the two DIBs. It was named `unit_set_frame` in `unit.c` and has been renamed.
+* **`unit_set_report_kind` (0x1004f34e):** sets the report kind +0x1bd (0x46 for structures, 0x40 for types 0x28-0x2f). It was named `unit_clear_path` in `unit.c` and has been renamed.
+* Added `SpriteDibCreate`, `SpriteAppendBitmap` and `SpriteGetNumCels` to the engine imports.
+* Checked: unit state log (952-990), Human mission 1, Alt+F4, and the orders test (`orders.sh`), whose shots came out pixel-identical to an original run.
