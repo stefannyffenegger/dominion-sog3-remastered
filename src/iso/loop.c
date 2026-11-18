@@ -2,6 +2,7 @@
  * hidden, the unit under the mouse, the cursor, effects, the interface), the map
  * editor's loop, the debug sprites, "next unit" and selecting groups. */
 #include "iso_core.h"
+#include "status.h"
 #include "radarmap.h"
 #include "healthbar.h"
 #include "mouse.h"
@@ -21,9 +22,7 @@
 #define BF_BlastText                                                                         \
     ORIG(int(__cdecl *)(void *, void *, uint32_t, void *, int, int, const char *, int), 0x101120b6)
 #define unit_cost ORIG(void(__cdecl *)(int, int *, int *), 0x100a5423)
-#define status_text ORIG(int(__cdecl *)(char *, int), 0x10053ef5)
 #define radar_update ORIG(int(__cdecl *)(void), 0x100a25d0)
-#define view_follow ORIG(void(__cdecl *)(int, int), 0x100549b0)
 #define objectives_window ORIG(void(__cdecl *)(int), 0x10047656)
 #define unit_shade ORIG(int(__cdecl *)(uint16_t), 0x10076ca3)
 #define unit_shade_done ORIG(int(__cdecl *)(uint16_t), 0x10076af2)
@@ -249,7 +248,7 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
         if (!f)
             I(int32_t, 0x144) = 0;
         else
-            view_follow(P(int16_t, f, U_X), P(int16_t, f, U_Y));
+            view_scroll_to(P(int16_t, f, U_X), P(int16_t, f, U_Y));
     }
     if (I(int, 0x175))
         messages_draw();
@@ -337,7 +336,7 @@ int __stdcall IsoFindNextUnit(uint8_t *iso, uint32_t start, uint32_t player, int
     if (kind == 10) {
         int x, y;
         if (find_event_pos(&x, &y, (int)player, 0))
-            view_follow(x, y);
+            view_scroll_to(x, y);
         return 0;
     }
     i = (int)start < I(int, ISO_UNIT_COUNT) ? start : 0;

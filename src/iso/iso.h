@@ -49,5 +49,6 @@
 #include "healthbar.h"
 #include "radarmap.h"
 #include "exports.h"
+#include "status.h"
 
 #endif

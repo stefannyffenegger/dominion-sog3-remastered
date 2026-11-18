@@ -1,6 +1,7 @@
 /* The game logic, 0x10016aa0-0x1001782a: the action buttons of the interface
  * (IsoProcessAction) and the check state of the toggle buttons. */
 #include "iso_core.h"
+#include "status.h"
 #include "commands.h"
 #include "relay.h"
 #include "sector.h"
@@ -8,7 +9,6 @@
 
 /* not rewritten yet (names ours, provisional) */
 #define unit_locked ORIG(int(__cdecl *)(uint32_t), 0x10042ef3)
-#define status_text ORIG(int(__cdecl *)(const char *, int), 0x10053ef5)
 #define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 #define unit_anim_start ORIG(void(__cdecl *)(uint16_t, uint32_t, int, int), 0x100f365b)
 #define unit_set_repair ORIG(void(__cdecl *)(uint32_t, uint32_t, uint32_t), 0x1005af3f)

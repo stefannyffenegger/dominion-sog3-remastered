@@ -2,6 +2,7 @@
  * drag) on the map: selecting, ordering the selection to a unit or a place, the box
  * selection. */
 #include "iso_core.h"
+#include "status.h"
 #include "healthbar.h"
 #include "sound.h"
 #include "power.h"
@@ -20,7 +21,6 @@
 #define effect_slot_take ORIG(uint32_t(__cdecl *)(uint8_t, uint16_t), 0x1006bbee)
 #define effect_start                                                                         \
     ORIG(void(__cdecl *)(void *, int, int, int, uint32_t, int, int, int, int, uint32_t, uint32_t), 0x1006d9bd)
-#define status_text ORIG(int(__cdecl *)(const char *, int), 0x10053ef5)
 #define unit_sell ORIG(int(__cdecl *)(uint32_t, int), 0x1005ae71)
 #define unit_repair ORIG(void(__cdecl *)(uint32_t, int), 0x1005b007)
 #define unit_1005b314 ORIG(int(__cdecl *)(uint32_t, int), 0x1005b314)

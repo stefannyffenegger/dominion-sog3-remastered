@@ -26,6 +26,7 @@ void *__cdecl RtGetHResfile(void *app); /* the app's resource file */
 uint8_t *__stdcall ResLoadResource(void *rf, uint32_t id, uint32_t *size);
 void __cdecl RtSetTileBackground(void *app, uint32_t map, int repaint);
 void __cdecl DebugStr(const char *fmt, ...);
+uint32_t __cdecl MemMgrSize(void);
 
 uint8_t *__stdcall SpriteDibCreate(int w, int h, int clear, uint32_t bpp);
 int __stdcall SpriteAppendBitmap(void *hsl, void *sprite, void *bitmap);

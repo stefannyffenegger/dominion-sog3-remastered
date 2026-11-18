@@ -29,6 +29,7 @@ EXPORTS
     SpriteCreateDirectDrawSurfaces@4
     SpriteDibColorMapMerge@40
     SpriteDibMerge@32
+    MemMgrSize
     SpriteDibCreate@16
     SpriteAppendBitmap@12
     SpriteGetNumCels@4

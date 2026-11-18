@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 356 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 362 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,9 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 54)
-* **Next part:** 55, from 0x10052df4 (`IsoCheckCheatCodes`). Parts go on in address order.
+### Open items (as of part 55)
+* **Next part:** 56, from 0x10054b89. Parts go on in address order.
+* **Not reached, left original:** `IsoCheckCheatCodes` (0x10052df4, 3 KB: no test enters a code) and 0x10053a65 (the fog-of-war command it and others use); `IsoHostSetStartLocations` and `IsoPlaceEggStartsRemote` (network).
 * **The radar's drawing is not checked on screen:** the tests' radar stays empty (mission 1 has none, the two-player match has no radar station yet). A test in a mission or match with a radar is needed; the radar code ported so far (parts 52-54) is checked by the state log and the trace only.
 * **Not reached, left original:** the tile tools `IsoBuildSuperTile` and `IsoBuildTileHistogramFile` (0x1004f45a-0x1004f90d), the developer cheat 0x1004fbc4 (see `HIDDEN_AND_UNUSED.md`) with its helper 0x1004f90d, 0x1004fbaf, 0x100508bc, 0x10050d3e, 0x10050e74 (a debug display, flag iso+300), 0x100516f9 (a second radar background builder) and 0x10051f0d.
 * **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it.
@@ -835,3 +836,9 @@ The radar has a sprite (I(0xbf1e)), a background DIB (I(0xbefe)), a fog DIB (I(0
 * **The view box:** `IsoCreateRadarScreenArea`. Its size comes from the screen and the map on the x87, truncated as `__ftol` does, and divided by `fabs` of the aspect. Its corner colour is 0x5b for scenarios 0-3; the original leaves it unset for others.
 * **Exports** (`exports.c`, all stdcall): `IsoGetUnitString`, `IsoCalcSliderPosition` and `IsoCalcSliderStartItem` (x87, 64-bit loads of the unsigned values), `IsoGetDibDimensions`, `IsoSetRace`, `IsoGetRace`, `IsoCampaignInfo`.
 * Checked: the trace shows the unit state log run reaches all of them except `IsoGetUnitString` and the sliders. Unit state log 847-990 (an all-original run at the same time: 952-990), menu tour, Human mission 1, Alt+F4. In the two-player match the radar looks like the original's, but empty (see Open items).
+
+### Part 55: the status line, scrolling the view, small exports (`status.c`, 6 functions, 0x10053e3b-0x10054b89)
+* **`status_text` (0x10053ef5):** the status line at the bottom of the screen. It is drawn into the status DIB with BmpFont's `BFDrawTextShadow` (through the original's import, as in part 4) from a script variable, then the status sprite gets the redraw message (0x101572c0). The text is shown for `ms` milliseconds; with NULL the DIB is cleared. The callers in four files used it through `ORIG`.
+* **`view_scroll_to` (0x100549b0, formerly `view_follow` in `loop.c`):** sets the engine's scroll position for a map point, offset by half the view, with an odd x made even. It also sets the view's edges and updates the radar's view box.
+* **Small ones:** `IsoMouseInScrollRegion`, `IsoDebugStrIntf`, `IsoMemUsed` (`MemMgrSize`, added to the engine imports), `IsoSetGameState`.
+* Checked: unit state log (952-990), Human mission 1, Alt+F4, and the orders test, whose status line ("Guarding specified unit/structure") matches the original. The only difference is the crater's animation, which varies between runs. The trace shows the state log run reaches `IsoMemUsed`, `IsoSetGameState` and `view_scroll_to`.
