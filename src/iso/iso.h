@@ -50,5 +50,6 @@
 #include "radarmap.h"
 #include "exports.h"
 #include "status.h"
+#include "players.h"
 
 #endif
