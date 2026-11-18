@@ -3,6 +3,7 @@
  * its tiles (from the tile library, or embedded), the objects, and the AI's choke
  * points (versions x.3-x.5). */
 #include "iso_core.h"
+#include "radarmap.h"
 #include "tilelib.h"
 #include "maptiles.h"
 #include "mapedit.h"
@@ -11,7 +12,6 @@
 
 /* not rewritten yet (names ours, provisional) */
 #define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, int, int, int), 0x100aca6e)
-#define map_reset_view ORIG(void(__cdecl *)(void), 0x10050fc6)
 #define ai_player_setup ORIG(void(__cdecl *)(int32_t), 0x100a783d)
 #define choke_init ORIG(void(__cdecl *)(void), 0x10098542)
 #define choke_link_fix ORIG(void(__cdecl *)(void *), 0x10098970)
@@ -329,7 +329,7 @@ int __stdcall scenario_load(uint8_t *iso, const char *name, int no_embedded, int
     int32_t cells = I(int32_t, ISO_MAP_H) * I(int32_t, ISO_MAP_W);
     for (int i = 0; i < cells; i++)
         I(uint32_t *, ISO_MAP)[i] &= 0xff00ffff;
-    map_reset_view();
+    radar_set_scale();
     if (I(int32_t, ISO_HAVE_SPRITES))
         units_after_load();
     if (!I(int32_t, ISO_HAVE_SPRITES)) {

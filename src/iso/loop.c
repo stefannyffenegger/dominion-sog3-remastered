@@ -2,6 +2,7 @@
  * hidden, the unit under the mouse, the cursor, effects, the interface), the map
  * editor's loop, the debug sprites, "next unit" and selecting groups. */
 #include "iso_core.h"
+#include "radarmap.h"
 #include "healthbar.h"
 #include "mouse.h"
 #include "cursor.h"
@@ -28,7 +29,6 @@
 #define unit_shade_done ORIG(int(__cdecl *)(uint16_t), 0x10076af2)
 #define structure_shade ORIG(int(__cdecl *)(uint16_t), 0x10076e53)
 #define unit_draw_hidden ORIG(int(__cdecl *)(uint8_t *, uint32_t, int), 0x10050e74)
-#define unit_sound_stop ORIG(void(__cdecl *)(int, int, int), 0x1005077d)
 #define unit_effects ORIG(int(__cdecl *)(uint32_t), 0x1006d672)
 #define find_event_pos ORIG(int(__cdecl *)(int *, int *, int, int), 0x1005c77a)
 #define unit_selectable ORIG(int(__cdecl *)(uint16_t), 0x100f4167)
@@ -132,7 +132,7 @@ int __stdcall IsoDisplayLoop(uint8_t *iso)
             P(uint32_t, u, U_FLAGS) |= 0x40;
             if (P(uint32_t, u, U_FLAGS2) >> 15 & 1) {
                 if (!(P(uint32_t, u, U_FLAGS) >> 16 & 1) || !allied || !I(int, 300)) {
-                    unit_sound_stop(P(uint16_t, u, 0x98), 0, 0);
+                    radar_plot(P(uint16_t, u, 0x98), 0, 0);
                     P(uint16_t, u, 0x98) = 0;
                 } else {
                     unit_draw_hidden(u, allied, 0);

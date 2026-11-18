@@ -47,5 +47,7 @@
 #include "aisquads.h"
 #include "tables.h"
 #include "healthbar.h"
+#include "radarmap.h"
+#include "exports.h"
 
 #endif

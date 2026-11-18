@@ -21,7 +21,7 @@ Only some codes are switched on in the shipped game:
 | Multiplayer | `GREEN`, `BLUE`, `RED`, `YELLOW`, `BLACK`, `TURQ`, `PURPLE`, `ORANGE` (the eight player colors) |
 | **Disabled** | `OMNIPOTENT`, `OMNIPOTENT OFF`, `SOLAR`, `MAXTECH`, `TILT`, `I'LL BE BACK`, `HARIKARI`, `HIGH VOLTAGE`, `CRASH AND BURN`, `QUIT`, `GENERATE AI FOOTPRINTS`, `BANKRUPT`, `HARMLESS`, `WIN`, `LOSE`, `GHOST IN THE MACHINE` |
 
-What a few of them do, from the code: `MAXTECH` sets every player's tech level to 13; `TILT` gives 9,999 men and 99,999 materials; `SOLAR` and `ZIPPER` toggle game-wide switches; `CAMERON` is logged as "GOD MODE". The others are not traced yet.
+What a few of them do, from the code: `MAXTECH` sets every player's tech level to 13; `TILT` gives 9,999 men and 99,999 materials; `SOLAR` and `ZIPPER` toggle game-wide switches; `CAMERON` is logged as "GOD MODE"; code 0xe (probably `GENERATE AI FOOTPRINTS`, which is disabled) runs `ISO.R32` 0x1004fbc4, a 3 KB developer routine that writes the AI's structure-building data to a file `AISTRUCT.BLD` (0xa200 bytes) and reads it back. The others are not traced yet.
 
 Multiplayer has an anti-cheat: a player caught using a code is removed from the game ("Booting player %s : CHEATING DETECTED!").
 

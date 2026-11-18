@@ -2,6 +2,7 @@
  * the view's size in cells for the screen width, the map arrays, the tiles (from the
  * scenario's tile library, or the editor's autofill), the path finder and the AI. */
 #include "iso_core.h"
+#include "radarmap.h"
 #include "tilelib.h"
 #include "mapedit.h"
 #include "createmap.h"
@@ -10,7 +11,6 @@
 /* not rewritten yet (names ours, provisional) */
 #define map_reset_objects map_neighbour_offsets
 #define log2_of ORIG(int32_t(__stdcall *)(uint32_t), 0x100a78fe)
-#define map_reset_view ORIG(void(__cdecl *)(void), 0x10050fc6)
 #define IsoDeleteAllUnits ORIG(void(__stdcall *)(uint8_t *), 0x100ac51d)
 #define pathfinder_init ORIG(int(__cdecl *)(int32_t, int32_t), 0x100c6d50)
 #define ai_init ORIG(int(__cdecl *)(void), 0x100a6e82)
@@ -92,7 +92,7 @@ int __stdcall IsoCreateMap(uint8_t *iso, uint32_t w, uint32_t h, int scenario, i
     I(int32_t, 0xd6f5) = I(int32_t, ISO_MAP_H) << (I(uint8_t, 0xc337) & 0x1f);
     I(int32_t, 0xd709) = I(int32_t, 0xd6f1) >> 1;
     I(int32_t, 0xd71e) = I(int32_t, 0xd6f5) >> 1;
-    map_reset_view();
+    radar_set_scale();
     IsoDeleteAllUnits(iso);
     if (I(void *, ISO_MAP))
         map_free();

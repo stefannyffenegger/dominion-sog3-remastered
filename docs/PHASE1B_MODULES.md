@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 341 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 356 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,10 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 51)
-* **Next part:** 52, from 0x1004f45a (`IsoBuildSuperTile`, ...). Parts go on in address order.
+### Open items (as of part 54)
+* **Next part:** 55, from 0x10052df4 (`IsoCheckCheatCodes`). Parts go on in address order.
+* **The radar's drawing is not checked on screen:** the tests' radar stays empty (mission 1 has none, the two-player match has no radar station yet). A test in a mission or match with a radar is needed; the radar code ported so far (parts 52-54) is checked by the state log and the trace only.
+* **Not reached, left original:** the tile tools `IsoBuildSuperTile` and `IsoBuildTileHistogramFile` (0x1004f45a-0x1004f90d), the developer cheat 0x1004fbc4 (see `HIDDEN_AND_UNUSED.md`) with its helper 0x1004f90d, 0x1004fbaf, 0x100508bc, 0x10050d3e, 0x10050e74 (a debug display, flag iso+300), 0x100516f9 (a second radar background builder) and 0x10051f0d.
 * **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it.
 * **Not reached, left original in the AI:** 0x1004c1bf (finishing a task, 1.4 KB); 0x1004d392-0x1004e360 (8 functions, the base integrity checks: "Check base integrity compromised/perimeter").
 * **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
@@ -824,3 +826,12 @@ Each unit has two small 8-bit DIBs (+0x90/+0x94) appended to its sprite as cels 
 * **`unit_set_report_kind` (0x1004f34e):** sets the report kind +0x1bd (0x46 for structures, 0x40 for types 0x28-0x2f). It was named `unit_clear_path` in `unit.c` and has been renamed.
 * Added `SpriteDibCreate`, `SpriteAppendBitmap` and `SpriteGetNumCels` to the engine imports.
 * Checked: unit state log (952-990), Human mission 1, Alt+F4, and the orders test (`orders.sh`), whose shots came out pixel-identical to an original run.
+
+### Parts 52-54: the radar, and small script exports (`radarmap.c`, `exports.c`, 15 functions, 0x1005077d-0x10052df4)
+The radar has a sprite (I(0xbf1e)), a background DIB (I(0xbefe)), a fog DIB (I(0xbf02)) and a third DIB (I(0xbf06)) whose size sets the centre. The pitch is I(0xbf22); the scale is I(0xd70d)/I(0xd732), map pixels per radar pixel; the aspect ratio I(0xd733) is a float.
+* **Dots:** `radar_plot` (2x2, formerly `unit_sound_stop` in `loop.c`) and `radar_plot_object` (4x4 framed: own player 0xdd, allied 0xbe, enemy 0x77; network games use each player's colour).
+* **Scale:** `radar_set_scale` (formerly `map_reset_view` in `createmap.c` and `scenario.c`). An aspect ratio between -1.15 and 1.15 counts as 1. The original tests the aspect with the x87's "equal" flag, which a NaN also sets, and ours keeps that.
+* **The background:** `IsoCreateRadarBgndBitmap`. Each radar pixel takes the colour of its map cell's tile from the scenario's `.TLH` file (the `.TL2` name with H), and the fog DIB keeps the cells already cleared. Also `IsoSetRadarBitmap`, and `IsoUpdateRadarFogBitmap`, which clears the fog where the map cells carry a player's seen bit.
+* **The view box:** `IsoCreateRadarScreenArea`. Its size comes from the screen and the map on the x87, truncated as `__ftol` does, and divided by `fabs` of the aspect. Its corner colour is 0x5b for scenarios 0-3; the original leaves it unset for others.
+* **Exports** (`exports.c`, all stdcall): `IsoGetUnitString`, `IsoCalcSliderPosition` and `IsoCalcSliderStartItem` (x87, 64-bit loads of the unsigned values), `IsoGetDibDimensions`, `IsoSetRace`, `IsoGetRace`, `IsoCampaignInfo`.
+* Checked: the trace shows the unit state log run reaches all of them except `IsoGetUnitString` and the sliders. Unit state log 847-990 (an all-original run at the same time: 952-990), menu tour, Human mission 1, Alt+F4. In the two-player match the radar looks like the original's, but empty (see Open items).
