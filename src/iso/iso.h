@@ -56,5 +56,10 @@
 #include "eject.h"
 #include "prefs.h"
 #include "aibuild.h"
+#include "wndproc.h"
+#include "rubber.h"
+#include "plugin.h"
+#include "aitask1.h"
+#include "threatmap.h"
 
 #endif

@@ -57,6 +57,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** Connection types that no longer exist: modem and serial cable (`DPInitPhoneAddress`, `DPInitSerialAddress`), IPX, and MPlayer.com lobby support (`DPCheckForConnect`, `NetTallyMPlayerScores`, `MPLAYER.DLL`, `Mprdvous.dll`). DirectPlay lobby launching was supported too.
 * **code.** Custom maps are sent to players who don't have them, in chunks (`DPSendFile`, message type 1). Not tested yet.
 * **code.** Latency measurement (`DPSyncPlayer`): ping rounds to every player, used to time the lockstep.
+* **code.** The version check between players (`ISO.R32` 0x100608c3, at startup): a CRC of the text "BUILD VERSION: Mon Jun  1 15:40:40 1998", the build's compile time. Only builds with the same time string can play together (unless `DisableISOCheck` is set).
 * **code.** `DPEnumPlayersInSession`, listing the players of a session before joining, is never called.
 * **tested.** When the host leaves a match, the others keep playing (the host is reported defeated): DirectPlay's peer-to-peer model. The module even picks a new "host slot", but nobody can join any more.
 * **code.** `ISO.R32` `IsoDisplayPowerInfo` (0x100033fd): a developer box with the power figures of the selected structure (its grid, power given and used, its icon, damage), pausing the game while it is open. A flag at 0x10118030, toggled by a cheat code, gives every structure power.
@@ -75,6 +76,9 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[Dominion] NumStartUnits` | 10 | multiplayer starting units (`MultiMen` and `MultiMat` next to it are listed) |
 | `[Dominion] CinePlaybackMethod` | 2 | cutscene scaling (0 original, 1 doubled, 2 smoothed, 3 interlaced) |
 | `[Dominion] SoundBuffers` | | number of sound channels (8-20) |
+| `[Dominion] NetworkPing` | 3000 | code: multiplayer, milliseconds (the low 16 bits are kept); handed to the network module at startup and read back when a network game starts |
+| `[Dominion] SyncThreshold` | 0 | code: multiplayer, handed to the network module with `NetworkPing` and read back into the game state (0xd8ec) |
+| `[Dominion] EnableTerrainAnalysis` | 0 | code: read at startup and handed to the network module, but nothing reads it back: it switches nothing. The AI's terrain analysis (`ta_run`) does not depend on it |
 | `[Dominion] KeyboardScrolling` | 0 | **tested**: 1 scrolls the map with the arrow keys and Home, End, Page Up, Page Down (diagonals); not while Alt or Ctrl is held |
 | `[Dominion] DebuggingOn` | 0 | code: the debug switch of the game logic (state 0x10c); among other things it lets the scripts' tile commands (`IsoSetTile`, `IsoSetTileSet`) change the map during a game |
 | `[Dominion] AutoSaveTime` | 0 | code: when set, a quick save is made every that many milliseconds in single player (0: never) |

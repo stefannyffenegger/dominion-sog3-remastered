@@ -28,6 +28,8 @@ void __cdecl RtSetTileBackground(void *app, uint32_t map, int repaint);
 void __cdecl DebugStr(const char *fmt, ...);
 void __stdcall SpriteSetGraphicsQuality(void *hsl, int32_t *a, int32_t *b, int c, int d);
 unsigned __cdecl RtSetBriefingScreenStatus(void *app, int on);
+unsigned __cdecl RtMapPoint(void *app, POINT *pt);
+unsigned __cdecl RtDirectDrawRect(void *app, int x1, int y1, int x2, int y2);
 void __stdcall SpriteSetMergeDefault(void *hsl, int merge);
 uint32_t __cdecl MemMgrSize(void);
 

@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 396 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 442 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,14 +553,15 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 61)
-* **Next part:** 62, from 0x1005e5e0 (the live ones: 0x1005e5e0 (4.8 KB), 0x1005f8c3, 0x1005fb7f, 0x1005fe4b). Parts go on in address order.
+### Open items (as of part 67)
+* **Next part:** 68, from 0x10067abc (the live ones: 0x10067acc, launching a projectile, 2 KB; 0x10068286, its flight, 2.3 KB; then 0x10069010-0x10069f63). Parts go on in address order.
+* **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
 * **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
 * **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
 * **Not reached, left original:** `IsoCheckCheatCodes` (0x10052df4, 3 KB: no test enters a code) and 0x10053a65 (the fog-of-war command it and others use); `IsoHostSetStartLocations` and `IsoPlaceEggStartsRemote` (network).
 * **The radar's drawing is not checked on screen:** the tests' radar stays empty (mission 1 has none, the two-player match has no radar station yet). A test in a mission or match with a radar is needed; the radar code ported so far (parts 52-54) is checked by the state log and the trace only.
 * **Not reached, left original:** the tile tools `IsoBuildSuperTile` and `IsoBuildTileHistogramFile` (0x1004f45a-0x1004f90d), the developer cheat 0x1004fbc4 (see `HIDDEN_AND_UNUSED.md`) with its helper 0x1004f90d, 0x1004fbaf, 0x100508bc, 0x10050d3e, 0x10050e74 (a debug display, flag iso+300), 0x100516f9 (a second radar background builder) and 0x10051f0d.
-* **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it.
+* **The AI's terrain analysis, 0x10048270-0x1004baf0** (`ta_run` and about 45 helpers: corridors, key terrain, areas of approach, base locations): left original except the parts every game runs (part 47). The shipped missions give their areas of approach and key terrain in the scenario, and in the tests `ta_run` is not called at all. 0x1004b905 (`pickSafeRendezvous`) is also called by the AI, but not reached in the tests either. A skirmish or random-map game might reach this code; check with a trace before porting it. The `dominion.ini` setting `EnableTerrainAnalysis` does not switch it on: it is read and handed to the network module, but nothing reads it back (part 64).
 * **Not reached, left original in the AI:** 0x1004c1bf (finishing a task, 1.4 KB); 0x1004d392-0x1004e360 (8 functions, the base integrity checks: "Check base integrity compromised/perimeter").
 * **The network code, from 0x100313e0 on** (about 130 functions up to `IsoReceiveMsg` 0x10043435, then more mixed with other code up to about 0x10048000: building, sending (`DPSendMsg`) and receiving the network messages, `IsoReceiveSysMsg`, the `IsoSend*`/`IsoRequest*` exports, the net process and windows): the functions only network games reach are left original; the ones every game runs are ported in address order (part 45 on). Port the rest once a two-player state log exists (see the next item).
 * **The map editor:** its code is in the game and the script imports it (see `HIDDEN_AND_UNUSED.md`), but whether it can still be started is not known. To find out: locate the script code that calls `IsoMapEditDisplayLoop` and see whether a menu, key or command line switch leads there.
@@ -886,3 +887,53 @@ The interface speaks waves "int_%04d.wav" (0-99), one at a time from a queue of 
 * **`ai_can_afford` (0x1005e4b6):** whether the player has the men (+0x10a) and materials (+0x10e) the next build asks for.
 * Left original: the task's own try 0x1005db67 (reached only through ours).
 * Checked: the trace shows the unit state log run reaches both. Unit state log (twice: 952-990), menu tour, Human mission 1, Alt+F4.
+
+### Part 62: the game window's message handler and the drag box (`wndproc.c`, 5 functions, 0x1005e5e0-0x100600b8)
+The plugin subclasses the engine's window; `iso_window_proc` (0x1005e5e0) sees every message first and passes on what it does not take.
+* **Keys:** Ctrl, Shift and Alt are read on every key and button message (0xd797, 0xd7af, 0xd79b). The script's keyboard hook (0xa1e) gets key presses as messages (kind 1); its text hook (0xa1a) gets typed characters; Alt+F4 goes to its exit hook (0xe094); F10 and Pause are swallowed. In a network game the host's Escape asks every player still in to leave.
+* **Mouse moves:** queued moves are merged into the last one. While Shift or Ctrl is held, waiting key presses other than digits, letters and 0x1b-0x2f are dropped. The cursor sprite follows the mouse, and an open popup menu follows it too.
+* **The right button:** a press notes the time. A release over the map selects the unit under the mouse and opens the popup menu for it (`popup_menu_open`), unless the click was shorter than `PopupClickLength` with nothing under the mouse, or the unit is another player's, or a selection mode is on. A release over an open popup chooses its item.
+* **The drag box** (0x1005f8c3, 0x1005fab2, 0x1005fb7f, 0x1005fe4b): starts on a left press inside the map's part of the screen, follows the mouse (kept inside that part), and moves as a whole while the right button is held. It is drawn with GDI by XOR (or by the engine under DirectDraw). On release it is ordered and handed to `map_click` and to the script's drag handler (a message of kind 6, with the box and Ctrl and Shift); Escape cancels it.
+* **Map editor:** with no sprites shown and a path being edited, mouse messages go to the editor's path handler.
+* Checked: the trace (popup test) shows all five are reached. Unit state log (952-953), Human mission 1, the orders, groups (drag box) and popup tests, menu tour, Alt+F4. In one groups run the right click deselected instead of opening the popup, like a later run of ours and an all-original run did not: which one happens depends on whether a frame (which sets the unit under the mouse, 0xd781) runs between the mouse move and the click.
+
+### Part 63: the drag box exports, paint hooks, keyboard hooks (`rubber.c`, 13 functions, 0x100600b8-0x10060700)
+* **`RubberBand`, `IsoRubberBand`, `RubberSetActiveBox`:** the script's drag handler, whether the map takes the mouse, and the part of the screen a drag is kept to. Switching off ends a drag going on; switching on hides the beacon directions and the power ring.
+* **The engine hooks:** 0x10060166 ends a drag when the engine switches the plugin off. 0x10060191 is the sprite paint hook: it redraws the drag box where the engine painted over it, then calls the hook that was there before. 0x1006025a is the map editor's paint hook.
+* **`IsoEditTextHook`, `IsoKeyboardHook`, `IsoExitGameHook`:** set the script's handlers. `IsoCtrlPressed` and `IsoShiftPressed` read the key state. `IsoSetIgnoreInputFlag` makes the window handler drop typed characters.
+* **0x10060521:** the map editor's path editing with the mouse: pick or add a point, drag it, drop it.
+* Checked (with parts 64-67): the trace shows the unit state log run reaches `RubberSetActiveBox`, `IsoRubberBand`, the paint hook, the keyboard and exit hooks and `IsoSetIgnoreInputFlag`. Unit state log (952-970, twice; one run 847), menu tour, Human mission 1, the orders, groups and popup tests, Alt+F4.
+
+### Part 64: the plugin's start and end (`plugin.c`, 4 functions, 0x10060700-0x10060d40)
+* **`RtLibInit`** (0x10060804) allocates the state block (0xe12f bytes). It then hands the engine the game-info hook (the tick function 0x100af179) and the paint hook. **0x100608c3** subclasses the window and looks up the other plugins (waveplay, netplay, bmpfont). It hands the network module the build's checksum and three `dominion.ini` settings (`SyncThreshold`, `NetworkPing`, `EnableTerrainAnalysis`; see `HIDDEN_AND_UNUSED.md`), seeds `rand()` from the clock and sets the window title to "Dominion".
+* **`RtLibFree`** (0x10060700 and 0x1006071d) undoes all of this.
+* The callbacks are passed at the original's addresses, so `DOMINION_ISO_ORIGINAL` still switches them.
+* Left original: the DLL entry's helper 0x10060cfd (it runs before the hooks are in place), and `WEP`.
+* A first version declared `SpriteSetPaintHook` cdecl; it is stdcall (the engine's `@16`), and the stack went wrong: a black screen from the start. Every call's stack fix-up in the original was then checked.
+* Checked: as part 63; the trace shows `RtLibInit` and the setup run.
+
+### Part 65: the first AI task handlers (`aitask1.c`, 10 functions, 0x10060d40-0x100616d4)
+Each handler is run by `task_run` for its task type; next to each is the function that creates that kind of task.
+* **Recon (type 1, 0x10060e41):** takes the player's recon squad, or makes one. It asks for recon units while the squad has fewer than wanted and the player has more men than the task's minimum, then sends the squad's units of types 0x1e and 0x23 out.
+* **Scanning for threats (type 0):** runs `ai_assign_targets`.
+* **Building (type 2):** runs `ai_build_turn`.
+* **Keeping up the base (type 0xb):** hands a target to the base squad and removes a unit of kind 0x10-0x13 there, then checks the base's buildings and repairs (0x10092c44, 0x10092ade).
+* **Type 0x16:** runs 0x100e3f0d between two debug prints.
+* Checked: as part 63; the trace shows all ten run in the unit state log run.
+
+### Part 66: building reserves (`aitask1.c`, 2 functions, 0x10062630-0x10062b12)
+* **Creating the task (0x10062630):** a reserves task (type 0xe) is made only if the player has none.
+* **The handler (0x100626bb):**
+  * At first it notes the player's men (at most 500) and takes the reserve squad.
+  * Later, a target it was given goes to the squad and is spread around the base (0x10093150, in turn over six places).
+  * When no building is under way and the player can afford one, it asks for the first unit kind from 0xe down to 0 (not 8) the player's race can build.
+  * Every tenth turn it reviews the squad (0x100933da).
+* Left original, not reached in the tests: the other task handlers from 0x10062b12 to 0x10066fac. These are types 7, 8, 0xd, 0xf and 0x10-0x15, with their creators (about 17 functions, 21 KB).
+* Checked: as part 63; the trace shows both run.
+
+### Part 67: the occupied-cells map, distances, unit boxes, effect frames (`threatmap.c`, 12 functions, 0x10066fac-0x10067abc)
+* **The occupied-cells map (0xe117):** a byte per map cell, 0-6, made when a scenario is loaded. Structures raise the cells they stand on (not unit types 0-7 and 0xc-0x17) and lower them when they go. Single cells can be raised (not cells flagged 1) and lowered. Reading a cell returns the upper bits the original's registers held, as the original did.
+* **Distances (0x10067620, 0x10067664):** `hypot` truncated, and the distance along the axes.
+* **`unit_screen_box` (0x10067690):** a unit's box on the screen, from its sprite's frame. Turrets are raised by their height.
+* **Effects:** a timer per effect (0x100677e6) runs its kind's step from a table at 0x10157154. 0x10067883 shows an effect's next frame, and its second sprite's.
+* Checked: as part 63; the trace shows all run except raising a single cell, lowering a unit's cells and the two distances.

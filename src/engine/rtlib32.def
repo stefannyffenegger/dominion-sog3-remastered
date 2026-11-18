@@ -33,6 +33,8 @@ EXPORTS
     MemMgrSize
     SpriteSetGraphicsQuality@20
     RtSetBriefingScreenStatus
+    RtMapPoint
+    RtDirectDrawRect
     SpriteDibCreate@16
     SpriteAppendBitmap@12
     SpriteGetNumCels@4
