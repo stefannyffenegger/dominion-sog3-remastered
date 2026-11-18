@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 444 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 448 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 68)
-* **Next part:** 69, from 0x10068ba2 (the live ones: 0x10069010, 0x100692fe (2.3 KB), 0x10069be4, 0x10069f63). Parts go on in address order.
+### Open items (as of part 69)
+* **Next part:** 70, from 0x1006a268 (list the live ones with `work/tmp/iso/live.txt`). Parts go on in address order.
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
 * **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
 * **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
@@ -954,3 +954,14 @@ A weapon's shot is an entry of the effects list (0x44 bytes) with a sprite of it
 * **Faithfully kept:** unit and effect ids passed on carry the upper half of a pointer, as the original's registers did.
 * Left original: the empty 0x10067abc (16 bytes, too short to hook).
 * Checked: the trace shows both run in the unit state log run. Unit state log (952-1002, twice), Human mission 1, the orders test (fights; identical to one of the original runs in all four shots), Alt+F4.
+
+### Part 69: beams and explosions (`projectile.c`, 4 functions, 0x10068ba2-0x1006a268)
+* **Launching a beam (0x100692fe):**
+  * Like `projectile_launch`, the start is at the firing unit's muzzle; this code is shared as `muzzle_point`.
+  * There is no flight: the beam runs in a straight line from the muzzle to the aim point.
+  * Weapons without frames have no sprite.
+  * A firer hidden from view (unit +0x3e, bit 16) fires invisibly to players who are not its allies.
+* **The beam's step (0x10069be4):** the beam moves along its line with `SpriteLinePoint` (added to the engine imports), and a hidden firer moves with it. At the end, for kind 2, the target is hit if it is still within the weapon's spread of the aim point (measured along the axes). The kind's end handler then runs.
+* **Explosions (0x10069010, and 0x10069f63, which first notes the target's report kind):** the explosion sprite starts where the shot is, flipped by the firer's facing. It is noted in the target's attachment slot when the target has a free one, and its sound plays. The shot's entry is then cleared and freed.
+* Left original, not reached in the tests: 0x10068ba2, 0x10068c89, 0x10068e16 and 0x1006a268 (another shot end, with a callback).
+* Checked: the trace shows all four run in the unit state log run. Unit state log (952-1002, twice), Human mission 1, the orders test (identical to one of the original runs in all four shots), Alt+F4.
