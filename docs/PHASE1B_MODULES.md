@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 372 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 377 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,9 +553,9 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 56)
-* **Next part:** 57, from 0x10056feb. Parts go on in address order.
-* **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`.
+### Open items (as of part 57)
+* **Next part:** 58, from 0x1005833c. Parts go on in address order.
+* **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
 * **Not reached, left original:** `IsoCheckCheatCodes` (0x10052df4, 3 KB: no test enters a code) and 0x10053a65 (the fog-of-war command it and others use); `IsoHostSetStartLocations` and `IsoPlaceEggStartsRemote` (network).
 * **The radar's drawing is not checked on screen:** the tests' radar stays empty (mission 1 has none, the two-player match has no radar station yet). A test in a mission or match with a radar is needed; the radar code ported so far (parts 52-54) is checked by the state log and the trace only.
 * **Not reached, left original:** the tile tools `IsoBuildSuperTile` and `IsoBuildTileHistogramFile` (0x1004f45a-0x1004f90d), the developer cheat 0x1004fbc4 (see `HIDDEN_AND_UNUSED.md`) with its helper 0x1004f90d, 0x1004fbaf, 0x100508bc, 0x10050d3e, 0x10050e74 (a debug display, flag iso+300), 0x100516f9 (a second radar background builder) and 0x10051f0d.
@@ -849,3 +849,10 @@ The radar has a sprite (I(0xbf1e)), a background DIB (I(0xbefe)), a fog DIB (I(0
 * **Exports:** `IsoSetSpriteMerge` (`SpriteSetMergeDefault`, added to the engine imports), `IsoSetMissionEndCallback`, `IsoSetDifficulty` (0-2, otherwise 1), `IsoSetNumPlayers`, `IsoGetNumPlayers`, `IsoEnableAlliances` (when off in a network game, every player is allied with itself only).
 * **Callbacks:** the two unit-kill callbacks 0x10056276 and 0x1005629c, and the game-over timer callback 0x100562c2.
 * Checked: the trace shows the unit state log run reaches six of them, including the game-over timer and the ground marks. Unit state log (952-990), menu tour, Human mission 1, Alt+F4, orders test (only the crater animation differs).
+
+### Part 57: the interface's spoken messages (`intfwave.c`, 5 functions, 0x10057deb-0x1005833c)
+The interface speaks waves "int_%04d.wav" (0-99), one at a time from a queue of four kept in the original's data (0x1017c518: the wave, and the wave playing; -1 when empty).
+* **`player_announce` (0x1005810f):** speaks a message to the local player, at once or queued. A message already waiting is not queued twice. Six files called it through `ORIG`.
+* **`IsoIntfWaveQueueDone`:** when a message is done, the queue moves up and its next message starts.
+* **Also:** `IsoAddIntfWaveToQueue`, `IsoJustPlayTheDamnWaveFile`, and the queue's reset 0x10057f48.
+* Checked: unit state log (952-981), Human mission 1, Alt+F4. The orders test with `DOMINION_WAVE_LOG` played 59 waves, as did an all-original run, and the 20 interface messages are identical, volume and pan included. One weapon wave differed: the orders test runs on real time, so its fight varies a little between runs.

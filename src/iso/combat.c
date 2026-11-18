@@ -3,6 +3,7 @@
  * hit's sprite, allies called for help, killing a unit, destroyed structures and what is
  * in, on or under them. */
 #include "iso_core.h"
+#include "intfwave.h"
 #include "healthbar.h"
 #include "events.h"
 #include "sound.h"
@@ -15,7 +16,6 @@
 #define unit_set_anim ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cc91)
 #define unit_set_action ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cf5b)
 #define unit_set_mode ORIG(void(__cdecl *)(uint32_t, char), 0x1009ce9f)
-#define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 #define hint_show ORIG(int(__cdecl *)(int, int16_t, int16_t, int, int), 0x1001bbfc)
 #define unit_max_health ORIG(int(__cdecl *)(uint8_t *, int), 0x100a23e0)
 #define health_badly_hurt ORIG(int(__cdecl *)(uint8_t *, int), 0x100a2550)

@@ -3,6 +3,7 @@
  * entering and leaving vehicles and buildings, turning, attacking); then the unit takes
  * one step of it. */
 #include "iso_core.h"
+#include "intfwave.h"
 #include "sound.h"
 #include "sector.h"
 #include "combat.h"
@@ -41,7 +42,6 @@
 #define unit_guard ORIG(int(__cdecl *)(uint32_t), 0x100e80fa)
 #define unit_fire_at ORIG(void(__cdecl *)(uint8_t *), 0x100dbdae)
 #define unit_dying ORIG(void(__cdecl *)(uint32_t), 0x100e83f5)
-#define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 
 #define U_FLAGS2 0x10e
 #define U_TYPEINFO 0x32

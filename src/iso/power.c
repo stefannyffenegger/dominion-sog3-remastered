@@ -3,6 +3,7 @@
  * (bits 16-23 of a cell); a structure on its player's marked cells is powered. Each
  * player keeps a list of up to 128 grids. Rewritten from the original. */
 #include "iso_core.h"
+#include "intfwave.h"
 #include "power.h"
 #include "view.h"
 #include "relay.h"
@@ -10,7 +11,6 @@
 /* not rewritten yet (names ours, provisional) */
 #define unit_distance ORIG(int(__cdecl *)(int, int, int, int), 0x10067620)
 #define alert_add ORIG(void(__cdecl *)(uint32_t, int, int, int), 0x100e42a6)
-#define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 #define unit_power_state ORIG(void(__cdecl *)(uint32_t, int), 0x100ed2ba)
 #define hint_show ORIG(void(__cdecl *)(int, int, int, int, int), 0x1001bbfc)
 #define unit_anim_playing ORIG(int(__cdecl *)(int16_t, int), 0x100f3951)

@@ -51,5 +51,6 @@
 #include "exports.h"
 #include "status.h"
 #include "players.h"
+#include "intfwave.h"
 
 #endif

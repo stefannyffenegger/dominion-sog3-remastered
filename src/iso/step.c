@@ -3,6 +3,7 @@
  * the turning animations 0x13/0x14 and keep no place on their cell. When the current
  * action's steps are used up the next one is chosen; then the unit takes one step. */
 #include "iso_core.h"
+#include "intfwave.h"
 #include "sound.h"
 #include "sector.h"
 #include "combat.h"
@@ -37,7 +38,6 @@
 #define unit_attack ORIG(int(__cdecl *)(uint32_t), 0x100e7b9b)
 #define unit_guard ORIG(int(__cdecl *)(uint32_t), 0x100e80fa)
 #define unit_dying ORIG(void(__cdecl *)(uint32_t), 0x100e83f5)
-#define player_announce ORIG(void(__cdecl *)(uint32_t, int, int), 0x1005810f)
 #define unit_moved ORIG(void(__cdecl *)(uint32_t), 0x100bdbeb)
 #define debug_log ORIG(void(__cdecl *)(int, const char *, ...), 0x10095f64)
 #define debug_printf ORIG(void(__cdecl *)(int, const char *, ...), 0x10095e98)
