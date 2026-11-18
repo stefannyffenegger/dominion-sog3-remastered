@@ -53,5 +53,6 @@
 #include "players.h"
 #include "intfwave.h"
 #include "misc.h"
+#include "eject.h"
 
 #endif
