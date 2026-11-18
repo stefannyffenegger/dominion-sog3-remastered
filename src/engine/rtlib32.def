@@ -31,6 +31,7 @@ EXPORTS
     SpriteDibMerge@32
     SpriteSetMergeDefault@8
     MemMgrSize
+    RtSetBriefingScreenStatus
     SpriteDibCreate@16
     SpriteAppendBitmap@12
     SpriteGetNumCels@4

@@ -1,6 +1,7 @@
 /* The game logic, 0x10016aa0-0x1001782a: the action buttons of the interface
  * (IsoProcessAction) and the check state of the toggle buttons. */
 #include "iso_core.h"
+#include "misc.h"
 #include "intfwave.h"
 #include "status.h"
 #include "commands.h"
@@ -19,8 +20,6 @@
 #define unit_10076dbb ORIG(void(__cdecl *)(uint32_t), 0x10076dbb)
 #define unit_set_action ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x1009cf5b)
 #define net_unit_order ORIG(void(__cdecl *)(uint16_t, uint16_t, uint8_t), 0x10040706)
-#define player_unset_d6cb ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x1005ab95)
-#define player_unset_d6f9 ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x1005acf2)
 #define unit_set_d6cb ORIG(void(__cdecl *)(uint32_t, int, uint32_t), 0x100e90da)
 #define unit_set_d6f9 ORIG(void(__cdecl *)(uint32_t, int), 0x100e8f48)
 #define unit_set_flag1a ORIG(void(__cdecl *)(uint32_t, int, uint32_t), 0x100e8d86)
@@ -100,7 +99,7 @@ uint32_t __cdecl iso_check_state(uint32_t action, int apply)
             P(uint32_t, u, U_FLAGS) &= ~F_1B;
             return 1;
         }
-        player_unset_d6cb(id, player);
+        player_replace_d6cb(id, player);
         return 0;
     case 0x34:
         if (!u)
@@ -112,7 +111,7 @@ uint32_t __cdecl iso_check_state(uint32_t action, int apply)
             player_announce(P(uint8_t, u, U_PLAYER), 0x5d, 1);
             return 1;
         }
-        player_unset_d6f9(id, player);
+        player_replace_d6f9(id, player);
         return 0;
     case 0x35:
         if (!u)

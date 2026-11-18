@@ -2,6 +2,7 @@
  * (IsoBuildFileList, IsoBuildFileListIni): 0x104-byte names at 0x18f0, sorted, their
  * count at 0x179f. In a multiplayer game other than the host the list is kept. */
 #include "iso_core.h"
+#include "misc.h"
 #include "filelist.h"
 
 #define g_strlen ORIG(size_t(__cdecl *)(const char *), 0x100f5750)
@@ -133,7 +134,6 @@ int __stdcall IsoBuildFileList(uint8_t *iso, uint32_t pattern_id)
     return count;
 }
 
-#define path_fix ORIG(void(__cdecl *)(char *), 0x1005bfc2)
 #define g_strcmp ORIG(int(__cdecl *)(const char *, const char *), 0x100f53a0)
 #define g_memcmp ORIG(int(__cdecl *)(const void *, const void *, size_t), 0x100f5b20)
 #define message_box ORIG(void(__cdecl *)(int, const char *, const char *, int), 0x1005c515)
@@ -186,7 +186,7 @@ int __stdcall IsoGetWXPInfo(uint8_t *iso, int index, uint32_t dir_var, uint32_t 
         lstrcpyA(name, NAME(0));
         lstrcatA(path, name);
         name[g_strlen(name) - 4] = 0;
-        path_fix(path);
+        path_unescape(path);
         HMMIO f = mmioOpenA(path, NULL, 0);
         if (!f) {
             rc = 0;
@@ -216,7 +216,7 @@ int __stdcall IsoGetWXPInfo(uint8_t *iso, int index, uint32_t dir_var, uint32_t 
         lstrcpyA(name, NAME(index));
         lstrcatA(path, name);
         name[g_strlen(name) - 4] = 0;
-        path_fix(path);
+        path_unescape(path);
         memset(h, 0, 0x80);
         HMMIO f = mmioOpenA(path, NULL, 0);
         if (!f) {

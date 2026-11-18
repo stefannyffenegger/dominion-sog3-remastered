@@ -3,6 +3,7 @@
  * main records (subtype 0: timers, hot spots, mission info) and the game settings,
  * units, objects, AI and events (by subtype). */
 #include "iso_core.h"
+#include "misc.h"
 #include "intfwave.h"
 #include "healthbar.h"
 #include "terrain.h"
@@ -24,7 +25,6 @@
 #define wall_link ORIG(void(__cdecl *)(uint32_t, int), 0x100b2953)
 #define IsoAddObject ORIG(int(__stdcall *)(uint8_t *, int, int, int, uint32_t, int, int), 0x100aca6e)
 #define ai_map_loaded ORIG(void(__cdecl *)(void), 0x100e1e80)
-#define player_tech_changed ORIG(void(__cdecl *)(int), 0x1005a67b)
 #define show_text ORIG(void(__cdecl *)(const char *, int), 0x1005878b)
 #define game_over_cb ORIG_PTR(0x100562c2)
 #define IsoFindUnit ORIG(int32_t(__stdcall *)(uint8_t *, int32_t, int32_t), 0x100a9ec9)
@@ -338,7 +338,7 @@ static int set_tech_level(uint8_t *r)
     if (!I(int32_t, ISO_HAVE_SPRITES))
         I(uint8_t, 0xdaa6 + player) = I(uint8_t, 0x1baa + player * ISO_PLAYER_SIZE);
     else
-        player_tech_changed(player);
+        player_preload_units(player);
     return 1;
 }
 

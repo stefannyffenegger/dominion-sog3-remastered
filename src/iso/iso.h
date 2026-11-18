@@ -52,5 +52,6 @@
 #include "status.h"
 #include "players.h"
 #include "intfwave.h"
+#include "misc.h"
 
 #endif

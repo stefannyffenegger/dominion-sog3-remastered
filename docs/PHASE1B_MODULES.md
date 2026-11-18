@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 377 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 385 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,9 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 57)
-* **Next part:** 58, from 0x1005833c. Parts go on in address order.
+### Open items (as of part 58)
+* **Next part:** 59, the live functions left in 0x10058bf5-0x1005c600 (0x10059be0, 2.4 KB), then from 0x1005c600. Parts go on in address order.
+* **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
 * **Not reached, left original (developer info and tools):** 0x10054b89, `IsoShowSelectedUnitInfo`, `IsoShowComputerPlayerInfo`, `IsoShowAllMenMaterial`, `IsoShowAllPlayerInfo`, `IsoShiftChars`, `IsoSetFollowUnit`, `IsoEnableCaptureMode`, `IsoCaptureScreen`, 0x100562e2 (the game's end, reached through the timer callback), `IsoGetPlayerInfo`, `IsoSetPlayerName`, `IsoShowSelectedSectorInfo`; the alliance toggles `IsoToggleAllied`, 0x1005797d, `IsoSetAlliance` (network games).
 * **Not reached, left original:** `IsoCheckCheatCodes` (0x10052df4, 3 KB: no test enters a code) and 0x10053a65 (the fog-of-war command it and others use); `IsoHostSetStartLocations` and `IsoPlaceEggStartsRemote` (network).
 * **The radar's drawing is not checked on screen:** the tests' radar stays empty (mission 1 has none, the two-player match has no radar station yet). A test in a mission or match with a radar is needed; the radar code ported so far (parts 52-54) is checked by the state log and the trace only.
@@ -856,3 +857,11 @@ The interface speaks waves "int_%04d.wav" (0-99), one at a time from a queue of 
 * **`IsoIntfWaveQueueDone`:** when a message is done, the queue moves up and its next message starts.
 * **Also:** `IsoAddIntfWaveToQueue`, `IsoJustPlayTheDamnWaveFile`, and the queue's reset 0x10057f48.
 * Checked: unit state log (952-981), Human mission 1, Alt+F4. The orders test with `DOMINION_WAVE_LOG` played 59 waves, as did an all-original run, and the 20 interface messages are identical, volume and pan included. One weapon wave differed: the orders test runs on real time, so its fight varies a little between runs.
+
+### Part 58: text sprites, preloading, special units, random numbers (`misc.c`, 8 functions, 0x10058a73-0x1005c073)
+* **`IsoHideTextSprites`:** hides the scenario's "show text" sprites and, in network games, the five chat sprites.
+* **`player_preload_units` (0x1005a67b, formerly `player_tech_changed` in `sdlexec.c`):** loads the resources of the units the player's race can build at its tech level.
+* **`player_replace_d6cb` and `player_replace_d6f9` (formerly `player_unset_*` in `buttons.c`):** a player's special unit (types 0x50-0x53, or types 0x38-0x3a in action 'E') is replaced by another that fits, or cleared, when it goes.
+* **`path_unescape` (0x1005bfc2, formerly `path_fix` in `filelist.c`):** turns "\\" into "\".
+* **Small exports:** `IsoRand` (lo + `rand()` mod the range), `IsoBriefingScreen` (`RtSetBriefingScreenStatus`, added to the engine imports), `IsoInBriefingScreen`.
+* Checked: the trace shows the unit state log run reaches all of them except `IsoRand`. Unit state log (952-990), menu tour, Human mission 1, Alt+F4, and the orders test, identical to one of the original runs in three of four shots.
