@@ -64,5 +64,6 @@
 #include "projectile.h"
 #include "weapons.h"
 #include "aiconds.h"
+#include "trig.h"
 
 #endif

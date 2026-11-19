@@ -79,6 +79,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[Dominion] NetworkPing` | 3000 | code: multiplayer, milliseconds (the low 16 bits are kept); handed to the network module at startup and read back when a network game starts |
 | `[Dominion] SyncThreshold` | 0 | code: multiplayer, handed to the network module with `NetworkPing` and read back into the game state (0xd8ec) |
 | `[Dominion] EnableTerrainAnalysis` | 0 | code: read at startup and handed to the network module, but nothing reads it back: it switches nothing. The AI's terrain analysis (`ta_run`) does not depend on it |
+| `[Dominion] NetColorMode` | 0 | code: network games only. With 0, players of the same race get different colours; with 1, units keep their race's colours as in single player. `IsoTogglePlayerColorMode` switches it during a match. The details of the colour choice are not checked yet |
 | `[Dominion] KeyboardScrolling` | 0 | **tested**: 1 scrolls the map with the arrow keys and Home, End, Page Up, Page Down (diagonals); not while Alt or Ctrl is held |
 | `[Dominion] DebuggingOn` | 0 | code: the debug switch of the game logic (state 0x10c); among other things it lets the scripts' tile commands (`IsoSetTile`, `IsoSetTileSet`) change the map during a game |
 | `[Dominion] AutoSaveTime` | 0 | code: when set, a quick save is made every that many milliseconds in single player (0: never) |

@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 472 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 479 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 73)
-* **Next part:** 74, from 0x1006fd69 (the live ones: 0x10070380, 0x1007042c, 0x10070757 (the angle, cosine and sine tables), 0x100708b6, 0x10070a36, 0x10070a64, 0x10070b60). Parts go on in address order.
+### Open items (as of part 74)
+* **Next part:** 75, from 0x10070c3b (`IsoTogglePlayerColorMode` and on; list the live ones with `work/tmp/iso/live.txt`). Parts go on in address order.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1016,3 +1016,15 @@ A weapon's shot is an entry of the effects list (0x44 bytes) with a sprite of it
 * **Also:** "difficulty OP value" (0x1006fd43) and a condition that is always true (0x1006f7be).
 * Left original: 0x1006f7d3 (18 bytes, "always false": too short to hook) and the unreached condition functions between 0x1006f7a4 and 0x10070380.
 * Checked: the trace shows all six run. Unit state log (980-990, twice), Human mission 1, the orders test, Alt+F4.
+
+### Part 74: angles, sine and cosine, the colour map (`trig.c`, 7 functions, 0x1006fd69-0x10070c3b)
+Angles are in tenths of a degree (0-3599).
+* **`iso_angle` (0x1007042c, stdcall):** the direction of a vector, as the sprites face.
+  * It starts from the C library's `atan2` (called in the original) times 1800/π (double 0x101130c0), truncated as `__ftol` does.
+  * The result is turned by 90 degrees and mirrored.
+  * It is then bent in eight pieces with steps of 1.5 and 0.75, so that the eight main directions fall on the isometric view's. These products are exact in double precision.
+* **`iso_sin` and `iso_cos` (0x10070757, 0x10070380):** sine and cosine times 10000, from a quarter-wave table (0x10140760) after the engine's `NormalizeAngle` (added to the engine imports).
+* **`colormap_load` (0x10070b60):** reads `COLORMAP.DAT` (0xc6000 bytes of player colour tables) and the hidden setting `[Dominion] NetColorMode` (see `HIDDEN_AND_UNUSED.md`).
+* **Also:** three bit-field setters (0x100708b6, 0x10070a36, 0x10070a64).
+* Left original: about 40 other bit-field helpers in 0x10070800-0x10070b44, many of them under 20 bytes and not reached.
+* Checked: the trace shows all seven run. Unit state log (980-990, twice), Human mission 1, the orders test, Alt+F4.
