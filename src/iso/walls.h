@@ -23,4 +23,9 @@ void __cdecl wall_pieces_refresh(void);
 
 void __stdcall IsoInitEnergyWalls(uint8_t *iso, uint32_t wall, uint32_t arrow, uint32_t diamond, uint32_t nop);
 
+void __cdecl post_connect_all(uint32_t post, int check);
+void __cdecl post_update_walls(uint32_t post);
+void __cdecl post_new(uint32_t post);
+void __cdecl post_find_walls(uint32_t post);
+
 #endif

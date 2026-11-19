@@ -6,6 +6,7 @@
 #include "damage.h"
 #include "intfwave.h"
 #include "lineofsight.h"
+#include "power.h"
 #include "walls.h"
 
 #define STEP ((const int8_t *)ORIG_PTR(0x1013b468))
@@ -351,4 +352,81 @@ void __stdcall IsoInitEnergyWalls(uint8_t *iso, uint32_t wall, uint32_t arrow, u
     load_sprites(g_iso + 0xcee8, 8, diamond, 0x10147484, 0);
     load_sprites(g_iso + 0xcf58, 0x80, nop, 0x101474ac, 1);
     G(uint32_t, 0x1017bafc) = diamond;
+}
+
+/* ---- 0x1007d144-0x1007d592 (part 83): a new post's walls ---- */
+
+#define post_drop ORIG(void(__cdecl *)(uint32_t), 0x1007a8ab)
+#define post_placed ORIG(void(__cdecl *)(uint32_t), 0x100f223a)
+#define net_send_wall ORIG(void(__cdecl *)(int16_t, int16_t, int), 0x1003527c)
+
+/* 0x1007d228: connects post `post` to the posts its route records point at (ids 1-1999);
+ * in network games each new wall is sent to the others */
+void __cdecl post_connect_all(uint32_t post, int check)
+{
+    uint8_t *u = unit_ptr((int16_t)post);
+    if (!P(int16_t, u, 0x42) || (P(uint32_t, u, 0x3e) >> 12 & 1))
+        return;
+    for (int16_t d = 0; d < 8; d++) {
+        if (!unit_route_kind2((int16_t)post, d))
+            continue;
+        int16_t other = (int16_t)route_neighbour((int16_t)post, d);
+        uint32_t o = (uint32_t)(int32_t)other;
+        if ((int32_t)o > 0 && (int32_t)o < 2000 && walls_connect(post, o, 0, check) && I(int32_t, 0x175))
+            net_send_wall((int16_t)post, other, 1);
+    }
+}
+
+/* 0x1007d16c: when a post's walls are due (+0x3e bit 5): by its power state (0x10001f74),
+ * connected (powered, or state -0x7ffe) or dropped (-0x7ffd); the flag is cleared */
+void __cdecl post_update_walls(uint32_t post)
+{
+    if (!(P(uint32_t, unit_ptr(post & 0xffff), 0x3e) >> 5 & 1))
+        return;
+    int16_t state = (int16_t)power_check((int16_t)post);
+    if (state == -0x7ffe || state == 1)
+        post_connect_all(post, 1);
+    else if (state == -0x7ffd)
+        post_drop(post);
+    P(uint32_t, unit_ptr(post & 0xffff), 0x3e) &= 0xffffffdf;
+}
+
+/* 0x1007d144: a post was placed */
+void __cdecl post_new(uint32_t post)
+{
+    post_update_walls(post);
+    post_placed(post);
+}
+
+/* 0x1007d323: a new post looks in each direction (from its second cell, up to 19 cells on
+ * the map) for the first post, and builds a wall to it if it is the same player's, has walls
+ * and is not too close */
+void __cdecl post_find_walls(uint32_t post)
+{
+    uint8_t *u = unit_ptr(post & 0xffff);
+    if (!P(int16_t, u, 0x42) || (P(uint32_t, u, 0x3e) >> 12 & 1))
+        return;
+    int x = P(int16_t, u, 0x52), tx, ty;
+    uint32_t y = (uint32_t)(int32_t)P(int16_t, u, 0x54);
+    IsoVTilePos(g_iso, &x, (int *)&y, &tx, &ty);
+    for (int16_t d = 0; d < 8; d++) {
+        uint32_t found = 0xffffffff;
+        uint32_t cy = y + STEP[d * 4 + (y & 1) * 2 + 1];
+        int32_t cx = x + STEP[d * 4 + (y & 1) * 2] + STEP[d * 4 + (cy & 1) * 2];
+        cy += STEP[d * 4 + (cy & 1) * 2 + 1];
+        for (int n = 2; n <= 0x13 && map_cell_valid(cx, (int32_t)cy) == 1; n++) {
+            line_visit(cx, (int32_t)cy);
+            uint32_t c = I(uint32_t *, 0x1934)[(cy << (I(uint8_t, 0x1aa0) & 0x1f)) + cx];
+            if ((c >> 16 & 0xfff) && unit_is_post((int16_t)((uint16_t)(c >> 16) & 0xfff))) {
+                found = c >> 16 & 0xfff;
+                break;
+            }
+            cx += STEP[d * 4 + (cy & 1) * 2];
+            cy += STEP[d * 4 + (cy & 1) * 2 + 1];
+        }
+        uint8_t *o;
+        if ((int32_t)found > 0 && (o = unit_ptr((int32_t)found)) && P(int16_t, o, 0x42) &&
+            !(P(uint32_t, o, 0x3e) >> 12 & 1) && P(uint8_t, o, 0x14) == P(uint8_t, u, 0x14) && !posts_too_close(u, o))
+            wall_segment_build(post, found);
+    }
 }
