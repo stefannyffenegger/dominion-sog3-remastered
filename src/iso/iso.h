@@ -70,5 +70,6 @@
 #include "orders2.h"
 #include "lineofsight.h"
 #include "walls.h"
+#include "vecscore.h"
 
 #endif
