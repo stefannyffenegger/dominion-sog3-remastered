@@ -66,6 +66,7 @@ EXPORTS
     SpriteLinePoint@28
     SpriteIsVisible@4
     NormalizeAngle@4
+    winrealloc@12
     SpriteSetSync@8
     RtUnload
     SpriteGetBounds@12
