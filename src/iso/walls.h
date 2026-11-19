@@ -16,4 +16,11 @@ void __cdecl wall_side_cell_set(int32_t x, int32_t y);
 void __cdecl wall_sides_set(int32_t x, uint32_t y, int16_t dir);
 int16_t __cdecl wall_piece_at(int32_t x, uint32_t y, uint16_t dir, uint32_t owner);
 
+int32_t __cdecl walls_connect_new(uint32_t a, uint32_t b);
+void __cdecl IsoHideBeaconDirections(uint8_t *iso);
+void __cdecl wall_piece_frame(int16_t k);
+void __cdecl wall_pieces_refresh(void);
+
+void __stdcall IsoInitEnergyWalls(uint8_t *iso, uint32_t wall, uint32_t arrow, uint32_t diamond, uint32_t nop);
+
 #endif

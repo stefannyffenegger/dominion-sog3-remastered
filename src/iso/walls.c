@@ -150,7 +150,6 @@ int32_t __cdecl walls_connect(uint32_t a, uint32_t b, uint32_t unused, int check
 #define PIECES I(uint8_t *, 0x1b13) /* 0xe bytes each: the sprite (+6), flags (+10: bit 0 in use,
                                        bits 1-8 the player, bits 9-11 the direction) */
 #define pieces_grow ORIG(int(__cdecl *)(int32_t), 0x1007735c)
-#define piece_set_frame ORIG(void(__cdecl *)(uint32_t), 0x1007c1d5)
 
 /* 0x100798c3: a free wall piece (marked in use), or 50 more pieces. -1 if none */
 int16_t __cdecl wall_piece_alloc(void)
@@ -223,8 +222,133 @@ int16_t __cdecl wall_piece_at(int32_t x, uint32_t y, uint16_t dir, uint32_t owne
     SpriteSetLevel(I(void *, ISO_HSL), s, (int32_t)(y * 0x10 - I(uint32_t, 0xd71e) + 10000));
     SpriteSetFlip(I(void *, ISO_HSL), s, (int16_t)dir == 1 || (int16_t)dir == 5, 0);
     SpriteSetProcessMsgs(I(void *, ISO_HSL), s, 1);
-    piece_set_frame((uint16_t)k);
+    wall_piece_frame(k);
     if (!((int16_t)dir & 1))
         wall_sides_set(x, y, (int16_t)dir);
     return k;
+}
+
+/* ---- 0x1007aa2b-0x1007c3c8 (part 82) ---- */
+
+#define units_on_line ORIG(uint32_t(__cdecl *)(uint32_t, uint32_t, int32_t *), 0x10076f60)
+#define MSG_STOP ((uint32_t *)ORIG_PTR(0x10157334))
+#define MSG_ANIM ((uint32_t *)ORIG_PTR(0x101572c0))
+#define MSG_LOOP ((uint32_t *)ORIG_PTR(0x10157338))
+
+/* 0x1007aa2b: like walls_connect, for posts being built: not when a wall already runs that
+ * way (route kind 1); when they are too close, a post standing between them splits the old
+ * segment instead (and nothing is connected). 1 if connected */
+int32_t __cdecl walls_connect_new(uint32_t a, uint32_t b)
+{
+    uint8_t *ua = unit_ptr((int16_t)a), *ub = unit_ptr((int16_t)b);
+    if (!ua || !ub || P(uint8_t, ub, 0x14) != P(uint8_t, ua, 0x14))
+        return 0;
+    if (!P(int16_t, ua, 0x42) || (P(uint32_t, ua, 0x3e) >> 12 & 1) || !P(int16_t, ub, 0x42) ||
+        (P(uint32_t, ub, 0x3e) >> 12 & 1))
+        return 0;
+    int16_t dir = unit_direction(a, b);
+    if (unit_route_kind1((int16_t)a, dir) == 1)
+        return 0;
+    if (posts_too_close(ua, ub) == 1) {
+        int32_t ids[20];
+        int16_t n = (int16_t)units_on_line(a, b, ids);
+        for (int16_t k = 0; k < n; k++)
+            if (unit_is_post((int16_t)ids[k]) == 1) {
+                route_split(a, b, 1);
+                break;
+            }
+        return 0;
+    }
+    if (wall_segment_build(a, b) >= 0)
+        wall_crush_between(ua, ub);
+    return 1;
+}
+
+/* IsoHideBeaconDirections: hides the 16 beacon direction sprites (0x2e, 0xe bytes each) */
+void __cdecl IsoHideBeaconDirections(uint8_t *iso)
+{
+    g_iso = iso;
+    for (int16_t k = 0; k < 0x10; k++)
+        if (I(int32_t, 0x2e + k * 0xe) && I(void *, 0x32 + k * 0xe)) {
+            SpriteEmptyQueue(I(void *, ISO_HSL), I(void *, 0x32 + k * 0xe));
+            SpriteHide(I(void *, ISO_HSL), I(void *, 0x32 + k * 0xe), 1);
+        }
+}
+
+/* 0x1007c1d5: shows a wall piece's frame for its direction: still (cel dir*9+4), or with
+ * 0x11c set, its looping animation (cels dir*10 to +9) */
+void __cdecl wall_piece_frame(int16_t k)
+{
+    uint8_t *p = PIECES + k * 0xe;
+    SpriteEmptyQueue(I(void *, ISO_HSL), P(void *, p, 6));
+    uint32_t dir = P(uint32_t, p, 10) >> 9 & 7;
+    if (!I(int32_t, 0x11c)) {
+        SpriteShow(I(void *, ISO_HSL), P(void *, p, 6), dir * 9 + 4, 1);
+    } else {
+        SpriteSendMessage(I(void *, ISO_HSL), P(void *, p, 6), 1, MSG_STOP);
+        MSG_ANIM[1] = dir * 10;
+        MSG_ANIM[2] = MSG_ANIM[1] + 9;
+        MSG_ANIM[3] = 0x53;
+        SpritePostMessage(I(void *, ISO_HSL), P(void *, p, 6), 4, MSG_ANIM);
+        SpritePostMessage(I(void *, ISO_HSL), P(void *, p, 6), 4, MSG_LOOP);
+    }
+}
+
+/* 0x1007c35e: redraws every wall piece in use */
+void __cdecl wall_pieces_refresh(void)
+{
+    for (int16_t k = 0; (int32_t)k < I(int32_t, 0xe11b); k++)
+        if (P(uint8_t, PIECES, 10 + k * 0xe) & 1)
+            wall_piece_frame(k);
+}
+
+/* loads the sprite copies of `res` into a table of `n` 0xe-byte records (resource at
+ * `res_off`, sprite at +4 after it); `idle` stops their message processing */
+static void load_sprites(uint8_t *base, int32_t n, uint32_t res, uint32_t err, int idle)
+{
+    for (int16_t k = 0; (int32_t)k < n; k++) {
+        uint8_t *r = base + k * 0xe;
+        if (P(uint32_t, r, 0))
+            continue;
+        P(uint32_t, r, 0) = RtCopy(I(void *, ISO_APP), res);
+        RtLoad(I(void *, ISO_APP), P(uint32_t, r, 0));
+        P(void *, r, 4) = RtGetResource(I(void *, ISO_APP), P(uint32_t, r, 0))[1];
+        if (!P(uint32_t, r, 0) || !P(void *, r, 4)) {
+            wsprintfA((char *)(g_iso + 0xdea), (const char *)ORIG_PTR(err), (int)k);
+            OutputDebugStringA((const char *)(g_iso + 0xdea));
+            I(int32_t, 0xa06) = 1;
+        }
+        if (idle)
+            SpriteSetProcessMsgs(I(void *, ISO_HSL), P(void *, r, 4), 0);
+        I(uint32_t, 0x1858) = P(uint32_t, r, 0);
+    }
+}
+
+/* IsoInitEnergyWalls: makes 100 wall pieces (copies of `wall`) and 100 segment records, the
+ * 16 beacon direction arrows, 8 "umbDiamond" and 128 "umbNop" sprites. Only with sprites
+ * shown (not in the map editor) */
+void __stdcall IsoInitEnergyWalls(uint8_t *iso, uint32_t wall, uint32_t arrow, uint32_t diamond, uint32_t nop)
+{
+    g_iso = iso;
+    if (!P(int32_t, iso, ISO_HAVE_SPRITES))
+        return;
+    I(int32_t, 0xe11b) = 100;
+    SEG_N = 100;
+    I(uint32_t, 0xd6c7) = wall;
+    int32_t size = I(int32_t, 0xe11b) * 0xe;
+    wsprintfA((char *)(g_iso + 0xdea), (const char *)ORIG_PTR(0x10147404), size);
+    OutputDebugStringA((const char *)(g_iso + 0xdea));
+    PIECES = winmalloc((SIZE_T)size, 1);
+    if (!PIECES)
+        return;
+    load_sprites(PIECES + 2, I(int32_t, 0xe11b), wall, 0x10147430, 1);
+    SEGS = winmalloc((SIZE_T)(SEG_N * 0x86), 1);
+    if (!SEGS)
+        return;
+    for (int32_t k = 0; k < SEG_N; k++)
+        memset(SEGS + k * 0x86, 0, 0x86);
+    load_sprites(g_iso + 0x2e, 0x10, arrow, 0x10147458, 0);
+    load_sprites(g_iso + 0xcee8, 8, diamond, 0x10147484, 0);
+    load_sprites(g_iso + 0xcf58, 0x80, nop, 0x101474ac, 1);
+    G(uint32_t, 0x1017bafc) = diamond;
 }
