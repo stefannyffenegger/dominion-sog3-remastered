@@ -65,5 +65,6 @@
 #include "weapons.h"
 #include "aiconds.h"
 #include "trig.h"
+#include "targets.h"
 
 #endif
