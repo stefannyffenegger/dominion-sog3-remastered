@@ -10,4 +10,10 @@ int16_t __cdecl wall_segment_build(uint32_t a, uint32_t b);
 void __cdecl wall_crush_between(uint8_t *a, uint8_t *b);
 int32_t __cdecl walls_connect(uint32_t a, uint32_t b, uint32_t unused, int check);
 
+int16_t __cdecl wall_piece_alloc(void);
+void __cdecl wall_cell_set(int32_t x, int32_t y);
+void __cdecl wall_side_cell_set(int32_t x, int32_t y);
+void __cdecl wall_sides_set(int32_t x, uint32_t y, int16_t dir);
+int16_t __cdecl wall_piece_at(int32_t x, uint32_t y, uint16_t dir, uint32_t owner);
+
 #endif

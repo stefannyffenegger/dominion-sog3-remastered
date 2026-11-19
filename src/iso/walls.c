@@ -17,7 +17,6 @@
 #define route_neighbour ORIG(uint32_t(__cdecl *)(int16_t, int16_t), 0x10077b2b)
 #define route_split ORIG(void(__cdecl *)(uint32_t, uint32_t, int), 0x10079c6c)
 #define segment_find ORIG(uint32_t(__cdecl *)(int16_t, int16_t), 0x10079568)
-#define wall_piece_at ORIG(int16_t(__cdecl *)(int32_t, uint32_t, uint16_t, uint32_t), 0x10079669)
 
 static uint8_t *unit_ptr(int32_t id) { return I(uint8_t **, ISO_UNITS)[id]; }
 
@@ -144,4 +143,88 @@ int32_t __cdecl walls_connect(uint32_t a, uint32_t b, uint32_t unused, int check
             player_announce(P(uint8_t, ua, 0x14), 0x26, 1);
     }
     return 1;
+}
+
+/* ---- 0x10079669-0x10079c6c (part 81): wall pieces ---- */
+
+#define PIECES I(uint8_t *, 0x1b13) /* 0xe bytes each: the sprite (+6), flags (+10: bit 0 in use,
+                                       bits 1-8 the player, bits 9-11 the direction) */
+#define pieces_grow ORIG(int(__cdecl *)(int32_t), 0x1007735c)
+#define piece_set_frame ORIG(void(__cdecl *)(uint32_t), 0x1007c1d5)
+
+/* 0x100798c3: a free wall piece (marked in use), or 50 more pieces. -1 if none */
+int16_t __cdecl wall_piece_alloc(void)
+{
+    int16_t k;
+    for (k = 0; (int32_t)k < I(int32_t, 0xe11b); k++)
+        if (!(P(uint8_t, PIECES, 10 + k * 0xe) & 1)) {
+            P(uint32_t, PIECES, 10 + k * 0xe) |= 1;
+            return k;
+        }
+    int32_t old = I(int32_t, 0xe11b);
+    I(int32_t, 0xe11b) += 0x32;
+    return pieces_grow(old) == 1 ? (int16_t)old : -1;
+}
+
+/* 0x1007999f: marks a cell as walled: blocked (bit 0, bit 14), not bits 1 and 15 */
+void __cdecl wall_cell_set(int32_t x, int32_t y)
+{
+    line_visit(x, y);
+    uint32_t *c = &I(uint32_t *, 0x1934)[(y << (I(uint8_t, 0x1aa0) & 0x1f)) + x];
+    *c |= 1;
+    *c &= 0xfffffffd;
+    *c |= 0x4000;
+    *c &= 0xffff7fff;
+}
+
+/* 0x10079bd6: marks a free neighbour cell of a wall as blocked and raised (bits 0, 14, 15) */
+void __cdecl wall_side_cell_set(int32_t x, int32_t y)
+{
+    line_visit(x, y);
+    uint32_t *c = &I(uint32_t *, 0x1934)[(y << (I(uint8_t, 0x1aa0) & 0x1f)) + x];
+    if (!(*c & 1) && !(*c >> 14 & 1)) {
+        *c |= 1;
+        *c &= 0xfffffffd;
+        *c |= 0x4000;
+        *c |= 0x8000;
+    }
+}
+
+/* 0x10079a13: for a wall piece in an even direction, the four cells beside it (directions +1, +3, -3,
+ * -1) that are on the map */
+void __cdecl wall_sides_set(int32_t x, uint32_t y, int16_t dir)
+{
+    static const int turns[] = { 1, 3, -3, -1 };
+    for (int k = 0; k < 4; k++) {
+        uint16_t d = (uint16_t)(dir + turns[k]) & 7;
+        int32_t dx = STEP[(y & 1) * 2 + (int16_t)d * 4], dy = STEP[(y & 1) * 2 + (int16_t)d * 4 + 1];
+        if (map_cell_valid(dx + x, (int32_t)(dy + y)) == 1)
+            wall_side_cell_set(dx + x, (int32_t)(dy + y));
+    }
+}
+
+/* 0x10079669: places a wall piece of `owner` (low byte) facing `dir` at cell (x, y): its
+ * cell is walled, its sprite placed (mirrored for directions 1 and 5) and shown, and for
+ * even directions the cells beside it are blocked. The piece, or 0 when none is free (the
+ * original returned 0 there too) */
+int16_t __cdecl wall_piece_at(int32_t x, uint32_t y, uint16_t dir, uint32_t owner)
+{
+    int16_t k = wall_piece_alloc();
+    if (k < 0)
+        return 0;
+    uint8_t *p = PIECES + k * 0xe;
+    P(uint32_t, p, 10) = (P(uint32_t, p, 10) & 0xfffffe01) | (owner & 0xff) * 2;
+    P(uint32_t, p, 10) = (P(uint32_t, p, 10) & 0xfffff1ff) | ((uint32_t)(int32_t)(int16_t)dir & 7) << 9;
+    wall_cell_set(x, (int32_t)y);
+    void *s = P(void *, p, 6);
+    SpriteEmptyQueue(I(void *, ISO_HSL), s);
+    SpriteSetPosition(I(void *, ISO_HSL), s, (int)((y & 1) * 0x20 + x * 0x40 - I(uint32_t, 0xd709) + 0x20),
+                      (int)(y * 0x10 - I(uint32_t, 0xd71e) + 0x10), 0);
+    SpriteSetLevel(I(void *, ISO_HSL), s, (int32_t)(y * 0x10 - I(uint32_t, 0xd71e) + 10000));
+    SpriteSetFlip(I(void *, ISO_HSL), s, (int16_t)dir == 1 || (int16_t)dir == 5, 0);
+    SpriteSetProcessMsgs(I(void *, ISO_HSL), s, 1);
+    piece_set_frame((uint16_t)k);
+    if (!((int16_t)dir & 1))
+        wall_sides_set(x, y, (int16_t)dir);
+    return k;
 }
