@@ -245,3 +245,163 @@ int32_t __cdecl selection_can_attack(uint32_t target, int no_structures, int all
                                no_structures, allies);
     return any;
 }
+
+/* ---- 0x1006be2a-0x1006c6f6 (part 71): the weapon table and firing ---- */
+
+#define effect_alloc ORIG(uint32_t(__cdecl *)(void), 0x100a751c)
+#define effect_ready ORIG(void(__cdecl *)(uint32_t), 0x100a76e3)
+#define unit_set_anim ORIG(void(__cdecl *)(uint32_t, int), 0x10076d00)
+#define attack_alert ORIG(void(__cdecl *)(int32_t, int32_t, uint32_t, int, int, int, int), 0x10090223)
+#define LAUNCHERS ((uint8_t *)ORIG_PTR(0x10157148)) /* per effect kind, 0x18 apart */
+#define STEPPERS ((uint8_t *)ORIG_PTR(0x1015714c))
+
+typedef int32_t(__cdecl *launch_fn)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+typedef int32_t(__cdecl *step_fn)(uint32_t, int32_t);
+
+static void free_fx_sprites(void)
+{
+    if (!I(uint8_t *, ISO_FX_SPRITES))
+        return;
+    for (uint32_t k = 0; k < I(uint16_t, ISO_FX_SPRITES_N); k++) {
+        uint8_t *s = P(uint8_t *, I(uint8_t *, ISO_FX_SPRITES), 6 + k * 0xe);
+        if (s)
+            RtDelete(I(void *, ISO_APP), P(uint32_t, s, 0x94));
+    }
+    winfree(I(uint8_t *, ISO_FX_SPRITES));
+    I(uint8_t *, ISO_FX_SPRITES) = 0;
+}
+
+/* IsoInitWeaponTable: loads the weapons' sprite resource and makes `count` effect sprites
+ * (copies of the template 0xc33b). Returns `count`, or 0 */
+uint32_t __stdcall IsoInitWeaponTable(uint8_t *iso, uint32_t res, uint32_t count)
+{
+    g_iso = iso;
+    RtLoad(P(void *, iso, ISO_APP), res);
+    I(void *, 0x1822) = RtGetResource(I(void *, ISO_APP), res)[1];
+    if (!res || !I(void *, 0x1822))
+        return 0;
+    free_fx_sprites();
+    wsprintfA((char *)(g_iso + 0xdea), (const char *)ORIG_PTR(0x101405e8), count * 0xe);
+    OutputDebugStringA((const char *)(g_iso + 0xdea));
+    I(uint8_t *, ISO_FX_SPRITES) = winmalloc(count * 0xe, 1);
+    I(uint16_t, ISO_FX_SPRITES_N) = (uint16_t)count;
+    if (I(uint8_t *, ISO_FX_SPRITES)) {
+        for (uint32_t k = 0; k < count; k++) {
+            uint32_t copy = RtCopy(I(void *, ISO_APP), I(uint32_t, 0xc33b));
+            RtLoad(I(void *, ISO_APP), copy);
+            P(void *, I(uint8_t *, ISO_FX_SPRITES), 6 + k * 0xe) = RtGetResource(I(void *, ISO_APP), copy)[1];
+            P(uint32_t, I(uint8_t *, ISO_FX_SPRITES), 10 + k * 0xe) &= 0xfffffffe;
+            SpriteSetProcessMsgs(I(void *, ISO_HSL), P(void *, I(uint8_t *, ISO_FX_SPRITES), 6 + k * 0xe), 0);
+            I(uint32_t, 0x1858) = copy;
+        }
+    }
+    return count;
+}
+
+/* IsoFreeWeaponTable */
+void __stdcall IsoFreeWeaponTable(uint8_t *iso)
+{
+    g_iso = iso;
+    free_fx_sprites();
+}
+
+/* fires the unit's weapon (+0xe6): as many effects as the weapon's shots (+0x54), each
+ * launched by its kind's launcher. 0 if a launcher fails */
+static int fire(uint8_t *u, uint32_t attacker, uint32_t target, uint32_t x, uint32_t y, uint32_t weapon)
+{
+    P(uint16_t, u, 0x193) |= 0x10;
+    uint8_t *w = weapon_row(P(int16_t, u, 0xe6));
+    int32_t shots = P(int32_t, w, 0x54);
+    for (int32_t k = 0; k < shots; k++) {
+        uint32_t fx = effect_alloc() & 0xffff;
+        launch_fn launch = P(launch_fn, LAUNCHERS, P(int32_t, w, 0x50) * 0x18);
+        if (launch && !launch(fx, attacker, x, y, target, weapon))
+            return 0;
+        effect_ready(fx);
+    }
+    return 1;
+}
+
+/* 0x1006c18a: `attacker` fires at unit `target` (aiming at x, y); outside network games
+ * the target's player is warned if it cannot see the attacker. Nonzero if it fired */
+int32_t __stdcall weapon_fire_at_unit(uint8_t *iso, int32_t attacker, int32_t target, uint32_t x, uint32_t y)
+{
+    g_iso = iso;
+    uint8_t *a = P(uint8_t **, iso, ISO_UNITS)[attacker];
+    uint8_t *t = P(uint8_t **, iso, ISO_UNITS)[target];
+    if (!a || !t)
+        return 0;
+    uint32_t hi = (uint32_t)(uintptr_t)a & 0xffff0000;
+    P(uint32_t, a, 0x10e) &= 0xffff7fff;
+    unit_set_anim(hi | P(uint16_t, a, 0x1cb), 2);
+    if (P(int16_t, a, 0xe6) < 0)
+        return 0;
+    if (!fire(a, (uint32_t)attacker, (uint32_t)target, x, y, hi | P(uint16_t, a, 0xe6)))
+        return 0;
+    if (!I(int, 0x175) && !(P(uint8_t, a, 0x2f) & 1 << (P(uint8_t, t, 0x14) & 0x1f)))
+        attack_alert(P(int16_t, a, 0x52), P(int16_t, a, 0x54),
+                     ((uint32_t)(uintptr_t)t & 0xffff0000) | P(uint8_t, t, 0x14), 2, -1, 0, 0);
+    return 1;
+}
+
+/* 0x1006c375: `attacker` fires at the point (x, y). Always 0 */
+int32_t __stdcall weapon_fire_at_point(uint8_t *iso, int32_t attacker, uint32_t x, uint32_t y)
+{
+    g_iso = iso;
+    uint8_t *a = P(uint8_t **, iso, ISO_UNITS)[attacker];
+    P(uint32_t, a, 0x10e) &= 0xffff7fff;
+    unit_set_anim(((uint32_t)(uintptr_t)a & 0xffff0000) | P(uint16_t, a, 0x1cb), 2);
+    int16_t weapon = P(int16_t, a, 0xe6);
+    if (weapon == -1 || weapon < 0)
+        return 0;
+    fire(a, (uint32_t)attacker, 0, x, y, (uint16_t)weapon);
+    return 0;
+}
+
+/* IsoSetWeaponDelay: does nothing */
+void __stdcall IsoSetWeaponDelay(uint8_t *iso, uint32_t delay)
+{
+    (void)delay;
+    g_iso = iso;
+}
+
+/* IsoInitWeaponProcess: trail sprites last 30 frames */
+int32_t __stdcall IsoInitWeaponProcess(uint8_t *iso)
+{
+    g_iso = iso;
+    P(int32_t, iso, 0xd897) = 0x1e;
+    return 1;
+}
+
+/* IsoStopWeaponProcess */
+void __stdcall IsoStopWeaponProcess(uint8_t *iso)
+{
+    g_iso = iso;
+    P(int32_t, iso, 0xd897) = 0;
+}
+
+/* IsoWeaponMovementLoop: unless paused, every effect in play takes as many steps as game
+ * ticks have passed (trails only when there are at most 2). The `IsoKaboom` flag (0xe020)
+ * crashes the game here on purpose, as in the original */
+void __stdcall IsoWeaponMovementLoop(uint8_t *iso, uint32_t unused)
+{
+    (void)unused;
+    g_iso = iso;
+    if (P(uint8_t, iso, 0x17e) || P(uint8_t, iso, 0x180))
+        return;
+    if (P(int32_t, iso, 0xe020))
+        ORIG(void *(__cdecl *)(void *, const void *, uint32_t), 0x100f5530)(0, 0, 1);
+    uint32_t ticks = I(uint32_t, 0x17f1) - I(uint32_t, 0x17ed);
+    for (uint16_t k = 0; k < I(int32_t, 0x1b47); k++) {
+        uint32_t fx = I(uint32_t *, 0xd6e3)[k];
+        for (uint16_t s = 0; s < ticks; s++) {
+            uint8_t *e = I(uint8_t *, ISO_EFFECTS) + fx * 0x44;
+            if (!P(void *, e, 0))
+                continue;
+            step_fn step = P(step_fn, STEPPERS, P(int32_t, P(uint8_t *, e, 0x16), 0x50) * 0x18);
+            if (step)
+                step(fx, ticks < 3);
+        }
+    }
+    I(uint32_t, 0x17ed) += ticks;
+}

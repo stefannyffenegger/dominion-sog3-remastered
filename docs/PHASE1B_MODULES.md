@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 454 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 462 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,9 +553,9 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 70)
-* **Next part:** 71, from 0x1006be2a (`IsoInitWeaponTable`, then the live ones up to 0x1006d9bd). Parts go on in address order.
-* **A second path at tick 847 in the unit state log:** since parts 63-67, two of eleven state checks of ours (s63b, s70a) left the originals at tick 847, both the same way (they agree with each other up to tick 948). The other nine reached 950-1002, and no all-original run has shown it so far. Four runs logged with the unit fields for ticks 840-850 did not hit it. Not found yet: run more logged checks until one does, compare its unit lines with an original's (`statediff.py`), and if it is ours, test parts 63-70 one by one with `DOMINION_ISO_ORIGINAL`.
+### Open items (as of part 71)
+* **Next part:** 72, from 0x1006c6f6 (the live ones: 0x1006cc29, 0x1006cdc0, 0x1006d516, 0x1006d9bd). Parts go on in address order.
+* **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
 * **Not reached, left original (developer info, tools, network):** `IsoParseSessionName`, `IsoDisplayMapInfo`, `IsoDisplaySpriteUsage`, 0x1005878b, 0x100589a9, 0x10058bf5, `IsoDetonateSelection`, `IsoSendUnitCommand`, 0x1005a56d, `IsoPreloadUnits`, `IsoAddReinforcement`, 0x1005ae71-0x1005b314, `IsoGetUnitStringAndBuildResults`, `IsoSetSpriteColorMap`, `IsoDisplayObstructInfo`, 0x1005bbe7, `IsoIsAllied`, `IsoFillProgressBar`, 0x1005c073-0x1005c1a8, `IsoCheckForCD`, 0x1005c515 (a message box).
@@ -982,3 +982,16 @@ A weapon's shot is an entry of the effects list (0x44 bytes) with a sprite of it
   * **`selection_can_attack` (0x1006b633)** asks this for each of the local player's selected units.
 * **Faithfully kept, with one exception:** the original passed unit ids with upper bits left over on its stack; ours pass 0 there.
 * Checked: the trace shows all six run in the unit state log run. Unit state log (970 and 847, see Open items), Human mission 1, the orders, popup and hover tests (identical to one of the original runs in every shot), Alt+F4.
+
+### Part 71: the weapon table and firing (`weapons.c`, 8 functions, 0x1006be2a-0x1006c6f6)
+* **`IsoInitWeaponTable` and `IsoFreeWeaponTable`:** load the weapons' sprite resource and make the requested number of effect sprites, copies of the template at 0xc33b. Each table entry is 0xe bytes: an owner id, the sprite and its flags.
+* **Firing (0x1006c18a at a unit, 0x1006c375 at a point; stdcall with the state first):**
+  * The firing animation starts.
+  * One effect is made for each of the weapon's shots (+0x54) and launched by its kind's launcher (table 0x10157148). The launchers are `projectile_launch`, `projectile_launch_beam` and `weapon_hit_instant` from parts 68-70.
+  * Outside network games, a player that cannot see the attacker is warned (0x10090223).
+  * The upper bits of the weapon id passed on are the attacker pointer's upper half, as the original's registers did.
+* **`IsoWeaponMovementLoop`:**
+  * Unless the game is paused, every effect in play takes as many steps (table 0x1015714c) as game ticks have passed; trails are left only when at most 2 have.
+  * The `IsoKaboom` flag (0xe020, part 46) makes it crash on purpose, as in the original.
+* **Also:** `IsoInitWeaponProcess` (trail sprites last 30 frames), `IsoStopWeaponProcess`, and `IsoSetWeaponDelay`, which does nothing.
+* Checked: the trace shows all except firing at a point and `IsoSetWeaponDelay` run. Unit state log (951-990, twice), Human mission 1, the orders, popup and hover tests (identical to one of the original runs in every shot), Alt+F4.
