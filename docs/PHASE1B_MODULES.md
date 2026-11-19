@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 517 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 525 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 78)
-* **Next part:** 79, from 0x10076f60 (the live ones: 0x100772d9, 0x10077303, 0x10077784, 0x100778fb, 0x10077aa1, 0x10077c54 (1.3 KB), 0x100781e6, 0x1007831e, ...). Left original before it, not reached: `IsoTogglePlayerColorMode`, 0x1007117a-0x100721b0, the drone exports, the selection mode handlers 0x10073f47-0x1007618a. Parts go on in address order.
+### Open items (as of part 79)
+* **Next part:** 80, from 0x10078453 (the live ones: 0x100787e3, 0x10078dd5, 0x10078f1e, 0x10078fa5 (1.2 KB), ...). Left original before it, not reached: `IsoTogglePlayerColorMode`, 0x1007117a-0x100721b0, the drone exports, the selection mode handlers 0x10073f47-0x1007618a. Parts go on in address order.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1062,3 +1062,13 @@ Getters and setters for the AI's target records (0x120 bytes each, G(0x1018b610)
 * **Structure animation (0x10076de9, 0x10076e53):** the state +0x3a of types 0x40-0x87, moved on every other tick through a table (0x10146ac8) when the sprite has nothing queued.
   * The original returned an uninitialised value when there was nothing to do; ours returns 0.
 * Checked: the trace shows all eight run. Unit state log (980-999, twice), Human mission 1, the orders, popup and groups tests (within their known noise), Alt+F4.
+
+### Part 79: clear lines of fire (`lineofsight.c`, 8 functions, 0x100772d9-0x10078453)
+* **`unit_fire_line_clear` (0x10077c54):** whether a unit has a clear straight line to its target, walking map cells in one of the eight directions (step table 0x1013b468: dx, dy for even and odd rows) for at most 20 cells. It returns 1 only if the target is reached after at least one step.
+  * **Along an axis:** no cell may be blocked (cell bits 14 and 0), nor have a structure on either side (0x1007818a). A line that squeezes between two blocked cells counts as closed (0x100781e6, 0x1007831e).
+  * **Diagonally:** raised cells (bit 15) are stepped over. A unit that is not a wall skips its first cell.
+  * A unit whose route record in that direction is of kind 1 has no line at all.
+* **Also:** route record kinds (0x100778fb, 0x10077aa1), walls (types 0x40-0x43, 0x10077303) and whether a cell is on the map (0x10077784).
+* **`line_visit` (0x100772d9):** an empty hook called with every cell visited, left from debugging.
+* Left original: 0x1007818a (19 bytes, too short to hook) and the unreached functions in 0x1007735c-0x10077b2b.
+* Checked: the trace shows all eight run. Unit state log (970-990, twice), Human mission 1, the orders test, Alt+F4.

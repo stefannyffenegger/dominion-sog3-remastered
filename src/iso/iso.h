@@ -68,5 +68,6 @@
 #include "targets.h"
 #include "selmode.h"
 #include "orders2.h"
+#include "lineofsight.h"
 
 #endif
