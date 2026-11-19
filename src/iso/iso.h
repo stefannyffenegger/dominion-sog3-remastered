@@ -66,5 +66,7 @@
 #include "aiconds.h"
 #include "trig.h"
 #include "targets.h"
+#include "selmode.h"
+#include "orders2.h"
 
 #endif

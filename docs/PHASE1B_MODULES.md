@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 509 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 517 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 77)
-* **Next part:** 78, from 0x10073750 (`IsoActivateSelectionMode` 0x10073acc and on; list the live ones with `work/tmp/iso/live.txt`). Left original before it, not reached: `IsoTogglePlayerColorMode`, 0x1007117a-0x100721b0, and the drone exports. Parts go on in address order.
+### Open items (as of part 78)
+* **Next part:** 79, from 0x10076f60 (the live ones: 0x100772d9, 0x10077303, 0x10077784, 0x100778fb, 0x10077aa1, 0x10077c54 (1.3 KB), 0x100781e6, 0x1007831e, ...). Left original before it, not reached: `IsoTogglePlayerColorMode`, 0x1007117a-0x100721b0, the drone exports, the selection mode handlers 0x10073f47-0x1007618a. Parts go on in address order.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1048,3 +1048,17 @@ Getters and setters for the AI's target records (0x120 bytes each, G(0x1018b610)
 * **Also:** a squad's count of units (0x10073598) and whether two units are in the same or neighbouring sectors (0x1007364c).
 * Left original, not reached: 0x100734df, and the drone exports `IsoCreateDrone`, `IsoDestroyDrone` and `IsoSetDroneType` (a unit sent along one of eight fixed paths; probably a developer feature).
 * Checked: the trace shows all ten run. Unit state log (980-990, twice), Human mission 1, the orders test (the same animation-only differences as in part 76), Alt+F4.
+
+### Part 78: selection modes, moving to a point, patrols, build-up, structure animation (`selmode.c`, `orders2.c`, 8 functions, 0x10073acc-0x10076f60)
+* **`IsoActivateSelectionMode`:** a selection mode installs a handler for the next map click (0xc303, with the mode's two arguments). The window handler calls it on a left click (part 62).
+  * Modes 1000-1100 (in steps of 10) select the handlers 0x10073f47-0x100758b9, through a two-level jump table checked case by case.
+  * A handler gets message 2000 when it is installed (not for 1000 and 1050) and 3000 when it is replaced.
+  * Any other mode switches the modes off and gives the map back its normal clicks.
+  * The handlers themselves were not reached in the tests and stay original.
+* **`unit_move_to` (0x1007618a):** sends a unit to a point: action 0x1f, the snapped target tile, a new path if it is not already there, and the point as a waypoint. Turrets, structures and units flagged +0x3e bit 25 are left alone.
+* **`unit_patrol` (0x100764b2):** a patrol over up to 6 points with a delay at each. Mode 2000 ("LINEAR") comes back the same way, otherwise ("CIRCULAR") it starts over. The owner's AI hears of it (event 0xd).
+  * **Original quirk kept:** the debug line prints the point count where the point's number was meant.
+* **Build-up (0x10076af2, 0x10076ca3, 0x10076d00):** a unit's counter +0x88 under the state +0x84 (0 none, 1 done, 2 counting down, 3 counting up). It counts every other tick, up to 5 for the local player's allies and 9 for others; at the top the unit counts as built (0x1005c899).
+* **Structure animation (0x10076de9, 0x10076e53):** the state +0x3a of types 0x40-0x87, moved on every other tick through a table (0x10146ac8) when the sprite has nothing queued.
+  * The original returned an uninitialised value when there was nothing to do; ours returns 0.
+* Checked: the trace shows all eight run. Unit state log (980-999, twice), Human mission 1, the orders, popup and groups tests (within their known noise), Alt+F4.
