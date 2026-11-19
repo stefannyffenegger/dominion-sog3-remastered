@@ -63,5 +63,6 @@
 #include "threatmap.h"
 #include "projectile.h"
 #include "weapons.h"
+#include "aiconds.h"
 
 #endif

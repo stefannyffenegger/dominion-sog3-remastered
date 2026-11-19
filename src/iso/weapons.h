@@ -19,5 +19,10 @@ void __stdcall IsoSetWeaponDelay(uint8_t *iso, uint32_t delay);
 int32_t __stdcall IsoInitWeaponProcess(uint8_t *iso);
 void __stdcall IsoStopWeaponProcess(uint8_t *iso);
 void __stdcall IsoWeaponMovementLoop(uint8_t *iso, uint32_t unused);
+int32_t __cdecl unit_attach_slot(uint16_t unit, int32_t *slot);
+int32_t __cdecl unit_slot3_free(uint16_t unit);
+int32_t __cdecl unit_effects_clear(uint16_t unit);
+void __cdecl effect_start(void *sprite, int32_t level, int32_t x, int32_t y, uint32_t cel, int32_t frames,
+                          int32_t flip_x, int32_t flip_y, int32_t delay, uint32_t speed, uint32_t blit);
 
 #endif

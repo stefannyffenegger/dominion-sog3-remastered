@@ -13,10 +13,7 @@
 
 #define crt_srand ORIG(void(__cdecl *)(uint32_t), 0x100f4d60)
 #define crt_rand ORIG(int32_t(__cdecl *)(void), 0x100f4d80)
-#define unit_attach_slot ORIG(int(__cdecl *)(uint32_t, int32_t *), 0x1006cc29)
 #define effect_free ORIG(void(__cdecl *)(uint32_t), 0x100a7742)
-#define effect_start                                                                         \
-    ORIG(void(__cdecl *)(void *, int, int, int, uint32_t, int, int, int, int, uint32_t, uint32_t), 0x1006d9bd)
 #define unit_near ORIG(int(__cdecl *)(uint32_t, int, int, int, uint32_t), 0x100d979f)
 #define structure_can_target ORIG(int(__cdecl *)(uint32_t, uint32_t), 0x100d9855)
 #define UNIT_HIT_HANDLERS ((uint8_t *)ORIG_PTR(0x101545c8)) /* per unit type, 0x44 apart */
@@ -404,4 +401,111 @@ void __stdcall IsoWeaponMovementLoop(uint8_t *iso, uint32_t unused)
         }
     }
     I(uint32_t, 0x17ed) += ticks;
+}
+
+/* ---- 0x1006c6f6-0x1006dbc6 (part 72): attachment slots, clearing a unit's effects, starting
+ * an effect animation ---- */
+
+#define IsoSetBlitProc ORIG(void(__cdecl *)(uint8_t *, void *, uint32_t), 0x100944b2)
+#define MSG_FLIP ((uint32_t *)ORIG_PTR(0x10157324))  /* posted to every effect: +8 the flip */
+#define MSG_DELAY ((uint32_t *)ORIG_PTR(0x10157348)) /* +4 the delay */
+#define MSG_PLAY ((uint32_t *)ORIG_PTR(0x101572c0))  /* +4 0, +8 the last frame, +0xc the speed */
+
+/* is the effect sprite noted in a unit's slot still the unit's own (playing, same owner)? */
+static int slot_alive(uint32_t unit, int16_t slot)
+{
+    uint8_t *fx = I(uint8_t *, ISO_FX_SPRITES);
+    return P(int32_t, P(uint8_t *, fx, 6 + slot * 0xe), 0x28) && P(uint16_t, fx, slot * 0xe) == (uint16_t)unit;
+}
+
+/* 0x1006cc29: a free one of the unit's two attachment slots (+0x1bf) for an explosion: an
+ * empty one, or one whose effect has ended (cleared). 0 if both are taken or no unit */
+int32_t __cdecl unit_attach_slot(uint16_t unit, int32_t *slot)
+{
+    uint8_t *u = unit ? unit_ptr(unit) : 0;
+    if (!u) {
+        *slot = -1;
+        return 0;
+    }
+    for (int k = 0; k < 2; k++) {
+        int16_t s = P(int16_t, u, 0x1bf + k * 2);
+        if (s < 0 || !slot_alive(unit, s)) {
+            if (s >= 0)
+                P(int16_t, u, 0x1bf + k * 2) = -1;
+            *slot = k;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* 0x1006cdc0: whether the unit's third slot (+0x1c3) is free (cleared if its effect ended) */
+int32_t __cdecl unit_slot3_free(uint16_t unit)
+{
+    uint8_t *u = unit ? unit_ptr(unit) : 0;
+    if (!u || P(int16_t, u, 0x1c3) < 0)
+        return 1;
+    if (!slot_alive(unit, P(int16_t, u, 0x1c3))) {
+        P(int16_t, u, 0x1c3) = -1;
+        return 1;
+    }
+    return 0;
+}
+
+/* 0x1006d516: stops a unit's weapon effects (+0x1b5, as many as its weapon +0x1bd has
+ * frames), then notes its report kind. 1, or 0 without a unit */
+int32_t __cdecl unit_effects_clear(uint16_t unit)
+{
+    uint8_t *u = unit_ptr(unit);
+    if (!u)
+        return 0;
+    int16_t weapon = P(int16_t, u, 0x1bd);
+    if (weapon < 1)
+        return 1;
+    for (int32_t k = 0; k < P(int32_t, weapon_row(weapon), 8); k++) {
+        int16_t s = P(int16_t, u, 0x1b5 + k * 2);
+        if (s < 0)
+            continue;
+        void *sp = P(void *, I(uint8_t *, ISO_FX_SPRITES), 6 + s * 0xe);
+        SpriteHide(I(void *, ISO_HSL), sp, 1);
+        SpriteEmptyQueue(I(void *, ISO_HSL), sp);
+        SpriteSetProcessMsgs(I(void *, ISO_HSL), sp, 0);
+        P(int16_t, u, 0x1b5 + k * 2) = -1;
+    }
+    P(int16_t, u, 0x1b3) = -1;
+    unit_set_report_kind(unit);
+    return 1;
+}
+
+/* 0x1006d9bd: starts an effect animation: `frames` frames from `cel` at (x, y) on `level`,
+ * flipped, with a delay, a blit procedure and a speed (halved in network games). Skipped
+ * while the game is minimised (0x181) and at low detail (0xbeda: below 5 never, below 10
+ * half the time) */
+void __cdecl effect_start(void *sprite, int32_t level, int32_t x, int32_t y, uint32_t cel, int32_t frames,
+                          int32_t flip_x, int32_t flip_y, int32_t delay, uint32_t speed, uint32_t blit)
+{
+    if (!sprite || !frames || I(uint8_t, 0x181) || I(int32_t, 0xbeda) < 5)
+        return;
+    if (I(int32_t, 0xbeda) < 10 && ORIG(int32_t(__cdecl *)(void), 0x100f4d80)() % 100 < 50)
+        return;
+    SpriteSetLevel(I(void *, ISO_HSL), sprite, level);
+    SpriteReplaceCellRange(I(void *, ISO_HSL), I(void *, 0x1822), sprite, cel, 0, (uint32_t)frames);
+    SpriteSetPosition(I(void *, ISO_HSL), sprite, x, y, 0);
+    if (flip_x) {
+        MSG_FLIP[2] = (uint32_t)flip_x;
+        MSG_FLIP[3] = 0;
+        SpriteSetFlip(I(void *, ISO_HSL), sprite, (uint32_t)flip_x, (uint32_t)flip_y);
+    }
+    if (blit)
+        IsoSetBlitProc(g_iso, sprite, blit);
+    SpriteSetProcessMsgs(I(void *, ISO_HSL), sprite, 1);
+    if (delay) {
+        MSG_DELAY[1] = (uint32_t)delay;
+        SpriteSendMessage(I(void *, ISO_HSL), sprite, 2, MSG_DELAY);
+    }
+    MSG_PLAY[1] = 0;
+    MSG_PLAY[2] = (uint32_t)(frames - 1);
+    MSG_PLAY[3] = I(int, 0x175) ? speed >> 1 : speed;
+    SpritePostMessage(I(void *, ISO_HSL), sprite, 4, MSG_PLAY);
+    SpritePostMessage(I(void *, ISO_HSL), sprite, 1, MSG_FLIP);
 }

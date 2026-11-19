@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 462 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 472 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 71)
-* **Next part:** 72, from 0x1006c6f6 (the live ones: 0x1006cc29, 0x1006cdc0, 0x1006d516, 0x1006d9bd). Parts go on in address order.
+### Open items (as of part 73)
+* **Next part:** 74, from 0x1006fd69 (the live ones: 0x10070380, 0x1007042c, 0x10070757 (the angle, cosine and sine tables), 0x100708b6, 0x10070a36, 0x10070a64, 0x10070b60). Parts go on in address order.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -995,3 +995,24 @@ A weapon's shot is an entry of the effects list (0x44 bytes) with a sprite of it
   * The `IsoKaboom` flag (0xe020, part 46) makes it crash on purpose, as in the original.
 * **Also:** `IsoInitWeaponProcess` (trail sprites last 30 frames), `IsoStopWeaponProcess`, and `IsoSetWeaponDelay`, which does nothing.
 * Checked: the trace shows all except firing at a point and `IsoSetWeaponDelay` run. Unit state log (951-990, twice), Human mission 1, the orders, popup and hover tests (identical to one of the original runs in every shot), Alt+F4.
+
+### Part 72: attachment slots, clearing effects, starting an animation (`weapons.c`, 4 functions, 0x1006c6f6-0x1006dbc6)
+* **Attachment slots (0x1006cc29, 0x1006cdc0):** a unit has two slots (+0x1bf) for explosions on it and a third (+0x1c3). A slot is free when it is empty, or when its effect sprite has stopped playing or now belongs to another unit; such a stale slot is cleared.
+* **`unit_effects_clear` (0x1006d516):** stops a unit's weapon effects (+0x1b5, one per frame of its weapon) and notes its report kind.
+* **`effect_start` (0x1006d9bd):** starts an effect animation from a cell range of the weapons' sprite resource. It sets the level, position, flip, blit procedure and delay, then posts the play message (its speed halved in network games).
+  * It is skipped while the game is minimised (0x181).
+  * It also depends on the detail setting (0xbeda): below 5 there are no effects, and below 10 half of them are left out (`rand()`).
+  * The messages go through the original's global buffers (0x10157324, 0x10157348, 0x101572c0), as the original did, since the flip value stays in them for later effects.
+* Left original, not reached in the tests: 0x1006c6f6-0x1006cc29, 0x1006ceec, 0x1006cff3, 0x1006d672.
+* Checked: the trace shows all four run. Unit state log (980-990; a second run took the known tick-847 path, see Open items), Human mission 1, the orders, popup and hover tests (identical to one of the original runs in every shot), Alt+F4.
+
+### Part 73: the AI scripts' condition helpers (`aiconds.c`, 6 functions, 0x1006f4d0-0x1006fd69)
+* **`ai_compare` (0x1006f4d0):** a OP b for the operators 0-5 (<, <=, >, >=, ==, !=).
+* **Conditions (0x1006f601, 0x1006f781):** a condition record holds:
+  * how it is evaluated (every time, once, or never: a stored value);
+  * its value;
+  * the number of arguments (0-4) and the function.
+* **`ai_squad_attacked` (0x1006f7e5):** whether a unit of the player's squad of a kind, or of any squad (-10), is under attack.
+* **Also:** "difficulty OP value" (0x1006fd43) and a condition that is always true (0x1006f7be).
+* Left original: 0x1006f7d3 (18 bytes, "always false": too short to hook) and the unreached condition functions between 0x1006f7a4 and 0x10070380.
+* Checked: the trace shows all six run. Unit state log (980-990, twice), Human mission 1, the orders test, Alt+F4.
