@@ -105,6 +105,9 @@ static void __stdcall tick_stub(uint8_t *iso)
 
 static void clock_install(void);
 
+/* the tick's game logic as our IsoMovementLoop calls it: through the log when it is on */
+void(__stdcall *statelog_tick)(uint8_t *iso);
+
 void statelog_install(void)
 {
     char path[MAX_PATH], units[32] = "";
@@ -130,6 +133,7 @@ void statelog_install(void)
     units[0] = 0;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_ORDERS", units, sizeof units);
     g_orders = units[0] == '1';
+    statelog_tick = tick_stub;
     uint8_t *p = ORIG(uint8_t *, TICK_CALL);
     if (p[0] != 0xE8)
         return;

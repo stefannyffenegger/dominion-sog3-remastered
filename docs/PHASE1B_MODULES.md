@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 570 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 575 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 85)
-* **Next part:** 86, from 0x1008cdf0 (`IsoSetMoveDelay`, `IsoInitMoveProcess`, `IsoMovementLoop` (2 KB, the game tick), `IsoPauseGame`, ...). Nothing between 0x1007eb13 and 0x1008c755 is reached in the tests (the score screen and more, about 55 KB). Parts go on in address order.
+### Open items (as of part 86)
+* **Next part:** 87, from 0x1008dc1b (list the live ones with `work/tmp/iso/live.txt`; 0x1008dd2b, the unit movement step, is among them). Left original, not reached: 0x1008d1b1 ("Host migrated") and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1146,3 +1146,23 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
 * **`aim_turrets` (0x1008c755):** points every turret (types 0x30-0x37) at the nearest unit of types 0x60-0x63 (0x1008c879, by `sqrt` distance) and resets its aiming state.
 * Left original, not reached: the vector rotation 0x1008cb50 and the `fabs` wrapper pair 0x1008cd80/0x1008cda0.
 * Checked: the trace shows all except the nearest-target search run (the mission has no such units). Unit state log (952-1001; one run agreed with an original up to tick 1749), Human mission 1, the orders test, Alt+F4.
+
+### Part 86: the movement process and the game tick (`movement.c`, 5 functions, 0x1008ceac-0x1008dc1b)
+* **`IsoMovementLoop`:** runs the game ticks that are due (0x17e5 - 0x17e1), unless the game is paused. Each tick:
+  * the network and the tick's game logic (`net_pump`, part 46) run, with their time averaged (0xbee2);
+  * the network status is checked every 5th tick, and the due timers fire;
+  * the tick counter moves on, then the AI runs (0x100cc1be, unless switched off);
+  * every unit gets its turn:
+    * **its type's tick handler** (table 0x101545f0). Before it, a unit at rest looks for targets (0x100da072, nearer or farther by its weapon's range).
+    * **its movement step** (0x1008dd2b; turrets 0x1008c643). Powered vehicles (kind 0x48, 0x4c) move less often as their power drops: none below 24%, every other tick up to 49%, three ticks in four up to 74%.
+    * the power ring, and its type's after-move handler (0x101545bc);
+  * then power and structures are updated, and in network games the host sends its sync messages.
+  * The unit's type is read again after its tick handler, as the original does, since the handler can change it.
+  * The `IsoKaboom` crash is kept.
+* **The state log:** it used to redirect the tick call inside the original `IsoMovementLoop` (0x1008d375). Ours calls it through `statelog_tick` when the log is on; the call-site patch still serves runs that keep the original loop.
+* **Also:**
+  * `IsoSetMoveDelay`: milliseconds per tick. In network games only the host may set it, to at least 40 ms, and all players are told; a check for less than 6 below that test is dead code in the original.
+  * `IsoInitMoveProcess`: 60 ms per tick, the tick counters reset.
+  * `IsoStopMoveProcess`, and `IsoPauseGame` (single player, after the first frames).
+* **Original quirk dropped:** the original read the unit's sprite before checking the unit for null.
+* Checked: the trace shows all five run. Unit state log (980-990, twice, through the new hook), menu tour, Human mission 1, the orders and groups tests (the groups shots differ only in idle poses and the water), Alt+F4.

@@ -72,5 +72,6 @@
 #include "walls.h"
 #include "vecscore.h"
 #include "aim.h"
+#include "movement.h"
 
 #endif
