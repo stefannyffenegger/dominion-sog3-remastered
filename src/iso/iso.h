@@ -82,5 +82,6 @@
 #include "debugtime.h"
 #include "pathtable.h"
 #include "aislots.h"
+#include "unitorder.h"
 
 #endif

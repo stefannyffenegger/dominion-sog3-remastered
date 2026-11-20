@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 614 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 618 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 96)
-* **Next part:** 97, from 0x1009c8a9 (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 97)
+* **Next part:** 98, from 0x1009cf5b (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1265,3 +1265,14 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
   * `ai_record_add` (0x1009c76a) copies a record into the next slot, keeping the slot's number. It counts the record for all players (AI +0xa26) and for its own player (+0x6e).
   * Lookups: 0x1009c86a and 0x1009c887.
 * Checked: the trace shows all six run. Unit state log (970 once, 980-1002; an all-original run at the same time 980-1001), menu tour, Human mission 1, the orders test, Alt+F4.
+
+### Part 97: a unit's order, state and action (`unitorder.c`, 4 functions, 0x1009cc60-0x1009d1ff)
+* **Orders** (+0x148, a character code) with a lock (+0x147, set by 0x1009cc60): 'L' and ' ' block new orders, '!' lets only 'L' through. A busy unit (+0x3e bit 22) takes none.
+* **`unit_order` (0x1009cc91):** in a network game, for the local player's units, with a handler (0x10136610, 8 bytes per order) and `send` set:
+  * the order's time (+0x149) is set if none yet: now + the network delay + `delay`;
+  * a changed order is passed to its handler.
+* **`unit_set_state` (0x1009ce9f):** leaving state 0x1e calls the unit type's leave handler (0x10118d90), except for kinds 0x40-0x9f.
+* **`unit_set_action` (0x1009cf5b):** works the same way with its own handlers (0x101368a8, 9 arguments).
+  * In a network game, actions 0xb and 0x18 that are still waiting for their time (+0x199) are not replaced.
+  * A unit leaving state '#' (being built) counts as built for its player.
+* Checked: the trace shows all four run. Unit state log (970 once, 980-981; an all-original run at the same time 980-1002), Human mission 1, the orders, groups and hover tests, Alt+F4.
