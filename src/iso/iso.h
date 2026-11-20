@@ -77,5 +77,7 @@
 #include "vision.h"
 #include "shade.h"
 #include "aibase.h"
+#include "clut.h"
+#include "groups.h"
 
 #endif

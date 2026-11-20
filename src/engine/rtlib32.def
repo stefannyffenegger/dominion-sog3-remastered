@@ -70,6 +70,7 @@ EXPORTS
     GetAngle@8
     RtGetShadowTable
     RtGetHiliteTable
+    RtSetBlitLookupTable
     SpriteSetSync@8
     RtUnload
     SpriteGetBounds@12

@@ -97,6 +97,7 @@ void *__stdcall winrealloc(const void *p, SIZE_T size, int zero);
 int __stdcall GetAngle(int dx, int dy);
 uint32_t *__cdecl RtGetShadowTable(void *app);
 uint8_t *__cdecl RtGetHiliteTable(void *app);
+unsigned __cdecl RtSetBlitLookupTable(void *app, int which, void *table);
 void __stdcall SpriteSetSync(void *hsl, uint32_t on);
 unsigned __cdecl RtUnload(void *app, unsigned id);
 int __stdcall SpriteGetBounds(void *hsl, void *sprite, RECT *r);
