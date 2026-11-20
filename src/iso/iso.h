@@ -85,5 +85,6 @@
 #include "unitorder.h"
 #include "unitinfo.h"
 #include "playerinfo.h"
+#include "buildinfo.h"
 
 #endif
