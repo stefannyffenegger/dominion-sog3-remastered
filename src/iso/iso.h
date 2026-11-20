@@ -75,5 +75,6 @@
 #include "movement.h"
 #include "pathsmooth.h"
 #include "vision.h"
+#include "shade.h"
 
 #endif

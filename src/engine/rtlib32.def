@@ -67,6 +67,9 @@ EXPORTS
     SpriteIsVisible@4
     NormalizeAngle@4
     winrealloc@12
+    GetAngle@8
+    RtGetShadowTable
+    RtGetHiliteTable
     SpriteSetSync@8
     RtUnload
     SpriteGetBounds@12

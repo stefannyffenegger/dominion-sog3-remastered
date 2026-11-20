@@ -80,7 +80,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `[Dominion] SyncThreshold` | 0 | code: multiplayer, handed to the network module with `NetworkPing` and read back into the game state (0xd8ec) |
 | `[Dominion] EnableTerrainAnalysis` | 0 | code: read at startup and handed to the network module, but nothing reads it back: it switches nothing. The AI's terrain analysis (`ta_run`) does not depend on it |
 | `[Dominion] NetColorMode` | 0 | code: network games only. With 0, players of the same race get different colours; with 1, units keep their race's colours as in single player. `IsoTogglePlayerColorMode` switches it during a match. The details of the colour choice are not checked yet |
-| `[Dominion] KeyboardScrolling` | 0 | **tested**: 1 scrolls the map with the arrow keys and Home, End, Page Up, Page Down (diagonals); not while Alt or Ctrl is held |
+| `[Dominion] KeyboardScrolling` | 0 | **tested**: 1 scrolls the map with the arrow keys and Home, End, Page Up, Page Down (diagonals); not while Alt or Ctrl is held. The game's own ini template (below) adds: "Shift-Arrow keys scroll fast, Ctrl-Arrow keys set facing directions on selected units" (the facing keys are not tested yet) |
 | `[Dominion] DebuggingOn` | 0 | code: the debug switch of the game logic (state 0x10c); among other things it lets the scripts' tile commands (`IsoSetTile`, `IsoSetTileSet`) change the map during a game |
 | `[Dominion] AutoSaveTime` | 0 | code: when set, a quick save is made every that many milliseconds in single player (0: never) |
 | `[Dominion] RadarUpdateTime` | 1000 | code: milliseconds between radar redraws |
@@ -101,6 +101,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 | `Mode640` (section: the game's title) | | read into the engine at every first scene; use not found yet |
 | `LoMem` (same section) | | low-memory flag, read at every first scene and handed to plugins |
 | `[resource]` | | data files copied to the hard disk, deleted at the next start (see below) |
+
+**code.** `ISO.R32` (0x10091790) writes a default `Dominion.ini` into the Windows folder at startup when there is none. Its template (at 0x10150778) carries comments the shipped ini lacks, for example "GraphicsQuality: 1 = best performance, 2 = average, 3 = best quality", "Difficulty: 1 = Introductory, 2 = Experienced, 3 = Advanced", the popup settings (`PopupEnabled`, `PopupShowDisabling`, `PopupClickLength`), and network defaults that differ from the code's: `NetworkPing=5000` (the code falls back to 3000), `MultiMen=300`, `MultiMat=15000`.
 
 ## Leftovers from earlier versions
 * **code.** The copy protection is switched off in the shipped game. `IsoCopyProtection` (`ISO.R32` 0x1005cfc7) passes check 100 through a function that just returns 1 (0x100c6d20), and checks 200 and 300 pass after a `rand()` call whose result is thrown away. With the flag at iso+0x170 set, every check passes at once. `IsoCheckForCD` (0x1005c252) is not reached in the tests.

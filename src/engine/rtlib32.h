@@ -94,6 +94,9 @@ int __stdcall SpriteLinePoint(int step, int steps, int x1, int y1, int x2, int y
 uint32_t __stdcall SpriteIsVisible(void *sprite);
 int __stdcall NormalizeAngle(int a);
 void *__stdcall winrealloc(const void *p, SIZE_T size, int zero);
+int __stdcall GetAngle(int dx, int dy);
+uint32_t *__cdecl RtGetShadowTable(void *app);
+uint8_t *__cdecl RtGetHiliteTable(void *app);
 void __stdcall SpriteSetSync(void *hsl, uint32_t on);
 unsigned __cdecl RtUnload(void *app, unsigned id);
 int __stdcall SpriteGetBounds(void *hsl, void *sprite, RECT *r);

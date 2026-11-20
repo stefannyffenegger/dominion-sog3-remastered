@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 582 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 586 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 90)
-* **Next part:** 91, from 0x10091400 (the live ones: `IsoSetShadeLevel`, 0x10091790, 0x10091860, 0x1009188a, 0x10092060, 0x10092102, 0x10092ade, 0x10092c44, 0x100933da, ...). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 91)
+* **Next part:** 92, from 0x10091a00 (the live ones: 0x10092060, 0x10092102, 0x10092ade, 0x10092c44, 0x100933da, ...). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1211,3 +1211,11 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
 * Left original, not reached: 0x10091400 ("Uncovering Allied Fog").
 * Checked: the trace shows it run. Unit state log (980-1001 twice; an all-original run at the same time 980-990), menu tour, Human mission 1, the orders test (all identical to the original runs within the usual noise), Alt+F4.
   * The first two state checks after a reboot left empty logs: Wine's first starts after a reboot stall.
+
+### Part 91: shade levels, the default ini, directions (`shade.c`, 4 functions, 0x10091550-0x10091a00)
+* **`IsoSetShadeLevel` (stdcall):** loads one of 14 shade levels into the engine's shadow table (as ints, tables at 0x1014eb78) or its highlight table (as bytes, 0x1014f978).
+* **0x10091790:** writes the game's default `Dominion.ini` into the Windows folder when there is none. The template's comments are in `HIDDEN_AND_UNUSED.md`.
+* **0x1009188a:** the direction (0-7) from one point to another, by the engine's `GetAngle` (added to the engine imports, with `RtGetShadowTable` and `RtGetHiliteTable`), in 45-degree sectors.
+* **Also:** an 8-byte table lookup (0x10091860).
+* Left original, not reached: 0x1009167e.
+* Checked: the trace shows all four run. Unit state log (980-990 twice, the same as an all-original run at the same time), menu tour, Human mission 1, the orders test, Alt+F4.
