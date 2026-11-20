@@ -16,7 +16,6 @@
 #define ai_tick ORIG(void(__cdecl *)(void), 0x100cc1be)
 #define unit_scan_targets ORIG(void(__cdecl *)(uint32_t, uint32_t, int, int), 0x100da072)
 #define turret_step ORIG(void(__cdecl *)(uint32_t), 0x1008c643)
-#define unit_move_step ORIG(void(__cdecl *)(uint32_t), 0x1008dd2b)
 #define power_tick ORIG(void(__cdecl *)(void), 0x100a4a14)
 #define structures_tick ORIG(void(__cdecl *)(void), 0x100a621e)
 #define net_send_sync ORIG(void(__cdecl *)(int, uint8_t), 0x10034aef)
@@ -134,7 +133,7 @@ static void unit_tick(uint32_t id, uint8_t *u)
             tick(id);
     }
     /* the type is read again: the tick may have changed it */
-    /* movement: when not reloading past its weapon's time (+0xdc against +0x28 of the type) */
+    /* reloading: while the weapon's timer (+0xdc) is below its type's full time (+0x28) */
     if ((int32_t)P(uint16_t, u, 0xdc) < P(int32_t, P(uint8_t *, u, 0x32), 0x28)) {
         if (!P(uint8_t, u, 0xed) || !P(int16_t, u, 0x17d)) {
             if (P(uint8_t, u, 0xef)) {
@@ -155,9 +154,9 @@ static void unit_tick(uint32_t id, uint8_t *u)
                 else if (left >= 0x32 && left <= 0x4a && !(I(uint8_t, 0x17dd) & 3))
                     go = 0;
                 if (go && I(uint32_t, 0x17dd) % every == 0)
-                    unit_move_step(id);
+                    unit_reload_step(id);
             } else {
-                unit_move_step(id);
+                unit_reload_step(id);
             }
         }
     } else {
@@ -224,4 +223,31 @@ void __stdcall IsoMovementLoop(uint8_t *iso)
         due--;
         I(int32_t, 0x17e1)++;
     }
+}
+
+/* 0x1008dd2b: a unit's reload step: its timer (+0xdc) goes up by its rate (+0xe0), to the
+ * type's full time (+0x28), and the type's pause (+0xfc) starts (+0xef) */
+void __cdecl unit_reload_step(uint32_t id)
+{
+    uint8_t *u = I(uint8_t **, ISO_UNITS)[id & 0xffff];
+    uint8_t *type = P(uint8_t *, u, 0x32);
+    if ((int32_t)(P(uint16_t, u, 0xe0) + P(uint16_t, u, 0xdc)) < P(int32_t, type, 0x28))
+        P(int16_t, u, 0xdc) = (int16_t)(P(int16_t, u, 0xe0) + P(int16_t, u, 0xdc));
+    else
+        P(int16_t, u, 0xdc) = (int16_t)P(int32_t, type, 0x28);
+    P(uint8_t, u, 0xef) = P(uint8_t, type, 0xfc);
+}
+
+/* 0x1008de00: allocates the 4000-byte buffer at 0x1014946c (once). 1 if it did */
+int32_t __cdecl move_buffer_alloc(void)
+{
+    if (G(void *, 0x1014946c))
+        return 0;
+    G(void *, 0x1014946c) = winmalloc(4000, 0);
+    if (!G(void *, 0x1014946c)) {
+        OutputDebugStringA((const char *)ORIG_PTR(0x1014948c));
+        return 0;
+    }
+    memset(G(void *, 0x1014946c), 0, 4000);
+    return 1;
 }

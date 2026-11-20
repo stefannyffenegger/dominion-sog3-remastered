@@ -9,5 +9,7 @@ int32_t __stdcall IsoInitMoveProcess(uint8_t *iso);
 void __stdcall IsoStopMoveProcess(uint8_t *iso);
 void __stdcall IsoPauseGame(uint8_t *iso, uint32_t paused, uint32_t unused);
 void __stdcall IsoMovementLoop(uint8_t *iso);
+void __cdecl unit_reload_step(uint32_t id);
+int32_t __cdecl move_buffer_alloc(void);
 
 #endif
