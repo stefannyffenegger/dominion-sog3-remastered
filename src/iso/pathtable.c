@@ -82,3 +82,35 @@ uint32_t __cdecl path_cell_at(int32_t x, uint32_t y)
 /* 0x10098970: walks a path's 20 sector slots without effect (a leftover) */
 void __cdecl path_slots_walk(void *path) { (void)path; }
 
+/* 0x1009a526: the debug overlay of the path sectors (iso+0xeeb bit 2): for each sector its
+ * box's diagonal, lines from its centre to its linked sectors' centres, and its number */
+void __cdecl path_sectors_draw(void)
+{
+    uint8_t *t = TABLE;
+    if (!(I(uint8_t, 0xeeb) & 4) || !t)
+        return;
+    HDC dc = I(HDC, 0xd7b3);
+    int16_t sx = (int16_t)I(int32_t, 0xcd82), sy = (int16_t)I(int32_t, 0xcd86);
+    HGDIOBJ pen = GetStockObject(6), brush = GetStockObject(5);
+    HGDIOBJ old_pen = SelectObject(dc, pen), old_brush = SelectObject(dc, brush);
+    for (int32_t k = 0; k < P(int32_t, t, 4); k++) {
+        uint8_t *s = P(uint8_t *, t, 8) + k * 0x46c;
+        if (!P(int32_t, s, 0))
+            continue;
+        MoveToEx(dc, (int16_t)(P(int16_t, s, 4) - sx), (int16_t)(P(int16_t, s, 6) - sy), NULL);
+        LineTo(dc, (int16_t)(P(int16_t, s, 8) - sx), (int16_t)(P(int16_t, s, 10) - sy));
+        for (int l = 0; l < 0x14; l++) {
+            int16_t o = P(int16_t, s, 0x1a + l * 4);
+            if (o < 0)
+                continue;
+            uint8_t *os = P(uint8_t *, t, 8) + o * 0x46c;
+            MoveToEx(dc, (int16_t)(P(int16_t, s, 0x14) - sx), (int16_t)(P(int16_t, s, 0x16) - sy), NULL);
+            LineTo(dc, (int16_t)(P(int16_t, os, 0x14) - sx), (int16_t)(P(int16_t, os, 0x16) - sy));
+        }
+        char num[8];
+        ORIG(int(__cdecl *)(char *, const char *, ...), 0x100f6f40)(num, (const char *)ORIG_PTR(0x101532f8), k);
+        TextOutA(dc, (int16_t)(P(int16_t, s, 0x14) - sx), (int16_t)(P(int16_t, s, 0x16) - sy), num, lstrlenA(num));
+    }
+    SelectObject(dc, old_pen);
+    SelectObject(dc, old_brush);
+}
