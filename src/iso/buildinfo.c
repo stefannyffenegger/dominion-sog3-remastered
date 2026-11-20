@@ -5,11 +5,13 @@
 #include "iso_core.h"
 #include "screen.h"
 #include "vecscore.h"
+#include "intfwave.h"
+#include "status.h"
+#include "debugtime.h"
 #include "buildinfo.h"
 
 #define bf_draw_text_shadow                                                                        \
     ORIG(int(__cdecl *)(void *, uint32_t, int32_t, int32_t, int, int, int, uint32_t, int, int), 0x101120bc)
-#define IsoUpdateIntfOptions ORIG(int32_t(__stdcall *)(uint8_t *, uint32_t), 0x100a3a41)
 #define MSG ((uint32_t *)ORIG_PTR(0x101572c0))
 
 static void counter(uint32_t var, uint32_t value, uint32_t fmt, uint32_t pos)
@@ -65,19 +67,19 @@ void __cdecl build_level_update(uint32_t kind, uint8_t player, uint8_t level, ui
         if (kind == 0x7c)
             I(int32_t, player * ISO_PLAYER_SIZE + 0x2e01)--;
     }
-    int32_t rc = IsoUpdateIntfOptions(g_iso, player);
+    int32_t rc = IsoUpdateIntfOptionsC(g_iso, player);
     DebugStr((const char *)ORIG_PTR(0x10153c2c), rc);
 }
 
-/* 0x100a2ab0: sends the script message 4 to the interface (iso+0x182e) */
-void __cdecl interface_message4(void)
+/* 0x100a2ab0: sends the script message 4 to the interface (iso+0x182e); RtRunMsg's result */
+int32_t __cdecl interface_message4(void)
 {
     uint8_t msg[0x22];
     memset(msg, 0, sizeof msg);
     *(uint32_t *)(msg + 2) = I(uint32_t, 0x182e);
     *(uint32_t *)(msg + 0xa) = 4;
     msg[9] = 1;
-    RtRunMsg(I(void *, ISO_APP), msg);
+    return RtRunMsg(I(void *, ISO_APP), msg);
 }
 
 #define production ORIG(uint32_t(__cdecl *)(uint32_t, uint32_t), 0x100a36d6)
@@ -111,4 +113,96 @@ int32_t __cdecl building_produce_men(uint32_t unit)
     if (I(int32_t, p * ISO_PLAYER_SIZE + 0x1b69) == 1 && I(uint32_t, 0x1b65) == p)
         I(uint8_t, 0xd696) = 1;
     return 1;
+}
+
+#define intf_button_off ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x100a3ef9)
+#define player_find_1008bd1f ORIG(uint32_t(__cdecl *)(uint32_t, int32_t *, int32_t *, int), 0x1008bd1f)
+#define player_message ORIG(void(__cdecl *)(uint32_t, const char *, int), 0x1003ba11)
+#define TABLE_ROW(off, k) (P(int32_t *, I(uint8_t *, off), 0) + P(int32_t, I(uint8_t *, off), 0x2c) * (k))
+
+/* IsoUpdateIntfOptions: which of the 40 build buttons the player may use. A button (table
+ * 0x18dc: -0x29a for none, +8 its unit kind) is on when the kind is allowed for the player's
+ * side (table 0x1968 by +0x1baa), the player has fewer than 250 units, and every technology
+ * it needs (table 0x18e4, up to 10, kind+1000 for upgrade level 2) is at the level needed.
+ * Kind 0x14 is on without its needs when the player has none yet; kinds 0x30-0x37 are off
+ * unless 0x1008bd1f finds something for the player; transports (0x88-0x9f) are off when +0x2dd6 is set. For the local
+ * player each button's state (iso+0x1b61: 5 off, 10 on) is set and newly available
+ * buildings (40) and units (41) announced; buttons turned off are passed to 0x100a3ef9 */
+int32_t __stdcall IsoUpdateIntfOptionsC(uint8_t *iso, uint32_t player)
+{
+    int full = I(uint32_t, player * ISO_PLAYER_SIZE + 0x1b8b) >= 0xfa; /* read before g_iso is set */
+    g_iso = iso;
+    DebugStr((const char *)ORIG_PTR(0x10153c7c), player);
+    int new_building = 0, new_unit = 0;
+    for (int32_t b = 0; b < 0x28; b++) {
+        int on = 0;
+        int32_t kind;
+        if (TABLE_ROW(0x18dc, b)[0] == -0x29a) {
+            kind = -1;
+        } else {
+            kind = TABLE_ROW(0x18dc, b)[2] >> 2;
+            on = 1;
+            if (!TABLE_ROW(0x1968, kind)[I(uint8_t, player * ISO_PLAYER_SIZE + 0x1baa)] || full) {
+                on = 0;
+            } else {
+                for (int k = 0; k < 10; k++) {
+                    int32_t need = TABLE_ROW(0x18e4, kind)[k];
+                    if (need == -1)
+                        break;
+                    uint8_t level = 1;
+                    if (need >= 1000) {
+                        need -= 1000;
+                        level = 2;
+                    }
+                    need >>= 2;
+                    if (I(uint8_t, player * 0x29 + need + 0x182) < level) {
+                        on = 0;
+                        break;
+                    }
+                }
+                if (!on && ((uint32_t)kind & 0x3fffffff) == 0x14 && !I(uint8_t, player * 0x29 + kind + 0x182))
+                    on = 1;
+            }
+        }
+        if (on && kind * 4 >= 0x30 && kind * 4 <= 0x37) {
+            int32_t a, c;
+            if (!(player_find_1008bd1f(player, &a, &c, 0) & 0xffff)) {
+                iso_debug_print();
+                on = 0;
+            }
+        }
+        if (on && kind * 4 >= 0x88 && kind * 4 <= 0x9f && I(uint8_t, player * ISO_PLAYER_SIZE + 0x2dd6))
+            on = 0;
+        if (I(uint32_t, 0x1b65) == player) {
+            int32_t *state = I(int32_t *, 0x1b61) + b;
+            if (on) {
+                if (*state == 5) {
+                    if (kind * 4 < 0x40)
+                        new_unit = 1;
+                    else
+                        new_building = 1;
+                }
+                if (*state == 5 || *state == 0x14)
+                    *state = 10;
+            } else {
+                *state = 5;
+                intf_button_off(player, (uint32_t)kind);
+            }
+        } else if (!on) {
+            intf_button_off(player, (uint32_t)kind);
+        }
+    }
+    if (I(uint32_t, 0x1b65) != player)
+        return 1;
+    if (I(int32_t, 0x17f5) != 1) {
+        if (new_building)
+            player_announce(player, 0x28, 1);
+        if (new_unit)
+            player_announce(player, 0x29, 1);
+    }
+    if (full) {
+        player_message(player, (const char *)ORIG_PTR(0x10153cd4), 0);
+        status_text((const char *)ORIG_PTR(0x10153cf4), 0);
+    }
+    return interface_message4();
 }

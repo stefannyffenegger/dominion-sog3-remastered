@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 646 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 647 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 101)
-* **Next part:** 102, from 0x100a37fa (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 102)
+* **Next part:** 103, from 0x100a3ef9 (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1310,3 +1310,19 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
   * The well loses what was taken; `well_fill_frame` (0x100a35ab, 4 frames by what is left) updates its sprite.
   * An empty well is marked, announced to its owner (wave 0x50), stopped, plotted on the radar and reported to the AI. Its refinery is set idle.
 * Checked: the trace shows all three run. The x87 sequences were compared with our build's disassembly. Unit state log (980-990 twice; an all-original run at the same time 980-1002), menu tour, Human mission 1, the orders test, Alt+F4.
+
+### Part 102: the build buttons (`buildinfo.c`, `IsoUpdateIntfOptions`)
+* **`IsoUpdateIntfOptions`** (stdcall) decides which of the 40 build buttons a player may use.
+  * A button (table iso+0x18dc: -0x29a for none, +8 its unit kind) is on when:
+    * the kind is allowed for the player's side (table 0x1968);
+    * the player has fewer than 250 units;
+    * every technology it needs (table 0x18e4, up to 10; kind + 1000 for upgrade level 2) is at the needed build level.
+  * Exceptions:
+    * kind index 0x14 is on without its needs while the player has none;
+    * kinds 0x30-0x37 are off unless 0x1008bd1f finds something for the player;
+    * transports are off while +0x2dd6 is set.
+  * For the local player, each button's state (5 off, 10 on) is set and newly available buildings (wave 40) and units (41) are announced. At 250 units it says so.
+  * Buttons turned off cancel their build slot (0x100a3ef9).
+  * As in the original, the unit count is read through the previous `g_iso` before the passed one is set.
+* **Fix to part 100:** 0x100a2ab0 returns `RtRunMsg`'s result, which `IsoUpdateIntfOptions` passes on.
+* Checked: the trace shows both run. Unit state log (980-1715, one run identical to an original to the end; an all-original run at the same time 980-981), menu tour, Human mission 1, the orders, popup and hover tests, Alt+F4.
