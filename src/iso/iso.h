@@ -73,5 +73,6 @@
 #include "vecscore.h"
 #include "aim.h"
 #include "movement.h"
+#include "pathsmooth.h"
 
 #endif
