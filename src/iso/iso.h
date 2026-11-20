@@ -76,5 +76,6 @@
 #include "pathsmooth.h"
 #include "vision.h"
 #include "shade.h"
+#include "aibase.h"
 
 #endif
