@@ -87,5 +87,6 @@
 #include "playerinfo.h"
 #include "buildinfo.h"
 #include "mining.h"
+#include "buildqueue.h"
 
 #endif
