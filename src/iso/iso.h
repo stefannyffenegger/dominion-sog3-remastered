@@ -79,5 +79,6 @@
 #include "aibase.h"
 #include "clut.h"
 #include "groups.h"
+#include "debugtime.h"
 
 #endif
