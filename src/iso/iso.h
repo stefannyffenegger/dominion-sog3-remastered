@@ -89,5 +89,6 @@
 #include "mining.h"
 #include "buildqueue.h"
 #include "buildtick.h"
+#include "wells.h"
 
 #endif
