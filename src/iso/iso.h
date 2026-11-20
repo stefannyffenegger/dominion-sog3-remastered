@@ -83,5 +83,6 @@
 #include "pathtable.h"
 #include "aislots.h"
 #include "unitorder.h"
+#include "unitinfo.h"
 
 #endif
