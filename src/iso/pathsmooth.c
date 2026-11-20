@@ -6,13 +6,12 @@
  * gate (or the gate's nearer end). The float math follows the original's x87 code. */
 #include "iso_core.h"
 #include "vecscore.h"
+#include "aim.h"
 #include "pathsmooth.h"
 
 #define sector_at ORIG(uint32_t(__cdecl *)(int32_t, int32_t), 0x100987c8)
 #define path_find ORIG(int32_t(__cdecl *)(int16_t, int16_t, int16_t, int16_t, int32_t *), 0x1008deb1)
 #define sector_ptr ORIG(uint8_t *(__cdecl *)(int32_t), 0x10098905)
-#define vec_turn ORIG(long double(__cdecl *)(float *, float *), 0x1008ff50)
-#define segment_cross ORIG(void(__cdecl *)(float *, float *, float *, float *, float *, float *), 0x10090030)
 #define edge_find ORIG(int32_t(__cdecl *)(int32_t, uint8_t *), 0x1009a456)
 #define edge_nearest ORIG(int32_t(__cdecl *)(int32_t, uint8_t *), 0x1009a4ad)
 #define edge_walk ORIG(int32_t(__cdecl *)(int32_t, int32_t, uint8_t *, int, int, int32_t, int16_t *), 0x1008fa3f)
@@ -59,7 +58,7 @@ int32_t __cdecl path_smooth(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int3
         float in[2], out[2];
         vec_direction(prev, cur, in);
         vec_direction(cur, next, out);
-        long double turn = vec_turn(in, out);
+        long double turn = vec_turn_angle(in, out);
         int16_t *point = &P(int16_t, path, k * 4 + 0x64);
         if (!(turn > (long double)G(float, 0x101131b0))) {
             /* a sharp bend: onto the sector's edge path */
@@ -130,4 +129,82 @@ int32_t __cdecl path_smooth(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int3
         cur[1] = next[1];
     }
     return n;
+}
+
+/* ---- 0x1008fc3d-0x10090120 (part 89) ---- */
+
+#define path_cell_alloc ORIG(int32_t(__cdecl *)(uint32_t, uint32_t), 0x100e98de)
+#define path_cell_link ORIG(void(__cdecl *)(int32_t, int32_t, int), 0x100d4450)
+
+/* 0x1008ff50: the turn between two directions in degrees (0-180) */
+long double __cdecl vec_turn_angle(const float *a, const float *b)
+{
+    float la = (float)vec_sqrt2((float)((long double)a[1] * a[1] + (long double)a[0] * a[0]));
+    float lb = (float)vec_sqrt2((float)((long double)b[1] * b[1] + (long double)b[0] * b[0]));
+    long double q = vec_dot(a, b) / ((long double)lb * la);
+    float c = (float)q, r;
+    if (!(q > -1.0L))
+        r = 180.0f;
+    else if (!(c < 1.0f))
+        r = 0.0f;
+    else
+        r = (float)(aim_acos2(c) * 180.0f / G(float, 0x101131a0));
+    return r;
+}
+
+/* 0x10090030: where the lines p3-p4 and p5-p6 cross: `out1` as a fraction along p3-p4,
+ * `out2` along p5-p6. 0 when they are (nearly) parallel: |det| < 0.001 (double 0x101131a8) */
+int32_t __cdecl segment_cross(float *out1, float *out2, const float *p3, const float *p4, const float *p5,
+                              const float *p6)
+{
+    float d1[2], d2[2], e[2];
+    vec_sub(p3, p4, d1);
+    vec_sub(p5, p6, d2);
+    float n1[2] = { -d1[1], d1[0] };
+    float n2[2] = { -d2[1], d2[0] };
+    float det = (float)vec_dot(d1, n2);
+    if (!(aim_fabs(det) >= (long double)G(double, 0x101131a8)))
+        return 0;
+    vec_sub(p3, p5, e);
+    *out1 = (float)(vec_dot(e, n2) / det);
+    *out2 = (float)(vec_dot(e, n1) / det);
+    return 1;
+}
+
+/* 0x1008fc3d: gives unit `unit` a smoothed path from (x1, y1) to (x2, y2) in its path cells
+ * (0x1984, 0x12 bytes each: x, y, a count, flags): the flags take `last` (bit 1, on every
+ * cell or, with +0x193 bit 2, only the last), `b6` and `b8`; all but the last are marked
+ * continued (bit 0). The cells are linked; the first one, or -1 */
+int32_t __cdecl unit_path_build(int16_t unit, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t last,
+                                uint16_t b6, uint16_t b8)
+{
+    int32_t path[0x54];
+    uint8_t *u = I(uint8_t **, ISO_UNITS)[unit];
+    int32_t type = P(int32_t, u, 0xc);
+    int32_t flag = !((type >= 0 && type < 8) || (type >= 0xc && type <= 0x17));
+    int32_t n = path_smooth(x1, y1, x2, y2, flag, path);
+    int32_t first = -1, prev = 0;
+    for (int32_t k = 0, count = 0; k < n; k++, count++) {
+        uint8_t *owner = I(uint8_t **, ISO_UNITS)[unit];
+        uint32_t player = owner ? P(uint8_t, owner, 0x14) : 0;
+        int32_t cell = path_cell_alloc(player, P(uint32_t, I(uint8_t **, ISO_UNITS)[unit], 0xc));
+        if (cell < 0)
+            return -1;
+        uint8_t *c = I(uint8_t *, 0x1984) + cell * 0x12;
+        P(int16_t, c, 4) = P(int16_t, path, 0x68 + k * 4);
+        P(int16_t, c, 6) = P(int16_t, path, 0x6a + k * 4);
+        if (!(P(uint16_t, u, 0x193) >> 2 & 1) || n - 1 == k)
+            P(uint16_t, c, 10) = (uint16_t)((P(uint16_t, c, 10) & 0xfffd) | (last & 1) << 1);
+        P(uint16_t, c, 10) = (uint16_t)((P(uint16_t, c, 10) & 0xffbf) | (b6 & 1) << 6);
+        P(uint16_t, c, 10) = (uint16_t)((P(uint16_t, c, 10) & 0xfeff) | (b8 & 1) << 8);
+        if (k < n - 1)
+            P(uint16_t, c, 10) |= 1;
+        P(uint8_t, c, 8)++;
+        if (!count)
+            first = cell;
+        else
+            path_cell_link(prev, cell, 1);
+        prev = cell;
+    }
+    return first;
 }
