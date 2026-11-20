@@ -84,5 +84,6 @@
 #include "aislots.h"
 #include "unitorder.h"
 #include "unitinfo.h"
+#include "playerinfo.h"
 
 #endif
