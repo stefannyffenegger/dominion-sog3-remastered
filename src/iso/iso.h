@@ -90,5 +90,6 @@
 #include "buildqueue.h"
 #include "buildtick.h"
 #include "wells.h"
+#include "sectors.h"
 
 #endif
