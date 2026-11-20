@@ -74,5 +74,6 @@
 #include "aim.h"
 #include "movement.h"
 #include "pathsmooth.h"
+#include "vision.h"
 
 #endif
