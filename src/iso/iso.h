@@ -88,5 +88,6 @@
 #include "buildinfo.h"
 #include "mining.h"
 #include "buildqueue.h"
+#include "buildtick.h"
 
 #endif
