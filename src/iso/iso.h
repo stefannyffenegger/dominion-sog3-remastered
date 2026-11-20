@@ -86,5 +86,6 @@
 #include "unitinfo.h"
 #include "playerinfo.h"
 #include "buildinfo.h"
+#include "mining.h"
 
 #endif

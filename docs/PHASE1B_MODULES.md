@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 643 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 646 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 100)
-* **Next part:** 101, from 0x100a3036 (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 101)
+* **Next part:** 102, from 0x100a37fa (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1302,3 +1302,11 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
 * **0x100a2ab0:** sends script message 4 to the interface.
 * **`building_produce_men` (0x100a2d71):** when a building's time has come, it adds its output (0x100a36d6; four times as much from upgrade level 2) to its player's men, up to the player's limit and at most 9999, and scores it.
 * Checked: the trace shows all four run. Unit state log (951 once, the timing branch first seen in part 71's run, then 980-1002 in three runs; an all-original run at the same time 980-981), menu tour, Human mission 1, the orders and hover tests, Alt+F4.
+
+### Part 101: mining (`mining.c`, 3 functions, 0x100a3036-0x100a37fa)
+* **Energy wells** (iso+0x1097, 0x2b bytes each): +0 the sprite, +0xc what is left, +0x10 what it had, +0x14 the state (2 being mined, 3 empty), +0x16 the fill frame, +0x1f/+0x23 an extra sprite and its object, +0x27 the owner.
+* **`building_output` (0x100a36d6):** a building's output is its maximum scaled by its health (rounded to a double, as in the original) and by its grid's spare power, plus 1, at most the maximum. It is 0 while the building is not working.
+* **`refinery_mine` (0x100a3036):** when its time has come, a refinery adds its output to its player's materials (at most 99999), or half each (at least 1) to its player and the partner at +0x2deb.
+  * The well loses what was taken; `well_fill_frame` (0x100a35ab, 4 frames by what is left) updates its sprite.
+  * An empty well is marked, announced to its owner (wave 0x50), stopped, plotted on the radar and reported to the AI. Its refinery is set idle.
+* Checked: the trace shows all three run. The x87 sequences were compared with our build's disassembly. Unit state log (980-990 twice; an all-original run at the same time 980-1002), menu tour, Human mission 1, the orders test, Alt+F4.
