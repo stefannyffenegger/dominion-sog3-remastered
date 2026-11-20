@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 553 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 570 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 84)
-* **Next part:** 85, from 0x1007eb13 (list the live ones with `work/tmp/iso/live.txt`; the next are past 0x10082000). Left original before it, not reached: `IsoTogglePlayerColorMode`, 0x1007117a-0x100721b0, the drone exports, the selection mode handlers 0x10073f47-0x1007618a, 0x1007883c, 0x10078d58, 0x10079c6c-0x1007aa2b, 0x1007abf1-0x1007bd4c, 0x1007cbde, 0x1007d592-0x1007e720, the score screen. Parts go on in address order.
+### Open items (as of part 85)
+* **Next part:** 86, from 0x1008cdf0 (`IsoSetMoveDelay`, `IsoInitMoveProcess`, `IsoMovementLoop` (2 KB, the game tick), `IsoPauseGame`, ...). Nothing between 0x1007eb13 and 0x1008c755 is reached in the tests (the score screen and more, about 55 KB). Parts go on in address order.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1134,3 +1134,15 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
   * The per-type slot is the byte offset `(type & ~2) >> 1`, as in the original.
 * Left original, not reached: the score functions 0x1007e9a1 and 0x1007ea33, `IsoUpdateScoreTable` and 0x1007f45e-0x100812c9 (the score screen).
 * Checked: the trace shows all nine run. Unit state log (952-990, twice), Human mission 1, the orders test, Alt+F4.
+
+### Part 85: turret aiming math (`aim.c`, 17 functions, 0x1008c755-0x1008cdf0)
+* **`vec_angle` (0x1008c990):** the angle from one vector to another in degrees (0-360, counterclockwise): `acos` of the normalised dot product, mirrored when the cross product is negative. It is ported from the asm, since the decompiler's float casts were unreliable:
+  * the lengths are rounded to float, the dot product is divided by their product in extended precision;
+  * a quotient of -1 or below (or NaN) gives 180, and 1 or above gives 0;
+  * the constants 180, π (as a float) and 360 come from the original's data.
+* **`aim_round` (0x1008cc80):** rounds half up, with `floor` below .5 and `ceil` above.
+* **`vec_dot` and `vec_cross` (0x1008caf0, 0x1008cb20).**
+* **Wrappers:** each takes a float and calls the C library's `acos`, `sin`, `cos`, `floor`, `ceil` or `fabs`, returning on the x87 stack.
+* **`aim_turrets` (0x1008c755):** points every turret (types 0x30-0x37) at the nearest unit of types 0x60-0x63 (0x1008c879, by `sqrt` distance) and resets its aiming state.
+* Left original, not reached: the vector rotation 0x1008cb50 and the `fabs` wrapper pair 0x1008cd80/0x1008cda0.
+* Checked: the trace shows all except the nearest-target search run (the mission has no such units). Unit state log (952-1001; one run agreed with an original up to tick 1749), Human mission 1, the orders test, Alt+F4.
