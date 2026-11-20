@@ -110,6 +110,8 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** Playing from CD: the resource library can copy data files to the hard disk while playing, and list them in `[resource]` so leftovers are deleted at the next start. Dominion doesn't use it.
 * **code.** `SpritePaintDirectDrawSurfacesBlack1`, an older version of the function that clears the screen, kept alongside the new one. `ClearVideoMem` (clear all video memory) is never called.
 * **code.** The display can blit the frame instead of flipping pages; the game always flips.
+* **code.** The game logic's debug output was switched off before release by making its functions return at once (`ISO.R32` 0x10095e98, 0x10095f64, `IsoDebugFile`); their bodies are still there. They printed messages by level (flags at iso+0xe09b) and wrote debug files. The AI also times each of its steps and keeps the slowest (0x10152b58); with timing output on (0x1017c9e0) it would print each step's time.
+* **code.** A function that walks a path's 20 sector slots without doing anything (`ISO.R32` 0x10098970), probably a check whose body was removed.
 
 ## Unfinished or broken in the original
 These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.

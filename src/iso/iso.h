@@ -80,5 +80,6 @@
 #include "clut.h"
 #include "groups.h"
 #include "debugtime.h"
+#include "pathtable.h"
 
 #endif
