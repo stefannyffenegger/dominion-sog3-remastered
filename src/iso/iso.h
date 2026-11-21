@@ -126,5 +126,6 @@
 #include "dlist.h"
 #include "unitcell.h"
 #include "patrolstep.h"
+#include "patrollegs.h"
 
 #endif
