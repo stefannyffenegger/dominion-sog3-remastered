@@ -14,7 +14,7 @@ Order (smallest and most self-contained first):
 | 3 | `WAVEPLAY.R32` | Sound effects (DirectSound) and CD music | **Done**: music from ripped files, own sound-effect engine |
 | 4 | `NETPLAY.R32` | Multiplayer (was DirectPlay) | **Done**: own network code, DirectPlay no longer needed |
 | 5 | `Rtlib32.dll` | Engine runtime: script interpreter, resources, sprites, DirectDraw | **Done**: the whole engine is ours (1,384 functions); none of the original's code runs, it is read as data |
-| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 678 of about 1,986 game functions are ours |
+| 6 | `ISO.R32` | The game logic: maps, units, AI, path finding, the interface | **In progress**: our DLL wraps the original; 679 of about 1,986 game functions are ours |
 
 Hidden, unused and unfinished things found on the way are collected in `HIDDEN_AND_UNUSED.md`.
 
@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 110)
-* **Next part:** 111, the unit creation (0x100aa238) (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, 0x100a4161, `IsoSetMenMat`, `IsoInitBuildStart`, `IsoCancelBuild`, `IsoGetTabset`, `IsoInitIntfFXTable`, `IsoSetTechLevel`, `IsoBuildingOnTabset`, `IsoDisplayRefineryInfo`, 0x100a6e30, 0x100a6e59, `IsoFindObject`, `IsoGetPlayerId`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 111)
+* **Next part:** 112, `IsoDeleteUnit` (0x100ab4aa) (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, 0x100a4161, `IsoSetMenMat`, `IsoInitBuildStart`, `IsoCancelBuild`, `IsoGetTabset`, `IsoInitIntfFXTable`, `IsoSetTechLevel`, `IsoBuildingOnTabset`, `IsoDisplayRefineryInfo`, 0x100a6e30, 0x100a6e59, `IsoFindObject`, `IsoGetPlayerId`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1392,3 +1392,23 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
 * **`IsoAddUnit`** takes the next unit id (iso+0x1ad1), counts the unit as built for its player (a transport under construction as kind 0x8c) and creates it (0x100aa238).
   * The original passes the id with a stack leftover in its upper half, which the callee masks. Ours passes 0 there.
 * Checked: the trace shows all six run. Unit state log (970 twice: one run identical to part 98's 970-branch run for the whole game; an all-original run at the same time 980-990), menu tour, Human mission 1, the orders and hover tests, Alt+F4.
+
+### Part 111: creating a unit (`unitcreate.c`, 0x100aa238-0x100ab4aa)
+* **Transports** (kinds 0x88-0x9f) are made by 0x100b0837. Built ones get their time, and the kind is adjusted for parts.
+  * When loading a game (a10 set), the two halves of a two-part transport are linked (+0xf6/+0xf8, through iso+0xd9de).
+* **Other units:**
+  * Units built by the player (flags bit 0) come out of the player's main plant (iso+0xd6cb, replaced first if it has been sold).
+    * Without one, the message "Main Plant destroyed" is shown and nothing is built.
+    * A plant of kind 0x50 puts its units halfway down its sprite.
+  * The record (0x3a9 bytes) is allocated or cleared, the next free id chosen, and `IsoAddUnitType` sets the unit up.
+  * In a network game, while the game is running, the unit is sent first (0x100332af) and made when the message comes back. A building whose footprint is blocked is dropped.
+* **After setup:**
+  * the wall cell under a wall post is marked;
+  * a local refinery shows its well;
+  * the AI is told, and the counts and build levels go up;
+  * power is marked for buildings;
+  * the map editor gets its extra record.
+  * Building in a damaged plant (+0x3e bit 12) costs the plant a third of its health plus 1, and can destroy it.
+* **Upper bits:** a few calls pass values whose upper bits were stack leftovers or pointer bits. The callees read only the low bits; ours passes 0 there.
+* **Coverage:** the all-original trace shows the main plant branches run in the state check (0x1005ab95, 0x100eb80a), and our state logs match through them. Transports are not created in the tests.
+* Checked: the trace shows it run. Unit state log (970 and 980-1001; an all-original run at the same time took the 970 fork too), menu tour, Human mission 1, the orders, popup, groups and hover tests, Alt+F4.

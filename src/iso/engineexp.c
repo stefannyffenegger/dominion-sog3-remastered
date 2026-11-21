@@ -3,10 +3,11 @@
 #include "iso_core.h"
 #include "walls.h"
 #include "vecscore.h"
+#include "unitcreate.h"
 #include "engineexp.h"
 
 #define markers_show ORIG(void(__cdecl *)(uint32_t), 0x100f3b0d)
-#define unit_create ORIG(uint32_t(__cdecl *)(uint32_t, uint32_t, uint32_t, uint32_t, int32_t, uint32_t, uint32_t, int32_t, uint32_t, int, uint32_t), 0x100aa238)
+
 
 /* IsoInitReconnectAndPauseWindow */
 void __stdcall IsoInitReconnectAndPauseWindowC(uint8_t *iso, uint32_t a, uint32_t b, uint32_t c)

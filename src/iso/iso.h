@@ -95,5 +95,6 @@
 #include "spriteinit.h"
 #include "engineinit.h"
 #include "engineexp.h"
+#include "unitcreate.h"
 
 #endif
