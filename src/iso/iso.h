@@ -106,5 +106,6 @@
 #include "unittype.h"
 #include "unitai.h"
 #include "groupmove.h"
+#include "waypoints.h"
 
 #endif
