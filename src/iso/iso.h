@@ -125,5 +125,6 @@
 #include "pfhelp.h"
 #include "dlist.h"
 #include "unitcell.h"
+#include "patrolstep.h"
 
 #endif
