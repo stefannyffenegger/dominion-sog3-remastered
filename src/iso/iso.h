@@ -147,5 +147,6 @@
 #include "popupconf.h"
 #include "popupshow.h"
 #include "popupitem.h"
+#include "pathlink.h"
 
 #endif
