@@ -115,5 +115,6 @@
 #include "patrol.h"
 #include "spot.h"
 #include "carry.h"
+#include "squadlist.h"
 
 #endif
