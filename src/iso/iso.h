@@ -121,5 +121,6 @@
 #include "squaddefend.h"
 #include "unitthink.h"
 #include "pathinit.h"
+#include "pathfind.h"
 
 #endif

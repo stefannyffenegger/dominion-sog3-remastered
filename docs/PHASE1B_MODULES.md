@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 137)
-* **Next part:** 138, from 0x100c70bc (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, 0x100a4161, `IsoSetMenMat`, `IsoInitBuildStart`, `IsoCancelBuild`, `IsoGetTabset`, `IsoInitIntfFXTable`, `IsoSetTechLevel`, `IsoBuildingOnTabset`, `IsoDisplayRefineryInfo`, 0x100a6e30, 0x100a6e59, 0x100b0837 (transport creation), 0x100b2715, 0x100b2953, 0x100b31e0 (reached only without a map), 0x100b380a, `IsoFindObject`, `IsoGetPlayerId`, `IsoGetScrollRate`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 138)
+* **Next part:** 139, from 0x100c9a00 (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, 0x100a4161, `IsoSetMenMat`, `IsoInitBuildStart`, `IsoCancelBuild`, `IsoGetTabset`, `IsoInitIntfFXTable`, `IsoSetTechLevel`, `IsoBuildingOnTabset`, `IsoDisplayRefineryInfo`, 0x100a6e30, 0x100a6e59, 0x100b0837 (transport creation), 0x100b2715, 0x100b2953, 0x100b31e0 (reached only without a map), 0x100c8773 and 0x100c883f (the path finder's range check and its search for a free cell near a blocked goal), 0x100b380a, `IsoFindObject`, `IsoGetPlayerId`, `IsoGetScrollRate`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1686,3 +1686,23 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
   * the vectors (0x8ca0).
 * **A small leak:** only the grid and the vectors are freed before a new map. The other two leak each time a map is loaded again, as in the original.
 * Checked: the trace shows both run. Unit state log with scripted moves (980-990, the same as an all-original run at the same time), Human mission 1, the orders test, the menu tour, Alt+F4.
+
+### Part 138: the path finder (`pathfind.c`, 0x100c70bc-0x100c8773)
+* **`path_find`** (cdecl, 8 arguments) finds a way between two points. All movement uses it.
+* **The search:** it searches the map cells in a rotated grid, from the goal outwards, until it reaches the start.
+  * Each step goes to one of the 8 neighbours; 0x100c9a00 steps round them.
+  * Each step adds 1 (table 0x10158ce8) plus the cell's occupancy (0x100672b3) as the estimate's tie-breaker.
+  * The open list is searched linearly for the lowest cost and holds at most 2000 cells.
+* **Building the way:** it walks back down the costs from the start to the goal, notes each step's direction, and makes a waypoint vector at every change of direction.
+* **The working data:** the original's globals, kept as they are: the grid 0x1017e414, the open list 0x1017e3f8 and its costs 0x1017e3fc, the step list 0x1017e400, the directions 0x1017e418, and the current cell 0x1017e408/40c.
+* **Return value:** the number of waypoints, or an error code, also kept at iso+0x1b59:
+  * -10, no buffers;
+  * -0x32, both points on the same cell;
+  * -0x1e, the goal is blocked or there is no way;
+  * -0x14, the search or the way is too long, or no vector is free;
+  * -0x28, no head pointer;
+  * -0x3c, a cell out of range.
+* **The debug lines:** the messages to the debug output ("++++ Maximum Path Reached #1 - Unit [%d] ++++" and so on) are kept, through `OutputDebugStringA` as in the original.
+* **Without a map (+0xe113 == 0):** the original then also measures how far the unit gets along the way on its range (+0x1d3, a float, rounded through memory as in the original), and finds the first corner it cannot cut, into +0x370.
+* **The goal pair:** 0x100c883f is handed the start and goal cells as {column, row} pairs, so they are kept as arrays.
+* Checked: the trace shows it run. Unit state log with scripted moves (1002, and 980-990, the same as an all-original run at the same time), Human mission 1, the orders, popup, groups and hover tests, Alt+F4.
