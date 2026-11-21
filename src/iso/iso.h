@@ -124,5 +124,6 @@
 #include "pathfind.h"
 #include "pfhelp.h"
 #include "dlist.h"
+#include "unitcell.h"
 
 #endif
