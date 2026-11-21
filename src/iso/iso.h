@@ -109,5 +109,6 @@
 #include "waypoints.h"
 #include "unitmove.h"
 #include "waypath.h"
+#include "pathstart.h"
 
 #endif
