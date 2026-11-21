@@ -6,5 +6,6 @@
 
 void __cdecl unit_cell_update(uint32_t unit, uint32_t how);
 void __cdecl unit_run_over(uint32_t unit);
+void __cdecl unit_cell_update2(uint32_t unit, uint32_t how);
 
 #endif
