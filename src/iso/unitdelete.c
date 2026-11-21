@@ -259,3 +259,68 @@ int32_t __stdcall IsoDeleteUnitC(uint8_t *iso, uint32_t id, int32_t mark)
     return 1;
 }
 
+/* IsoDeleteAllUnits: every unit's sprites, objects and memory freed (without the effects and
+ * counts of IsoDeleteUnit), the selections cleared, and every map marker sent its last
+ * message and deleted */
+int32_t __stdcall IsoDeleteAllUnitsC(uint8_t *iso)
+{
+    g_iso = iso;
+    for (int p = 0; p < 8; p++) {
+        I(uint32_t, 0xd65a + p * 4) = 0;
+        selection_clear(p);
+    }
+    for (int k = 0; k < 2000; k++) {
+        uint32_t id = I(uint32_t *, ISO_UNIT_LIST)[k];
+        if ((int32_t)id > 0 && U(id)) {
+            if (P(int32_t, U(id), 0x10) == 0x5c && I(int32_t, ISO_HAVE_SPRITES) && P(void *, U(id), 0x102)) {
+                SpriteHide(I(void *, 0x181e), P(void *, U(id), 0x102), 1);
+                RtDelete(I(void *, ISO_APP), P(uint32_t, U(id), 0xfe));
+                P(uint32_t, U(id), 0xfe) = 0;
+                P(void *, U(id), 0x102) = 0;
+            }
+            SpriteHide(I(void *, 0x181e), P(void *, U(id), 4), 1);
+            if (P(uint8_t *, U(id), 0x39d)) {
+                SpriteHide(I(void *, 0x181e), P(void *, P(uint8_t *, U(id), 0x39d), 4), 1);
+                RtDelete(I(void *, ISO_APP), P(uint32_t, P(uint8_t *, U(id), 0x39d), 0));
+                P(uint32_t, P(uint8_t *, U(id), 0x39d), 0) = 0;
+                P(uint32_t, P(uint8_t *, U(id), 0x39d), 4) = 0;
+            }
+            if (P(void *, U(id), 0x36)) {
+                SpriteSetExtOffsets(I(void *, 0x181e), P(void *, U(id), 4), 0);
+                winfree(P(void *, U(id), 0x36));
+                P(void *, U(id), 0x36) = 0;
+            }
+            if (!RtDelete(I(void *, ISO_APP), P(uint32_t, U(id), 0)))
+                DebugStr((const char *)ORIG_PTR(0x10157b0c));
+            unit_sector_update(id, 2, 0);
+            if (P(void *, U(id), 0x39d)) {
+                turret_free(id);
+                P(void *, U(id), 0x39d) = 0;
+            }
+            for (int j = 0; j < 2; j++)
+                if (P(void *, U(id), 0x90 + j * 4)) {
+                    winfree(P(void *, U(id), 0x90 + j * 4));
+                    P(void *, U(id), 0x90 + j * 4) = 0;
+                }
+            winfree(U(id));
+            I(uint8_t **, ISO_UNITS)[id] = 0;
+        }
+        I(uint32_t *, ISO_UNIT_LIST)[k] = 0;
+    }
+    I(uint32_t, ISO_UNIT_COUNT) = 0;
+    if (I(uint8_t *, 0x192c))
+        for (int k = 0; k < 0x800; k++) {
+            int32_t res = P(int32_t, I(uint8_t *, 0x192c), k * 0x12);
+            if (res <= 0)
+                continue;
+            P(int32_t, I(uint8_t *, 0x192c), k * 0x12) = 0;
+            if (((void **)RtGetResource(I(void *, ISO_APP), (uint32_t)res))[1]) {
+                SpriteSendMessage(I(void *, 0x181e), ((void **)RtGetResource(I(void *, ISO_APP), (uint32_t)res))[1], 1,
+                                  (const uint32_t *)ORIG_PTR(0x10157324));
+                if (!RtDelete(I(void *, ISO_APP), (uint32_t)res))
+                    DebugStr((const char *)ORIG_PTR(0x10157b20));
+            }
+        }
+    I(uint32_t, 0x1b4d) = 0;
+    return 1;
+}
