@@ -136,5 +136,6 @@
 #include "patrolveh.h"
 #include "patrolactive.h"
 #include "patrolcell.h"
+#include "patrolsoldier.h"
 
 #endif
