@@ -127,5 +127,6 @@
 #include "unitcell.h"
 #include "patrolstep.h"
 #include "patrollegs.h"
+#include "legbox.h"
 
 #endif
