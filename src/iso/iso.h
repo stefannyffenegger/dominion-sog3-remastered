@@ -141,5 +141,6 @@
 #include "soldiercheck.h"
 #include "patroldraw.h"
 #include "wallunits.h"
+#include "unitblocked.h"
 
 #endif
