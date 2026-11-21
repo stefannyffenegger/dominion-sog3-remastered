@@ -122,5 +122,6 @@
 #include "unitthink.h"
 #include "pathinit.h"
 #include "pathfind.h"
+#include "pfhelp.h"
 
 #endif
