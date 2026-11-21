@@ -146,5 +146,6 @@
 #include "popupinit.h"
 #include "popupconf.h"
 #include "popupshow.h"
+#include "popupitem.h"
 
 #endif
