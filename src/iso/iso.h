@@ -143,5 +143,6 @@
 #include "wallunits.h"
 #include "unitblocked.h"
 #include "unitrel.h"
+#include "popupinit.h"
 
 #endif
