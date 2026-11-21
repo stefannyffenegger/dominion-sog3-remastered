@@ -150,5 +150,6 @@
 #include "pathlink.h"
 #include "pathappend.h"
 #include "pathrelease.h"
+#include "debugmarks.h"
 
 #endif
