@@ -48,6 +48,9 @@ HWND __cdecl RtGetWindow(void *app);
 HDC __cdecl RtGetDC(void *app);
 void __cdecl RtGetDisplayMode(void *app, uint32_t *w, uint32_t *h, uint32_t *bpp, uint32_t *refresh);
 unsigned __cdecl RtGetDirectDrawStats(void *app, void *a, void *b, void *buffers);
+void __cdecl RtDominionService(void *app);
+unsigned __cdecl RtFlipPages(void *app);
+void __stdcall SpriteAnimate(void *hsl);
 int __cdecl RtSetDisplayMode(void *app, uint32_t w, uint32_t h, uint32_t bpp, uint32_t refresh,
                              int unknown1, int unknown2, int unknown3);
 void __cdecl RtPostMsg(void *app, const void *msg); /* msg: 0x22-byte record, see RtMsg */
