@@ -108,5 +108,6 @@
 #include "groupmove.h"
 #include "waypoints.h"
 #include "unitmove.h"
+#include "waypath.h"
 
 #endif

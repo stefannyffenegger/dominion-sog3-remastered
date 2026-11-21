@@ -32,7 +32,7 @@
 #define unit_forget_1 ORIG(void(__cdecl *)(uint32_t), 0x100e9c85)
 #define unit_forget_2 ORIG(void(__cdecl *)(uint32_t), 0x100e9e85)
 #define unit_forget_3 ORIG(void(__cdecl *)(uint32_t, int, int, int), 0x100d559a)
-#define unit_forget_4 ORIG(void(__cdecl *)(uint32_t, int), 0x100b56aa)
+#define saved_path_drop ORIG(void(__cdecl *)(uint32_t, int), 0x100b56aa)
 #define turret_free ORIG(void(__cdecl *)(uint32_t), 0x10085ec1)
 #define player_unit_lost ORIG(void(__cdecl *)(uint32_t, uint32_t), 0x100b1e2c)
 #define player_check_lost ORIG(void(__cdecl *)(uint32_t), 0x100b2340)
@@ -229,7 +229,7 @@ int32_t __stdcall IsoDeleteUnitC(uint8_t *iso, uint32_t id, int32_t mark)
     unit_forget_1(id);
     unit_forget_2(id);
     unit_forget_3(id, -1, 1, 0);
-    unit_forget_4(id, 1);
+    saved_path_drop(id, 1);
     if (P(void *, u, 0x39d)) {
         turret_free(id);
         P(void *, u, 0x39d) = 0;
