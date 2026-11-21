@@ -145,5 +145,6 @@
 #include "unitrel.h"
 #include "popupinit.h"
 #include "popupconf.h"
+#include "popupshow.h"
 
 #endif
