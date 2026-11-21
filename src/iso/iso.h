@@ -142,5 +142,6 @@
 #include "patroldraw.h"
 #include "wallunits.h"
 #include "unitblocked.h"
+#include "unitrel.h"
 
 #endif
