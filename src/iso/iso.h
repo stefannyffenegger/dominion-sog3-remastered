@@ -103,5 +103,6 @@
 #include "tilepos.h"
 #include "mainloop.h"
 #include "playerstate.h"
+#include "unittype.h"
 
 #endif
