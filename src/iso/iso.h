@@ -114,5 +114,6 @@
 #include "unitfind.h"
 #include "patrol.h"
 #include "spot.h"
+#include "carry.h"
 
 #endif
