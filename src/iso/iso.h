@@ -138,5 +138,6 @@
 #include "patrolcell.h"
 #include "patrolsoldier.h"
 #include "soldierway.h"
+#include "soldiercheck.h"
 
 #endif
