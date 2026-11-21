@@ -110,5 +110,7 @@
 #include "unitmove.h"
 #include "waypath.h"
 #include "pathstart.h"
+#include "unitface.h"
+#include "unitfind.h"
 
 #endif
