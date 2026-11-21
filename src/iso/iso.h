@@ -117,5 +117,6 @@
 #include "carry.h"
 #include "squadlist.h"
 #include "squadnote.h"
+#include "squadtarget.h"
 
 #endif
