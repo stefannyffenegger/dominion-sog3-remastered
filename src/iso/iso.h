@@ -144,5 +144,6 @@
 #include "unitblocked.h"
 #include "unitrel.h"
 #include "popupinit.h"
+#include "popupconf.h"
 
 #endif
