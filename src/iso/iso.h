@@ -113,5 +113,6 @@
 #include "unitface.h"
 #include "unitfind.h"
 #include "patrol.h"
+#include "spot.h"
 
 #endif
