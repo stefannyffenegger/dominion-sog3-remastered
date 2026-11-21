@@ -148,5 +148,6 @@
 #include "popupshow.h"
 #include "popupitem.h"
 #include "pathlink.h"
+#include "pathappend.h"
 
 #endif
