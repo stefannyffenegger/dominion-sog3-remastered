@@ -130,5 +130,6 @@
 #include "legbox.h"
 #include "patroltick.h"
 #include "patrolend.h"
+#include "wallcross.h"
 
 #endif
