@@ -149,5 +149,6 @@
 #include "popupitem.h"
 #include "pathlink.h"
 #include "pathappend.h"
+#include "pathrelease.h"
 
 #endif
