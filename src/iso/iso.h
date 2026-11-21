@@ -104,5 +104,6 @@
 #include "mainloop.h"
 #include "playerstate.h"
 #include "unittype.h"
+#include "unitai.h"
 
 #endif
