@@ -92,5 +92,6 @@
 #include "wells.h"
 #include "sectors.h"
 #include "unitlists.h"
+#include "spriteinit.h"
 
 #endif
