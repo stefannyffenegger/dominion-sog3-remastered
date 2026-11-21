@@ -553,8 +553,8 @@ The game logic: Ion Storm's "Isometric Engine PlugIn", an engine plugin (`RtLibI
 * **Calling conventions:** most functions are cdecl (a debug build's default), but the `Iso*` exports are not all: `IsoVTilePos`, `IsoResetTileSet` and `IsoRefreshScreen` are stdcall. Called as cdecl, the stack is off by the arguments' size and the game crashes when a mission starts. Check each callee's `ret` before calling it.
 * Our code calls the engine through `src/engine` (an import library and `rtlib32.h`), extended with what the game logic needs.
 
-### Open items (as of part 135)
-* **Next part:** 136, from 0x100c3240 (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, 0x100a4161, `IsoSetMenMat`, `IsoInitBuildStart`, `IsoCancelBuild`, `IsoGetTabset`, `IsoInitIntfFXTable`, `IsoSetTechLevel`, `IsoBuildingOnTabset`, `IsoDisplayRefineryInfo`, 0x100a6e30, 0x100a6e59, 0x100b0837 (transport creation), 0x100b2715, 0x100b2953, 0x100b31e0 (reached only without a map), 0x100b380a, `IsoFindObject`, `IsoGetPlayerId`, `IsoGetScrollRate`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
+### Open items (as of part 136)
+* **Next part:** 137, from 0x100c6d20 (list the live ones with `work/tmp/iso/live.txt`). Left original, not reached: 0x1008d1b1 ("Host migrated"), `IsoGetPause`, 0x1008de6e-0x1008f31e, 0x10091400, 0x1009167e, 0x100921f5-0x10092ade, 0x10092dfc-0x100933da, `IsoFreeColorLookUpTables`, the AI record file functions (0x1009c6bb-0x1009c755, 0x1009c84d), 0x1009d1ff, 0x100a2b0a, `IsoColonySpaceAvail`, 0x100a4161, `IsoSetMenMat`, `IsoInitBuildStart`, `IsoCancelBuild`, `IsoGetTabset`, `IsoInitIntfFXTable`, `IsoSetTechLevel`, `IsoBuildingOnTabset`, `IsoDisplayRefineryInfo`, 0x100a6e30, 0x100a6e59, 0x100b0837 (transport creation), 0x100b2715, 0x100b2953, 0x100b31e0 (reached only without a map), 0x100b380a, `IsoFindObject`, `IsoGetPlayerId`, `IsoGetScrollRate`, and everything between 0x1007eb13 and 0x1008c755. Parts go on in address order. Run the state checks when the machine is idle, with an all-original run alongside.
 * **A second path at tick 847 in the unit state log (explained):** since parts 63-67, three of thirteen state checks of ours left the originals at tick 847, all the same way. A run logged with the unit fields for ticks 840-850 shows why. A structure (unit 4, type 0x74) takes a 16-point hit at tick 847 that the original's run shows at tick 848; everything after follows from that. Shots are stepped by `IsoWeaponMovementLoop` once per displayed frame, as many steps as game ticks have passed, so a hit can land a tick earlier or later depending on frame timing. This is the frame-driven variation that also limits the originals' agreement to about tick 950, not a logic difference. It may show up more often with our display code than with the original's.
 * **Not reached, left original in 0x1006a268-0x1006ab64:** seven effect functions (0x1006a268-0x1006aaad).
 * **Not reached, left original in the AI:** the task handlers and their creators from 0x10062b12 to 0x10066fac (types 7, 8, 0xd, 0xf, 0x10-0x15), and 0x100616d4-0x10062630 (type 0xd and type 7). Probably reached later in a mission than the tests run, or in other missions.
@@ -1662,3 +1662,18 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
   * Otherwise it keeps attacking its target.
 * **Timing log:** the time each takes goes to the AI's timing log, which is compiled out.
 * Checked: the trace shows all three run, tested together with part 134. Unit state log with scripted moves (both 980-990, the same as an all-original run at the same time), Human mission 1, the orders, popup, groups and hover tests, Alt+F4.
+
+### Part 136: a vehicle's tick (`unitthink.c`, 0x100c3240-0x100c561e)
+* **`unit_think`** (9 KB) is the type handler of unit types 0x22, 0x28-0x2f and 0x38-0x3f (vehicles), called each tick through the type table at 0x101545bc. It has the same shape as the ground units' handler (0x1000a86b, `action.c`).
+* **The order of a tick:**
+  * deleting a unit marked for it;
+  * reaching the end of the path (handler +0x3c), boarding or entering;
+  * starting the next waypoint (0x100b5897);
+  * waiting (+0x149);
+  * turning;
+  * choosing the next action;
+  * then one step of the action.
+* **Choosing the next action:** a 29-case switch on the action, decoded from its jump table: standing, the turns (tables 0x1015b5a0/5e0/620), patrol steps, dying (0x26/0x27), deploying and packing up (0x40-0x48, 0x51/0x52), and others.
+* **One step:** the step moves by the animation's offsets (tables 0x1015b568-0x1015b598, or 0x101589d8 for turning on the spot). The vector is kept in the original's globals 0x10118b20/24. A turret (+0xb4) turns towards its target.
+* **Debug output:** the debug lines (0xeea bit 0) go to the compiled-out debug print. The two that use the engine's `DebugStr` are kept.
+* Checked: the trace shows it run. Unit state log with scripted moves (952, a known fork, and 980-990, the same as an all-original run at the same time), Human mission 1, the orders, popup, groups and hover tests (one vehicle), Alt+F4.

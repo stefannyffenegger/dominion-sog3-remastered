@@ -119,5 +119,6 @@
 #include "squadnote.h"
 #include "squadtarget.h"
 #include "squaddefend.h"
+#include "unitthink.h"
 
 #endif
