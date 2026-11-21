@@ -119,6 +119,10 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 
 ## Unfinished or broken in the original
 These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.
+* **code.** A unit's patrol order (`ISO.R32` 0x100b7a66) reads two of its local variables without setting them:
+  * the direction of the next patrol step, which the helper it hands it to (0x100e663c) never fills in; units on patrol turn to whatever byte earlier calls left on the stack;
+  * when the patrol was already set up, the step's time, which decides whether a newly started patrol sets off at once.
+  Our rewrite takes both from the same stack slots, so the game behaves the same.
 * **code.** `SpriteGetSprite` is exported by the engine but was never written: it logs "**** SpriteGetSprite UNIMPLEMENTED ****" and returns nothing.
 * **code.** Four more sprite functions were never written and only log "UNIMPLEMENTED": `SpriteSetTopMost` (keep a sprite above all others), `SpriteSwapOrder` (swap two sprites' drawing order), `SpriteCompToSprite` (draw one sprite into another; the code to do it exists, unused, at 0x100526a5), and `SpriteSetLevelRelative` (not exported, but script queue command 0x18, "level relative to sprite N", calls it, so the command exists but does nothing).
 * **code.** `SpriteCompToBackground`, asked to draw one sprite into the background, goes on to draw every sprite, and (unless told to keep them) hides them all and empties their script queues.

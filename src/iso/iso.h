@@ -112,5 +112,6 @@
 #include "pathstart.h"
 #include "unitface.h"
 #include "unitfind.h"
+#include "patrol.h"
 
 #endif
