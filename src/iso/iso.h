@@ -94,5 +94,6 @@
 #include "unitlists.h"
 #include "spriteinit.h"
 #include "engineinit.h"
+#include "engineexp.h"
 
 #endif
