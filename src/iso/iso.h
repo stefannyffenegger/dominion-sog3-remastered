@@ -98,5 +98,6 @@
 #include "unitcreate.h"
 #include "unitdelete.h"
 #include "objects.h"
+#include "objshow.h"
 
 #endif
