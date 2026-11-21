@@ -81,6 +81,8 @@ void __stdcall SpriteSendMessage(void *hsl, void *sprite, uint32_t count, const 
 void __stdcall SpriteSetLevel(void *hsl, void *sprite, int32_t level);
 void __cdecl SpriteSetProcessMsgs(void *hsl, void *sprite, int on);
 void __stdcall SpriteShow(void *hsl, void *sprite, uint32_t cel, int redraw);
+void __stdcall SpriteSetBkgTransparent(void *hsl, int on);
+void __stdcall SpriteSetSpotColor(void *hsl, int colour);
 void __stdcall SpriteScroll(void *hsl, int dx, int dy, int blit);
 void __stdcall SpriteGetScrollPos(void *hsl, int32_t *pos);
 unsigned __cdecl RtRegisterCursorSprite(void *app, void *sprite);

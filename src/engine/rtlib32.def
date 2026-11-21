@@ -58,6 +58,8 @@ EXPORTS
     SpriteGetScrollPos@8
     SpriteScroll@16
     SpriteShow@16
+    SpriteSetBkgTransparent@8
+    SpriteSetSpotColor@8
     RtCaptureFrame
     RtFadeIn
     RtGetVar

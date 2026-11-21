@@ -93,5 +93,6 @@
 #include "sectors.h"
 #include "unitlists.h"
 #include "spriteinit.h"
+#include "engineinit.h"
 
 #endif
