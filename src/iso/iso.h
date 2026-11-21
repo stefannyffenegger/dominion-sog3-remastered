@@ -132,5 +132,6 @@
 #include "patrolend.h"
 #include "wallcross.h"
 #include "patrolblock.h"
+#include "patrolcells.h"
 
 #endif
