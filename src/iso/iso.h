@@ -123,5 +123,6 @@
 #include "pathinit.h"
 #include "pathfind.h"
 #include "pfhelp.h"
+#include "dlist.h"
 
 #endif
