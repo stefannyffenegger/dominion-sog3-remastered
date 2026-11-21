@@ -96,5 +96,6 @@
 #include "engineinit.h"
 #include "engineexp.h"
 #include "unitcreate.h"
+#include "unitdelete.h"
 
 #endif
