@@ -102,5 +102,6 @@
 #include "dispexp.h"
 #include "tilepos.h"
 #include "mainloop.h"
+#include "playerstate.h"
 
 #endif
