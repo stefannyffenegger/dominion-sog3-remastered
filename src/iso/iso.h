@@ -116,5 +116,6 @@
 #include "spot.h"
 #include "carry.h"
 #include "squadlist.h"
+#include "squadnote.h"
 
 #endif
