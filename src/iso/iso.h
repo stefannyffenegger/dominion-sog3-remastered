@@ -139,5 +139,6 @@
 #include "patrolsoldier.h"
 #include "soldierway.h"
 #include "soldiercheck.h"
+#include "patroldraw.h"
 
 #endif
