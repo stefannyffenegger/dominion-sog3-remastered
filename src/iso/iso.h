@@ -128,5 +128,6 @@
 #include "patrolstep.h"
 #include "patrollegs.h"
 #include "legbox.h"
+#include "patroltick.h"
 
 #endif
