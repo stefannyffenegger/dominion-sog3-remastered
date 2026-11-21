@@ -82,7 +82,7 @@ int32_t __cdecl squad_health_total(int32_t s)
  * +0x24/+0x28; the target's squad +0x110, for kind 3 also +0x114) and adds it to the
  * squad's totals. Nothing when it is in the squad already. `t`. The debug lines are
  * compiled out. */
-int32_t __cdecl squad_add_target(int32_t s, int32_t t)
+int32_t __cdecl squad_add_unit(int32_t s, int32_t t)
 {
     if (t == -1 || s == -1)
         return t;

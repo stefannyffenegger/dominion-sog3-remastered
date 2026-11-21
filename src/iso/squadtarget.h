@@ -6,7 +6,7 @@
 
 void __cdecl squad_target_changed(int32_t s, int32_t t, int32_t add);
 int32_t __cdecl squad_health_total(int32_t s);
-int32_t __cdecl squad_add_target(int32_t s, int32_t t);
+int32_t __cdecl squad_add_unit(int32_t s, int32_t t);
 void __cdecl squad_remove_target(int32_t t);
 
 #endif

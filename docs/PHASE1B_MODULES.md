@@ -1647,5 +1647,5 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
 * **`squad_health_total` (0x100c11d6):** adds up the health anew.
   * Squads of kinds 2-3 walk their own units' list; kinds 4-5 walk the enemy list.
   * For any other kind the original never steps on and would loop forever. It is only called for kinds 2-5.
-* **`squad_add_target` (0x100c1344) and `squad_remove_target` (0x100c154a):** link a unit into the squad's list (+0x24/+0x28; the unit's squad at +0x110, for kind 3 also +0x114) or take it out, and update the totals.
-* Checked: the trace shows all four run. Unit state log with scripted moves (970, and 980-990, the same as an all-original run at the same time), Human mission 1, the orders, popup, groups and hover tests, Alt+F4.
+* **`squad_add_unit` (0x100c1344) and `squad_remove_target` (0x100c154a):** link a unit into the squad's list (+0x24/+0x28; the unit's squad at +0x110, for kind 3 also +0x114) or take it out, and update the totals.
+* Checked: the first test of this part ran the previous build, because the name `squad_add_target` was already taken (`aisquads.c`, 0x1004c9d3) and the link failed. After the rename it was tested together with part 135: unit state log with scripted moves (both 980-990, the same as an all-original run at the same time), Human mission 1, the orders, popup, groups and hover tests, Alt+F4.
