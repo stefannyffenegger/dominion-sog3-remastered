@@ -118,5 +118,6 @@
 #include "squadlist.h"
 #include "squadnote.h"
 #include "squadtarget.h"
+#include "squaddefend.h"
 
 #endif
