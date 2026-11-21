@@ -152,5 +152,6 @@
 #include "pathrelease.h"
 #include "debugmarks.h"
 #include "unitstate.h"
+#include "vehstate.h"
 
 #endif

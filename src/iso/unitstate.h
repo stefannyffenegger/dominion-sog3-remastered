@@ -5,5 +5,6 @@
 #include <stdint.h>
 
 void __cdecl unit_ai_state(uint32_t id);
+void unit_guard_step(uint32_t id, uint8_t *u);
 
 #endif

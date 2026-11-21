@@ -204,11 +204,9 @@ static void state_fire(uint32_t id, uint8_t *u, uint8_t *target, uint32_t tid, i
         group_attack(u, tid);
 }
 
-/* state 0x1f: following or going back to the guard point */
-static void state_guard(uint32_t id, uint8_t *u)
+/* the common part of state 0x1f: following a unit, or going back to the guard point */
+void unit_guard_step(uint32_t id, uint8_t *u)
 {
-    if (P(uint8_t, u, 0x10e) & 1)
-        fn_100db98e(id, 1);
     if (S193(u) >> 3 & 1) {
         int32_t r = WEAPON(u, 4) / 2;
         if (r <= 0xe1)
@@ -250,6 +248,14 @@ static void state_guard(uint32_t id, uint8_t *u)
             ACT(IDLE_ACT);
         }
     }
+}
+
+/* state 0x1f of this state machine */
+static void state_guard(uint32_t id, uint8_t *u)
+{
+    if (P(uint8_t, u, 0x10e) & 1)
+        fn_100db98e(id, 1);
+    unit_guard_step(id, u);
     fn_100dbdae(u);
 }
 
