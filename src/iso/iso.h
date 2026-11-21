@@ -140,5 +140,6 @@
 #include "soldierway.h"
 #include "soldiercheck.h"
 #include "patroldraw.h"
+#include "wallunits.h"
 
 #endif
