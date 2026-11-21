@@ -105,5 +105,6 @@
 #include "playerstate.h"
 #include "unittype.h"
 #include "unitai.h"
+#include "groupmove.h"
 
 #endif
