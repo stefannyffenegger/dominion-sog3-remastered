@@ -129,5 +129,6 @@
 #include "patrollegs.h"
 #include "legbox.h"
 #include "patroltick.h"
+#include "patrolend.h"
 
 #endif
