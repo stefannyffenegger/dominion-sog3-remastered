@@ -100,5 +100,6 @@
 #include "objects.h"
 #include "objshow.h"
 #include "dispexp.h"
+#include "tilepos.h"
 
 #endif
