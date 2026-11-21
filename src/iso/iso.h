@@ -120,5 +120,6 @@
 #include "squadtarget.h"
 #include "squaddefend.h"
 #include "unitthink.h"
+#include "pathinit.h"
 
 #endif
