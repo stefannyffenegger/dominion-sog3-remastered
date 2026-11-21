@@ -134,5 +134,6 @@
 #include "patrolblock.h"
 #include "patrolcells.h"
 #include "patrolveh.h"
+#include "patrolactive.h"
 
 #endif
