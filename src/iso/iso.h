@@ -153,5 +153,6 @@
 #include "debugmarks.h"
 #include "unitstate.h"
 #include "vehstate.h"
+#include "unitrange.h"
 
 #endif
