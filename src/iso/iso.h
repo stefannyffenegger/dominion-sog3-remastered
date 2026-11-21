@@ -107,5 +107,6 @@
 #include "unitai.h"
 #include "groupmove.h"
 #include "waypoints.h"
+#include "unitmove.h"
 
 #endif
