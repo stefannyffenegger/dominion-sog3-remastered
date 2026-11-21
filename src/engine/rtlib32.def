@@ -9,6 +9,7 @@ EXPORTS
     DebugStr
     RtGetDC
     RtGetDisplayMode
+    RtGetDirectDrawStats
     RtGetHAL
     RtGetHResfile
     ResLoadResource@12

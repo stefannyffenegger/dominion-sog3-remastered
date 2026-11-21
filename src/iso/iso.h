@@ -99,5 +99,6 @@
 #include "unitdelete.h"
 #include "objects.h"
 #include "objshow.h"
+#include "dispexp.h"
 
 #endif
