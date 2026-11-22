@@ -168,5 +168,6 @@
 #include "ringstart.h"
 #include "ringfind.h"
 #include "ringtest.h"
+#include "aicommand.h"
 
 #endif
