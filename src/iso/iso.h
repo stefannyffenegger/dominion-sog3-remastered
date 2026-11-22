@@ -192,5 +192,6 @@
 #include "unitfollow.h"
 #include "pathnodes.h"
 #include "pathclear.h"
+#include "pathadvance.h"
 
 #endif
