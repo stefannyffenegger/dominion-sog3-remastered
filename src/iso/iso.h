@@ -180,5 +180,6 @@
 #include "aigrouplog.h"
 #include "ailogplayer.h"
 #include "aievent.h"
+#include "aigroup.h"
 
 #endif
