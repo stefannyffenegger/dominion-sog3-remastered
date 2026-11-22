@@ -172,5 +172,6 @@
 #include "aidata.h"
 #include "aitables.h"
 #include "aiplayer.h"
+#include "aiactivate.h"
 
 #endif
