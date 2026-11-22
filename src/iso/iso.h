@@ -163,5 +163,6 @@
 #include "unittarget.h"
 #include "unitsettarget.h"
 #include "ringinit.h"
+#include "ringbuild.h"
 
 #endif
