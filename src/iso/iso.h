@@ -161,5 +161,6 @@
 #include "unitheal.h"
 #include "unitkeep.h"
 #include "unittarget.h"
+#include "unitsettarget.h"
 
 #endif
