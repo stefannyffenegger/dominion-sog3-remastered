@@ -157,5 +157,6 @@
 #include "unitfacing.h"
 #include "unitscan.h"
 #include "unitattack.h"
+#include "unitstand.h"
 
 #endif
