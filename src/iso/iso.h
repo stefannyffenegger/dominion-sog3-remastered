@@ -154,5 +154,6 @@
 #include "unitstate.h"
 #include "vehstate.h"
 #include "unitrange.h"
+#include "unitfacing.h"
 
 #endif
