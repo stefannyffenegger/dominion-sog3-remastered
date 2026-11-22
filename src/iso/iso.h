@@ -190,5 +190,6 @@
 #include "unitwalk.h"
 #include "unitbusy.h"
 #include "unitfollow.h"
+#include "pathnodes.h"
 
 #endif
