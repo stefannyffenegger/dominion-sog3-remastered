@@ -200,5 +200,6 @@
 #include "posttick.h"
 #include "powericon.h"
 #include "tilemarks.h"
+#include "groundobj.h"
 
 #endif
