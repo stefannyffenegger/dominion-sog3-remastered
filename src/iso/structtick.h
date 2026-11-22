@@ -5,5 +5,6 @@
 #include <stdint.h>
 
 void __cdecl structure_tick(uint32_t id);
+void repair_step(uint32_t id, uint8_t *u);
 
 #endif

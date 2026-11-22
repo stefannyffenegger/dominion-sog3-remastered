@@ -197,5 +197,6 @@
 #include "structshow.h"
 #include "structplace.h"
 #include "footprint.h"
+#include "posttick.h"
 
 #endif

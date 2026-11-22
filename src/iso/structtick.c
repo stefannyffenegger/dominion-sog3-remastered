@@ -252,7 +252,7 @@ static int pose_going(uint32_t id, uint8_t *u, int starting, uint32_t old_pose)
 }
 
 /* one step of a repair: paid for in proportion, as far as the player can afford */
-static void repair_step(uint32_t id, uint8_t *u)
+void repair_step(uint32_t id, uint8_t *u)
 {
     if (!P(uint32_t, u, 0xa4))
         return;
