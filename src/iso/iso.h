@@ -189,5 +189,6 @@
 #include "unitstepmove.h"
 #include "unitwalk.h"
 #include "unitbusy.h"
+#include "unitfollow.h"
 
 #endif
