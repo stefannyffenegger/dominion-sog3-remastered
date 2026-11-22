@@ -158,5 +158,6 @@
 #include "unitscan.h"
 #include "unitattack.h"
 #include "unitstand.h"
+#include "unitheal.h"
 
 #endif
