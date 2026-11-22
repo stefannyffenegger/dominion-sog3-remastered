@@ -198,5 +198,6 @@
 #include "structplace.h"
 #include "footprint.h"
 #include "posttick.h"
+#include "powericon.h"
 
 #endif
