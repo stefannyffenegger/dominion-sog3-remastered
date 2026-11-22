@@ -177,5 +177,6 @@
 #include "aitick.h"
 #include "aitasklog.h"
 #include "ailogstate.h"
+#include "aigrouplog.h"
 
 #endif
