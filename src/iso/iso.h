@@ -196,5 +196,6 @@
 #include "structtick.h"
 #include "structshow.h"
 #include "structplace.h"
+#include "footprint.h"
 
 #endif
