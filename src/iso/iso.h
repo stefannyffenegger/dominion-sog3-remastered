@@ -203,5 +203,6 @@
 #include "groundobj.h"
 #include "unitselectable.h"
 #include "aiorder.h"
+#include "airule.h"
 
 #endif
