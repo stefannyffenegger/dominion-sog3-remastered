@@ -202,5 +202,6 @@
 #include "tilemarks.h"
 #include "groundobj.h"
 #include "unitselectable.h"
+#include "aiorder.h"
 
 #endif
