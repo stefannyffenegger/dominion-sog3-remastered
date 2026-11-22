@@ -162,5 +162,6 @@
 #include "unitkeep.h"
 #include "unittarget.h"
 #include "unitsettarget.h"
+#include "ringinit.h"
 
 #endif
