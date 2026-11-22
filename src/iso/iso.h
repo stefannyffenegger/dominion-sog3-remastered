@@ -186,5 +186,6 @@
 #include "unitdelta.h"
 #include "unitlead.h"
 #include "unitstepto.h"
+#include "unitstepmove.h"
 
 #endif
