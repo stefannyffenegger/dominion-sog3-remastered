@@ -164,5 +164,6 @@
 #include "unitsettarget.h"
 #include "ringinit.h"
 #include "ringbuild.h"
+#include "ringcell.h"
 
 #endif
