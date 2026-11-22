@@ -178,5 +178,6 @@
 #include "aitasklog.h"
 #include "ailogstate.h"
 #include "aigrouplog.h"
+#include "ailogplayer.h"
 
 #endif
