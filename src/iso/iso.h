@@ -155,5 +155,6 @@
 #include "vehstate.h"
 #include "unitrange.h"
 #include "unitfacing.h"
+#include "unitscan.h"
 
 #endif
