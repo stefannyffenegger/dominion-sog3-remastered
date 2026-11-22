@@ -5,5 +5,6 @@
 #include <stdint.h>
 
 int32_t __cdecl structure_show(uint32_t id, int32_t mode);
+void __cdecl structure_overlay(uint32_t id, int32_t on);
 
 #endif
