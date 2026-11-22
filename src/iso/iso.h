@@ -182,5 +182,6 @@
 #include "aievent.h"
 #include "aigroup.h"
 #include "pathoffset.h"
+#include "unitpose.h"
 
 #endif
