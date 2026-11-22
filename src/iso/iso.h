@@ -174,5 +174,6 @@
 #include "aiplayer.h"
 #include "aiactivate.h"
 #include "ailists.h"
+#include "aitick.h"
 
 #endif
