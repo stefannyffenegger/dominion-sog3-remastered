@@ -160,5 +160,6 @@
 #include "unitstand.h"
 #include "unitheal.h"
 #include "unitkeep.h"
+#include "unittarget.h"
 
 #endif
