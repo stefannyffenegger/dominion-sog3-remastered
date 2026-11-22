@@ -184,5 +184,6 @@
 #include "pathoffset.h"
 #include "unitpose.h"
 #include "unitdelta.h"
+#include "unitlead.h"
 
 #endif
