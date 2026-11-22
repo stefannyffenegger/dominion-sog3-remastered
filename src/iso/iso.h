@@ -187,5 +187,6 @@
 #include "unitlead.h"
 #include "unitstepto.h"
 #include "unitstepmove.h"
+#include "unitwalk.h"
 
 #endif

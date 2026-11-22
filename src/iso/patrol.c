@@ -4,7 +4,7 @@
  * path kept for later; +0x119/+0x11b the path's first and current waypoint).
  *
  * The original reads two of its locals without having set them: the direction that
- * 0x100e663c is given to fill in (it never does) and, when the patrol was already set up,
+ * 0x100e663c is given to fill in (without a path it writes back an unset stack byte) and, when the patrol was already set up,
  * the step's time. Both are whatever earlier calls left on the stack; the entry stub below
  * takes them from the same stack slots, so the game behaves as it did. */
 #include "iso_core.h"

@@ -120,7 +120,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 ## Unfinished or broken in the original
 These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.
 * **code.** A unit's patrol order (`ISO.R32` 0x100b7a66) reads two of its local variables without setting them:
-  * the direction of the next patrol step, which the helper it hands it to (0x100e663c) never fills in; units on patrol turn to whatever byte earlier calls left on the stack;
+  * the direction of the next patrol step. The helper it hands it to (0x100e663c) fills it in for a unit with a path; for a unit without one it writes back a stack byte it never set, so such units turn to whatever byte was there;
   * when the patrol was already set up, the step's time, which decides whether a newly started patrol sets off at once.
   Our rewrite takes both from the same stack slots, so the game behaves the same.
 * **code.** The AI's script command 3, which ends the current base (`ISO.R32` 0x100e1073), means to clear the selection for the player that command 2 chose. The player is a local variable of each call, so command 3 always clears it for player 0. Our rewrite does the same.
