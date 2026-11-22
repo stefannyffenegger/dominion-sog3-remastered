@@ -183,5 +183,6 @@
 #include "aigroup.h"
 #include "pathoffset.h"
 #include "unitpose.h"
+#include "unitdelta.h"
 
 #endif
