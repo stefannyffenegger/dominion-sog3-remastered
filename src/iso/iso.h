@@ -201,5 +201,6 @@
 #include "powericon.h"
 #include "tilemarks.h"
 #include "groundobj.h"
+#include "unitselectable.h"
 
 #endif
