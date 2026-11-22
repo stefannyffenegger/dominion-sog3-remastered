@@ -179,5 +179,6 @@
 #include "ailogstate.h"
 #include "aigrouplog.h"
 #include "ailogplayer.h"
+#include "aievent.h"
 
 #endif
