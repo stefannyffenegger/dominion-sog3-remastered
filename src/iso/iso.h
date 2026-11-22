@@ -170,5 +170,6 @@
 #include "ringtest.h"
 #include "aicommand.h"
 #include "aidata.h"
+#include "aitables.h"
 
 #endif
