@@ -167,5 +167,6 @@
 #include "ringcell.h"
 #include "ringstart.h"
 #include "ringfind.h"
+#include "ringtest.h"
 
 #endif
