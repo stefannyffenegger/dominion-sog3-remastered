@@ -181,5 +181,6 @@
 #include "ailogplayer.h"
 #include "aievent.h"
 #include "aigroup.h"
+#include "pathoffset.h"
 
 #endif
