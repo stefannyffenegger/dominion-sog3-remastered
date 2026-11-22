@@ -169,5 +169,6 @@
 #include "ringfind.h"
 #include "ringtest.h"
 #include "aicommand.h"
+#include "aidata.h"
 
 #endif
