@@ -195,5 +195,6 @@
 #include "pathadvance.h"
 #include "structtick.h"
 #include "structshow.h"
+#include "structplace.h"
 
 #endif
