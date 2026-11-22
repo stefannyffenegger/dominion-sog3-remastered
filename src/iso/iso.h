@@ -156,5 +156,6 @@
 #include "unitrange.h"
 #include "unitfacing.h"
 #include "unitscan.h"
+#include "unitattack.h"
 
 #endif
