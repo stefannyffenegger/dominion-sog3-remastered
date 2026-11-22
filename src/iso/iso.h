@@ -175,5 +175,6 @@
 #include "aiactivate.h"
 #include "ailists.h"
 #include "aitick.h"
+#include "aitasklog.h"
 
 #endif
