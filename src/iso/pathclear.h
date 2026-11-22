@@ -5,5 +5,6 @@
 #include <stdint.h>
 
 int32_t __cdecl unit_path_clear(uint32_t id);
+int32_t __cdecl unit_saved_path_clear(uint32_t id);
 
 #endif
