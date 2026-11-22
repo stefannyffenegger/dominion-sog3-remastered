@@ -194,5 +194,6 @@
 #include "pathclear.h"
 #include "pathadvance.h"
 #include "structtick.h"
+#include "structshow.h"
 
 #endif
