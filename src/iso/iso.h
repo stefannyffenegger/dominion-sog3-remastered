@@ -188,5 +188,6 @@
 #include "unitstepto.h"
 #include "unitstepmove.h"
 #include "unitwalk.h"
+#include "unitbusy.h"
 
 #endif
