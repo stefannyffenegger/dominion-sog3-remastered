@@ -191,5 +191,6 @@
 #include "unitbusy.h"
 #include "unitfollow.h"
 #include "pathnodes.h"
+#include "pathclear.h"
 
 #endif
