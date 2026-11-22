@@ -159,5 +159,6 @@
 #include "unitattack.h"
 #include "unitstand.h"
 #include "unitheal.h"
+#include "unitkeep.h"
 
 #endif
