@@ -193,5 +193,6 @@
 #include "pathnodes.h"
 #include "pathclear.h"
 #include "pathadvance.h"
+#include "structtick.h"
 
 #endif
