@@ -6,7 +6,7 @@
 
 /* not rewritten yet (names ours, provisional) */
 #define game_over ORIG(void(__cdecl *)(int32_t, uint8_t), 0x100562e2)
-#define tile_takes_no_marks ORIG(int(__cdecl *)(uint32_t), 0x100f34a5)
+#include "tilemarks.h"
 #define orig_srand ORIG(void(__cdecl *)(uint32_t), 0x100f4d60)
 #define orig_rand ORIG(int(__cdecl *)(void), 0x100f4d80)
 #define debug_log ORIG(void(__cdecl *)(int, const char *, ...), 0x10095f64)

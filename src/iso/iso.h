@@ -199,5 +199,6 @@
 #include "footprint.h"
 #include "posttick.h"
 #include "powericon.h"
+#include "tilemarks.h"
 
 #endif

@@ -17,7 +17,7 @@ The original game consists of `dominion.exe`, an engine (`Rtlib32.dll`, the "7th
 | `WAVEPLAY.R32` | sound effects and music | **ours** (plays the CD music from ripped files) |
 | `NETPLAY.R32` | multiplayer | **ours** (TCP/IP, no DirectPlay needed) |
 | `Rtlib32.dll` | the engine: scripts, sprites, display, input, sound | **ours**, completely |
-| `ISO.R32` | the game logic: units, AI, combat, interface | **in progress**: 888 of about 1,986 functions are ours |
+| `ISO.R32` | the game logic: units, AI, combat, interface | **in progress**: 889 of about 1,986 functions are ours |
 | `dominion.exe` | the launcher | original |
 
 Until everything is ported, the game runs under Wine (Linux) with our modules dropped into an installed copy. Next steps: finish `ISO.R32`, then our own executable on SDL3 (native on Windows and Linux, no Wine), then 64-bit. See `docs/PHASE0_ANALYSIS.md` for the full plan.
