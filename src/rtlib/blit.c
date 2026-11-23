@@ -4,6 +4,7 @@
  * Bitmaps ("DIBs") are a 0x24-byte header followed by the pixels: width at +4, row pitch
  * at +8, height at +0xc, flags at +0x10 (0x40: rows stored top-down, 0x80: run-length
  * coded), pixel pointer at +0x20. Bottom-up bitmaps store the last row first. */
+#include <windows.h>
 #include "blit.h"
 #include <string.h>
 
@@ -574,7 +575,8 @@ static void psingle(const PlainCtx *c, uint8_t a, uint8_t *x, const uint8_t *t)
  * writes the right one even if it is 0 too, but a right pixel transforming to 0 after a
  * drawn left one is skipped; mirrored, the odd last pixel looks its shadow up one pixel
  * to the right; with a color map, each row moves the source on by the map's address
- * instead of the row gap (so only the first row is right). */
+ * instead of the row gap (so only the first row is right; that stray read is kept unless
+ * it would fault). */
 static void plain_raw(const PlainCtx *c, void *dst, void *src, uint32_t w, uint32_t h, int dx, int dy, int sx, int sy,
                       int fx, int fy)
 {
@@ -597,6 +599,9 @@ static void plain_raw(const PlainCtx *c, void *dst, void *src, uint32_t w, uint3
     uint8_t *d = F(uint8_t *, dst, 0x20) + (drow * dpitch + dx);
     sgap = fx ? sgap + (int32_t)w : sgap - (int32_t)w;
     dgap -= (int32_t)w;
+    /* the true start of each row, for when the original's stray row would not be readable */
+    const uint8_t *row_start = s;
+    int32_t row_step = fy ? -(int32_t)spitch : (int32_t)spitch;
     if (c->cmap)
         sgap = (int32_t)(uintptr_t)c->cmap;
     uint32_t quads = w >> 2, rem = w & 3;
@@ -633,6 +638,11 @@ static void plain_raw(const PlainCtx *c, void *dst, void *src, uint32_t w, uint3
         }
         d += dgap;
         s += sgap;
+        row_start += row_step;
+        /* The stray address depends on where memory happens to be: the original's layout
+         * keeps it readable, ours may not. Unreadable, the row is taken from its true place. */
+        if (c->cmap && h > 1 && IsBadReadPtr(fx ? s - w : s, w))
+            s = row_start;
     }
 }
 

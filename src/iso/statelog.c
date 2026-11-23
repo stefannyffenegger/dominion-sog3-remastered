@@ -63,7 +63,8 @@ static void log_tick(void)
         n++;
         h = fnv(h, &id, 4);
         for (unsigned f = 0; f < sizeof fields / sizeof *fields; f++)
-            h = fnv(h, u + fields[f][0], fields[f][1]);
+            if (fields[f][0] != 0x2e || !I(int, 0x175)) /* in a match, selection is each player's own */
+                h = fnv(h, u + fields[f][0], fields[f][1]);
         uint32_t flags[2] = {P(uint32_t, u, 0x3e) & ~0x40u, P(uint32_t, u, 0x10e) & ~0x100u};
         h = fnv(h, flags, sizeof flags);
         if (g_log_units && tick >= g_units_from && tick <= g_units_to) {

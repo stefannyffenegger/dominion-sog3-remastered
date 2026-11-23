@@ -108,6 +108,8 @@ Needed to close this: boarding on exact ticks and a two-player state log.
 
 `tests/game/mpcoverage.sh OUTDIR [SECONDS]` measures a two-player match on one machine (2_2Prong, both players idle). It is for coverage only, with no state comparison yet. The multiplayer lobby and its options screen offer no computer players, so the AI is only exercised by the campaign missions.
 
+`tests/game/mpstate.sh OUTDIR PAIRING [SECONDS]` is the strongest check. In a two-player match both games compute the same battle, so one side can run the original and the other ours (`op`, `po`; also `oo`, `pp`), and their unit state must agree on every tick, with no run-to-run noise. Selection is left out of the hash in a match, because it is each player's own. So far it covers idle matches and selecting units (about 985 ticks, no difference in any pairing). Building and fighting through the interface are the next step. `MP_ACTIONS=<script>` runs interface clicks during the match.
+
 Reached without player input, 240 seconds each (Human 7 for 60), of 1,099 functions not yet rewritten at part 223: Human 7 84, Human 12 102, Scorpion 12 114, Mercenary 12 132, Darken 12 179, together 189 (19% of their bytes). With the scripted interface session on Darken 12: 210 (21%). With a two-player match as well: 262 (28%).
 
 ## 5. Working method for a part
