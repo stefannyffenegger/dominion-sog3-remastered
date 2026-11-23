@@ -8,8 +8,8 @@
  * DOMINION_ISO_STATELOG_ORDERS=1 the local player's units get move orders at fixed ticks
  * (Human mission 1: into the enemy at tick 40, on at tick 500) and stances (kneel at 60,
  * crawl at 120, stand at 200), input that does not depend on timing. With =2 the base test
- * on Darken mission 12 runs instead: start a Power Plant at tick 100, place one at tick 300
- * and sell it at tick 500. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * on Darken mission 12 runs instead: start a Power Plant at tick 100, place one at tick 300,
+ * then damage, engineer repair, repair button, upgrade and a sale by tick 560. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
@@ -80,27 +80,92 @@ static void log_tick(void)
 #define TICK_CALL 0x1008d375 /* call <the tick's game logic> (stdcall, the game state) */
 #define TICK_FUNC 0x10045c72
 
-/* the base test: the interface's own calls for starting, placing and selling a structure,
- * through the original's addresses */
+/* the base test: the interface's own calls, through the original's addresses, so that an
+ * original run uses the original. Each step writes a "#" line, which log comparisons skip. */
+static uint8_t *base_unit(int i, int32_t *id)
+{
+    *id = I(int32_t *, ISO_UNIT_LIST)[i];
+    return *id > 0 && *id < 2000 ? iso_unit(*id) : NULL;
+}
+
+static int32_t base_find_plant(uint32_t player, int type, int x, int y)
+{
+    for (int i = 0; i < I(int, ISO_UNIT_COUNT); i++) {
+        int32_t id;
+        uint8_t *u = base_unit(i, &id);
+        if (u && P(int32_t, u, 0x0c) == type && P(uint8_t, u, 0x14) == player && P(int16_t, u, 0x52) == x &&
+            P(int16_t, u, 0x54) == y)
+            return id;
+    }
+    return 0;
+}
+
+/* the first of the player's units of a type range */
+static int32_t base_find(uint32_t player, int lo, int hi)
+{
+    for (int i = 0; i < I(int, ISO_UNIT_COUNT); i++) {
+        int32_t id;
+        uint8_t *u = base_unit(i, &id);
+        if (u && P(uint8_t, u, 0x14) == player && P(int32_t, u, 0x0c) >= lo && P(int32_t, u, 0x0c) <= hi)
+            return id;
+    }
+    return 0;
+}
+
+static void base_note(const char *what, int32_t a, int32_t b)
+{
+    char line[80];
+    wsprintfA(line, "# %u %s %d %d\r\n", I(uint32_t, 0x17dd), what, a, b);
+    out(line);
+}
+
 static void give_base_orders(void)
 {
     enum { POWER_PLANT = 0x20, X = 512, Y = 128 };
     uint32_t tick = I(uint32_t, 0x17dd), player = (uint32_t)I(int, ISO_LOCAL_PLAYER);
-    int side = G(uint8_t *, 0x1018b604)[player * 0x143 + 0xd];
-    if (tick == 100)
+    int side = G(uint8_t *, 0x1018b604)[player * 0x143 + 0xd], voice = 0, stagger = 0;
+    int type = POWER_PLANT * 4 + side;
+    int32_t plant = tick >= 320 ? base_find_plant(player, type, X, Y) : 0, id;
+    switch (tick) {
+    case 100:
         ORIG(void(__cdecl *)(uint32_t, int, int), 0x1009f224)(player, POWER_PLANT, side);
-    if (tick == 300)
+        break;
+    case 300:
         ORIG(void(__cdecl *)(uint32_t, int, int, int, uint32_t, int), 0x1009f112)(player, POWER_PLANT, side, X, Y, 1);
-    if (tick == 500)
-        for (int i = 0; i < I(int, ISO_UNIT_COUNT); i++) {
-            int32_t id = I(int32_t *, ISO_UNIT_LIST)[i];
-            uint8_t *u = id > 0 && id < 2000 ? iso_unit(id) : NULL;
-            if (u && P(int32_t, u, 0x0c) == POWER_PLANT * 4 + side && P(uint8_t, u, 0x14) == player &&
-                P(int16_t, u, 0x52) == X && P(int16_t, u, 0x54) == Y) {
-                ORIG(uint32_t(__stdcall *)(uint8_t *, uint32_t), 0x10043010)(g_iso, (uint32_t)id);
-                break;
-            }
-        }
+        break;
+    case 320: /* damage it, and the mission's own plant */
+        id = base_find(player, type, type);
+        if (plant)
+            P(int16_t, iso_unit(plant), 0xd6) -= 300;
+        if (id && id != plant)
+            P(int16_t, iso_unit(id), 0xd6) -= 200;
+        base_note("damage", plant, id);
+        break;
+    case 330: /* an engineer repairs the new one */
+        id = base_find(player, 0x10, 0x13);
+        if (id && plant)
+            ORIG(int(__cdecl *)(uint32_t, uint32_t, int *, int *), 0x10019535)((uint32_t)id, (uint32_t)plant, &voice, &stagger);
+        base_note("engineer", id, plant);
+        break;
+    case 340: /* the repair button on the other */
+        id = base_find(player, type, type);
+        if (id == plant)
+            id = 0;
+        if (id)
+            ORIG(void(__cdecl *)(uint32_t, int), 0x1005b007)((uint32_t)id, 1);
+        base_note("repair", id, 0);
+        break;
+    case 400: /* the upgrade button */
+        if (plant)
+            ORIG(int(__cdecl *)(uint32_t, int), 0x1005b314)((uint32_t)plant, 1);
+        base_note("upgrade", plant, 0);
+        break;
+    case 560:
+        if (plant)
+            ORIG(uint32_t(__stdcall *)(uint8_t *, uint32_t), 0x10043010)(g_iso, (uint32_t)plant);
+        base_note("sell", plant, 0);
+        break;
+    }
 }
 
 static void give_orders(void)
