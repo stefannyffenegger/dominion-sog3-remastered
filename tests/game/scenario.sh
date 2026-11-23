@@ -16,6 +16,9 @@ ln -sf "$R/work/dh/game/$S.sdc" work/dhs/game/Human01.sdc
 ln -s "$R/work/dh2/prefix" work/dhs/prefix
 cp work/dh2/desktop_size work/dh2/video_mode work/dhs/
 export DOMINION_HOME=$R/work/dhs
+# the game records every cinematic it plays in Dominion.ini: put it back afterwards
+INI=$R/work/dh2/prefix/drive_c/windows/Dominion.ini; INI_KEEP=$(mktemp)
+cp -p "$INI" "$INI_KEEP"; trap 'cp -p "$INI_KEEP" "$INI"; rm -f "$INI_KEEP"' EXIT
 if [ -z "$SCENARIO_NOTRACE" ]; then # the state comparison runs without the trace
     export WINEDEBUG=+debugstr
     python3 tools/iso/coverage.py list work/tmp/iso/trace_cov.txt

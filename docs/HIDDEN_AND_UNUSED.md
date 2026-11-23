@@ -118,7 +118,7 @@ Multiplayer has an anti-cheat: a player caught using a code is removed from the 
 * **code.** A function that walks a path's 20 sector slots without doing anything (`ISO.R32` 0x10098970), probably a check whose body was removed.
 
 ## Unfinished or broken in the original
-* **Colour-mapped sprites read stray memory.** When the engine draws an uncompressed sprite through a colour map, it moves to the next row by the map's *address* instead of the row width, so only the first row comes from the sprite. Multiplayer health bars go through this path. The original gets away with it because that memory happens to be readable. In our engine it could crash the game when a unit was selected in a match. We keep the stray read and take the true row only when the memory is unreadable.
+* **Colour-mapped sprites read stray memory.** When the engine draws an uncompressed sprite through a colour map, it moves to the next row by the map's *address* instead of the row width, so only the first row comes from the sprite. Drawing a selected unit in a match reaches this path. The original gets away with it because that memory happens to be readable. In our engine it could crash the game when a unit was selected in a match. We keep the stray read and take the true row only when the memory is unreadable.
 These are kept in our rewrites for now (marked `original:` in the source) and are candidates for Phase 2.
 * **code.** A unit's patrol order (`ISO.R32` 0x100b7a66) reads two of its local variables without setting them:
   * the direction of the next patrol step. The helper it hands it to (0x100e663c) fills it in for a unit with a path; for a unit without one it writes back a stack byte it never set, so such units turn to whatever byte was there;
