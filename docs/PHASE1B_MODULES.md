@@ -2284,3 +2284,12 @@ A wall piece is a sprite record (0xe bytes, at 0x1b13, 0xe11b of them; flags at 
 * **Debug text:** the original's call to the switched-off debug print is left out.
 * **Milestone:** this was the last function on the list of game code the tests reach. 894 functions are ours. Of the 1,993 below the library stubs, 1,099 remain, and none of them has been run by a test.
 * Checked: the trace shows it run. Unit state log with scripted moves (both 980-990, the same as an all-original run at the same time, and equal to it up to ticks 1052-1053), Human mission 1, the orders, popup, groups and hover tests, Alt+F4.
+
+### Part 224: both players checking their map files (`mapsync.c`, 5 functions, 0x10031996-0x1003254f)
+* **`map_send_info` (0x10032169):** the host describes its map's two files to a player: the first 128 bytes of the .wxp, the times and sizes of both files, and whether scenarios are text.
+* **`map_receive_name` (0x10031996):** a player keeps the map's name and answers which of the two files it has.
+* **`map_receive_info` (0x10031c81):** a player compares its files with the host's description and answers. The .wxp must have the same header and size, the scenario the same size and write time.
+* **`map_note_exists`, `map_note_valid` (0x100324ba, 0x10032503):** the answers, only noted in the debug output.
+* **Debug text:** the time conversions that only fed the switched-off debug print are left out.
+* **New test method:** this code only runs in multiplayer, so `tools/mp_test.sh` can now run one player on the original (`MP_HOST_ORIGINAL=all` or `MP_JOIN_ORIGINAL=all`).
+* Checked: a match starts with no crash with ours hosting an original player, an original hosting ours, and ours on both sides. The answer for files that differ or are missing was not tested. Unit state log (970-990, 952), Human mission 1, the orders, popup, groups and hover tests, Alt+F4. The exact base test, repeated four times: the original's runs split from each other as early as tick 736 and ours no earlier.

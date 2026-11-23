@@ -9,6 +9,9 @@
 #   tools/mp_test.sh shot    screenshot both displays into work/screens/mp_{host,join}.png
 #   tools/mp_test.sh stop    stop both
 #
+# MP_HOST_ORIGINAL=all or MP_JOIN_ORIGINAL=all runs that player on the original ISO code,
+# to test our network messages against the original's.
+#
 # Click positions are for the 640x480 menus. Both games use Wine's GDI renderer while the
 # test runs: with OpenGL on Xvfb (software rendering) the second game froze in a screen
 # flip. GDI sometimes shows a garbled frame instead; take several shots.
@@ -18,8 +21,8 @@ ROOT=$(dirname "$HERE")
 DH1=${DOMINION_HOME:-$HOME/.local/share/dominion-remastered}
 DH2=${DOMINION_HOME2:-$DH1-player2}
 X="$HERE/xvfb_session.sh"
-host() { DOMINION_HOME=$DH1 XVFB_DISPLAY=:99 "$X" "$@"; }
-join() { DOMINION_HOME=$DH2 XVFB_DISPLAY=:98 "$X" "$@"; }
+host() { env ${MP_HOST_ORIGINAL:+DOMINION_ISO_ORIGINAL=$MP_HOST_ORIGINAL} DOMINION_HOME=$DH1 XVFB_DISPLAY=:99 "$X" "$@"; }
+join() { env ${MP_JOIN_ORIGINAL:+DOMINION_ISO_ORIGINAL=$MP_JOIN_ORIGINAL} DOMINION_HOME=$DH2 XVFB_DISPLAY=:98 "$X" "$@"; }
 type_on() { DISPLAY=$1 xdotool type --delay 100 "$2"; }
 clear_field() { for _ in $(seq 20); do DISPLAY=$1 xdotool key BackSpace; done; }
 renderer() { # gdi | default

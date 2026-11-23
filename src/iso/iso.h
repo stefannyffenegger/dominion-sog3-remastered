@@ -204,5 +204,6 @@
 #include "unitselectable.h"
 #include "aiorder.h"
 #include "airule.h"
+#include "mapsync.h"
 
 #endif
