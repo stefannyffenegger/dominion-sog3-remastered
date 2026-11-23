@@ -10,7 +10,8 @@
  * crawl at 120, stand at 200), input that does not depend on timing. With =2 the base test
  * on Darken mission 12 runs instead: start a Power Plant at tick 100, place one at tick 300,
  * then damage, engineer repair, repair button, upgrade and a sale by tick 560;
- * DOMINION_ISO_STATELOG_SAVE=<file> also saves the game at tick 600. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * DOMINION_ISO_STATELOG_SAVE=<file> also saves the game at tick 600. With =5, for two-player
+ * scenarios, both games give every player full tech and resources at tick 60. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
@@ -178,8 +179,30 @@ static void give_base_orders(void)
     }
 }
 
+/* a two-player scenario's start: every player gets full tech and plenty of men and materials,
+ * what the MAXTECH and TILT cheats do, with every prerequisite counted as met, at the
+ * same tick in both games */
+static void give_full_tech(void)
+{
+    if (I(uint32_t, 0x17dd) != 60)
+        return;
+    for (uint32_t p = 0; p < 8; p++) {
+        I(uint8_t, p * ISO_PLAYER_SIZE + 0x1baa) = 0xd;
+        /* the build buttons also need the prerequisite buildings: all count as built, upgraded */
+        for (uint32_t kind = 0; kind < 0x29; kind++)
+            I(uint8_t, p * 0x29 + kind + 0x182) = 2;
+        ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x100a3a41)(g_iso, p);
+    }
+    for (uint32_t p = 0; p < 2; p++)
+        ORIG(void(__stdcall *)(uint8_t *, uint32_t, int, int), 0x100a42bb)(g_iso, p, 9999, 99999);
+}
+
 static void give_orders(void)
 {
+    if (g_orders == 5) {
+        give_full_tech();
+        return;
+    }
     if (g_orders == 2) {
         give_base_orders();
         return;
@@ -236,7 +259,7 @@ void statelog_install(void)
     }
     units[0] = 0;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_ORDERS", units, sizeof units);
-    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : 0;
+    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : units[0] == '5' ? 5 : 0;
     statelog_tick = tick_stub;
     uint8_t *p = ORIG(uint8_t *, TICK_CALL);
     if (p[0] != 0xE8)
