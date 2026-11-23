@@ -106,7 +106,9 @@ Needed to close this: boarding on exact ticks and a two-player state log.
 
 `tests/game/savecheck.sh OUTDIR` tests saved games on the same mission and orders. The game is saved at tick 600 by the original (twice) and by ours, then an original's save and our save are each loaded by both, through the menu, and the state is compared from tick 600 on. At part 223 our save differs from an original's by 2,654 of 2,048,045 bytes and two original saves differ from each other by 2,705. All four loads continue from tick 600. The loaded runs agree up to tick 2053 at least, and the run that splits there is one of the original's, so ours stays within the original's own variation. The virtual clock follows real time when no frame is shown for half a second, because loading waits on the clock with nothing displayed.
 
-Reached without player input, 240 seconds each (Human 7 for 60), of 1,099 functions not yet rewritten at part 223: Human 7 84, Human 12 102, Scorpion 12 114, Mercenary 12 132, Darken 12 179, together 189 (19% of their bytes). With the scripted interface session on Darken 12: 210 (21%).
+`tests/game/mpcoverage.sh OUTDIR [SECONDS]` measures a two-player match on one machine (2_2Prong, both players idle). It is for coverage only, with no state comparison yet. The multiplayer lobby and its options screen offer no computer players, so the AI is only exercised by the campaign missions.
+
+Reached without player input, 240 seconds each (Human 7 for 60), of 1,099 functions not yet rewritten at part 223: Human 7 84, Human 12 102, Scorpion 12 114, Mercenary 12 132, Darken 12 179, together 189 (19% of their bytes). With the scripted interface session on Darken 12: 210 (21%). With a two-player match as well: 262 (28%).
 
 ## 5. Working method for a part
 1. `python3 tools/iso/extract.py LO HI work/tmp/iso/pN.c` and read the decompile.
