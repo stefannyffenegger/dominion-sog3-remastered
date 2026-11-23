@@ -179,3 +179,7 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
 * **code.** Multiplayer: lowering the maximum number of players drops the wrong player (a 0-based index where a slot number is expected); the event that signals network messages has a fixed name, so two games on one Windows PC share it.
 * **code.** The original IMA sound functions and the sprite run-length expander are hand-written assembly that doesn't keep a register (EBX) that compiled code relies on.
 * More per module: `PHASE1B_MODULES.md` (fonts, cutscenes, sound, multiplayer, engine).
+
+## Selling a structure in a two-player match
+
+The original's two players do not stay bit-identical after a sale. The men who leave the building differ between host and joiner in one unit flag (bit `0x20` of unit `+0x3e`), and their positions briefly differ by up to about 39 pixels before settling within 2. Which units exist, their types, owners and health stay the same, so the match carries on normally.

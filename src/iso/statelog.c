@@ -184,17 +184,29 @@ static void give_base_orders(void)
  * same tick in both games */
 static void give_full_tech(void)
 {
-    if (I(uint32_t, 0x17dd) != 60)
+    uint32_t tick = I(uint32_t, 0x17dd);
+    if (tick < 60)
         return;
     for (uint32_t p = 0; p < 8; p++) {
+        int changed = I(uint8_t, p * ISO_PLAYER_SIZE + 0x1baa) != 0xd;
         I(uint8_t, p * ISO_PLAYER_SIZE + 0x1baa) = 0xd;
-        /* the build buttons also need the prerequisite buildings: all count as built, upgraded */
-        for (uint32_t kind = 0; kind < 0x29; kind++)
-            I(uint8_t, p * 0x29 + kind + 0x182) = 2;
-        ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x100a3a41)(g_iso, p);
+        /* the build buttons also need the prerequisite buildings: all count as built and
+         * upgraded. Not the Main Plant (kind 0x14) until it stands: the first one is only
+         * exempt from the power range while the player has none. Applied every tick because
+         * the game recounts these levels from the units on the map. */
+        for (uint32_t kind = 0; kind < 0x29; kind++) {
+            uint8_t *level = &I(uint8_t, p * 0x29 + kind + 0x182);
+            if (*level < 2 && (kind != 0x14 || *level)) {
+                *level = 2;
+                changed = 1;
+            }
+        }
+        if (changed)
+            ORIG(int(__stdcall *)(uint8_t *, uint32_t), 0x100a3a41)(g_iso, p);
     }
-    for (uint32_t p = 0; p < 2; p++)
-        ORIG(void(__stdcall *)(uint8_t *, uint32_t, int, int), 0x100a42bb)(g_iso, p, 9999, 99999);
+    if (tick == 60)
+        for (uint32_t p = 0; p < 2; p++)
+            ORIG(void(__stdcall *)(uint8_t *, uint32_t, int, int), 0x100a42bb)(g_iso, p, 9999, 99999);
 }
 
 static void give_orders(void)
@@ -246,7 +258,7 @@ void statelog_install(void)
         return;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_UNITS", units, sizeof units);
     g_log_units = units[0] != 0;
-    if (units[0] && units[0] != '1') { /* a tick range "from-to" */
+    if (units[0] && (units[0] != '1' || units[1])) { /* a tick range "from-to" */
         char *p = units;
         g_units_from = 0;
         while (*p >= '0' && *p <= '9')
