@@ -9,7 +9,8 @@
  * (Human mission 1: into the enemy at tick 40, on at tick 500) and stances (kneel at 60,
  * crawl at 120, stand at 200), input that does not depend on timing. With =2 the base test
  * on Darken mission 12 runs instead: start a Power Plant at tick 100, place one at tick 300,
- * then damage, engineer repair, repair button, upgrade and a sale by tick 560. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * then damage, engineer repair, repair button, upgrade and a sale by tick 560;
+ * DOMINION_ISO_STATELOG_SAVE=<file> also saves the game at tick 600. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
@@ -121,6 +122,7 @@ static void base_note(const char *what, int32_t a, int32_t b)
 
 static void give_base_orders(void)
 {
+    static char save_name[MAX_PATH];
     enum { POWER_PLANT = 0x20, X = 512, Y = 128 };
     uint32_t tick = I(uint32_t, 0x17dd), player = (uint32_t)I(int, ISO_LOCAL_PLAYER);
     int side = G(uint8_t *, 0x1018b604)[player * 0x143 + 0xd], voice = 0, stagger = 0;
@@ -159,6 +161,13 @@ static void give_base_orders(void)
         if (plant)
             ORIG(int(__cdecl *)(uint32_t, int), 0x1005b314)((uint32_t)plant, 1);
         base_note("upgrade", plant, 0);
+        break;
+    case 600: /* with DOMINION_ISO_STATELOG_SAVE=<file>: what the save screen's button calls */
+        if (GetEnvironmentVariableA("DOMINION_ISO_STATELOG_SAVE", save_name, sizeof save_name)) {
+            int ok = ORIG(int(__cdecl *)(char *, int), 0x10084ed7)(save_name, 0);
+            ORIG(int(__cdecl *)(void), 0x1007fa22)();
+            base_note("save", ok, 0);
+        }
         break;
     case 560:
         if (plant)
@@ -245,7 +254,21 @@ static uint32_t g_clock, g_clock_step;
 static int g_clock_on; /* from the first displayed frame of a mission; real time before */
 static DWORD(WINAPI *real_time)(void); /* winmm's (our own import of it is redirected too) */
 
-static DWORD WINAPI virtual_time(void) { return g_clock_on ? g_clock : real_time(); }
+static DWORD g_frame_real; /* the real time of the last displayed frame */
+
+/* with no frame for half a second (loading a saved game waits on the clock with nothing
+ * displayed) the clock follows real time until the frames come back */
+static DWORD WINAPI virtual_time(void)
+{
+    if (!g_clock_on)
+        return real_time();
+    DWORD now = real_time();
+    if (now - g_frame_real > 500) {
+        g_clock += now - g_frame_real;
+        g_frame_real = now;
+    }
+    return g_clock;
+}
 
 void statelog_frame(void)
 {
@@ -256,6 +279,7 @@ void statelog_frame(void)
         g_clock_on = 1;
     }
     g_clock += g_clock_step;
+    g_frame_real = real_time();
 }
 
 /* points the module's import of winmm's timeGetTime at the virtual clock */
