@@ -95,14 +95,16 @@ Ported but never run by a test (as of part 34):
 * boarding vehicles, entering buildings, engineers' orders (`order_board`, `order_enter`, `order_engineer`);
 * the popup menu's items for structures, vehicles and other players' units (`menu_for_unit`).
 
-Needed to close this: building orders on exact ticks in the scripted input, saved games, and a two-player state log.
+Needed to close this: more orders on exact ticks (repair, upgrade, vehicles, boarding), saved games, and a two-player state log.
 
 ### Measuring what a scenario reaches
 `tests/game/scenario.sh SCENARIO OUTDIR [SECONDS]` plays any mission through the normal menu, from a throwaway install of symlinks (`work/dhs`) in which `Human01.sdc` is the chosen scenario, so no game file changes. It writes screenshots and `OUTDIR/reached.txt`, the functions not yet rewritten that ran. `python3 tools/iso/coverage.py report DIR...` adds these up. `DOMINION_ISO_ORIGINAL=all` runs the same scenario on the original code.
 
 `SCENARIO_ACTIONS=tests/game/actions/base.sh` also drives the interface on Darken 12: it builds and places a Power Plant, trains units, moves a group, and uses repair, upgrade and sell. These clicks land in real time, so such a run shows what is reached and whether it crashes, but it cannot be compared tick by tick: fights differ between two runs even on the original.
 
-Reached without player input, 240 seconds each (Human 7 for 60), of 1,099 functions not yet rewritten at part 223: Human 7 84, Human 12 102, Scorpion 12 114, Mercenary 12 132, Darken 12 179, together 189 (19% of their bytes).
+`tests/game/basecheck.sh OUTDIR` is the exact version for structures. On Darken 12, with the virtual clock, it starts a Power Plant at tick 100, places it at tick 300 and sells it at tick 500 through the interface's own calls (`DOMINION_ISO_STATELOG_ORDERS=2`), on the original twice and on ours once. At part 223 the two original runs agree up to tick 746 and ours agrees with them up to ticks 843 and 746. The structure appears at tick 301 and is gone by tick 516. Finishing a build through the production bar, repair and upgrade are not in this exact test yet.
+
+Reached without player input, 240 seconds each (Human 7 for 60), of 1,099 functions not yet rewritten at part 223: Human 7 84, Human 12 102, Scorpion 12 114, Mercenary 12 132, Darken 12 179, together 189 (19% of their bytes). With the scripted interface session on Darken 12: 210 (21%).
 
 ## 5. Working method for a part
 1. `python3 tools/iso/extract.py LO HI work/tmp/iso/pN.c` and read the decompile.

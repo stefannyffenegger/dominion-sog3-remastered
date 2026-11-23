@@ -15,9 +15,12 @@ cp -as "$R"/work/dh/game/. work/dhs/game/
 ln -sf "$R/work/dh/game/$S.sdc" work/dhs/game/Human01.sdc
 ln -s "$R/work/dh2/prefix" work/dhs/prefix
 cp work/dh2/desktop_size work/dh2/video_mode work/dhs/
-export DOMINION_HOME=$R/work/dhs WINEDEBUG=+debugstr
-python3 tools/iso/coverage.py list work/tmp/iso/trace_cov.txt
-export DOMINION_ISO_TRACE="Z:${R//\//\\}\\work\\tmp\\iso\\trace_cov.txt"
+export DOMINION_HOME=$R/work/dhs
+if [ -z "$SCENARIO_NOTRACE" ]; then # the state comparison runs without the trace
+    export WINEDEBUG=+debugstr
+    python3 tools/iso/coverage.py list work/tmp/iso/trace_cov.txt
+    export DOMINION_ISO_TRACE="Z:${R//\//\\}\\work\\tmp\\iso\\trace_cov.txt"
+fi
 X=tools/xvfb_session.sh; D=${XVFB_DISPLAY:-:99}
 $X start >/dev/null; sleep 15
 for i in 1 2 3; do $X key Escape; sleep 3; done; sleep 6

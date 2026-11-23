@@ -7,7 +7,9 @@
  * ticks, which disturbs the timing less). With
  * DOMINION_ISO_STATELOG_ORDERS=1 the local player's units get move orders at fixed ticks
  * (Human mission 1: into the enemy at tick 40, on at tick 500) and stances (kneel at 60,
- * crawl at 120, stand at 200), input that does not depend on timing. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * crawl at 120, stand at 200), input that does not depend on timing. With =2 the base test
+ * on Darken mission 12 runs instead: start a Power Plant at tick 100, place one at tick 300
+ * and sell it at tick 500. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
@@ -78,8 +80,35 @@ static void log_tick(void)
 #define TICK_CALL 0x1008d375 /* call <the tick's game logic> (stdcall, the game state) */
 #define TICK_FUNC 0x10045c72
 
+/* the base test: the interface's own calls for starting, placing and selling a structure,
+ * through the original's addresses */
+static void give_base_orders(void)
+{
+    enum { POWER_PLANT = 0x20, X = 512, Y = 128 };
+    uint32_t tick = I(uint32_t, 0x17dd), player = (uint32_t)I(int, ISO_LOCAL_PLAYER);
+    int side = G(uint8_t *, 0x1018b604)[player * 0x143 + 0xd];
+    if (tick == 100)
+        ORIG(void(__cdecl *)(uint32_t, int, int), 0x1009f224)(player, POWER_PLANT, side);
+    if (tick == 300)
+        ORIG(void(__cdecl *)(uint32_t, int, int, int, uint32_t, int), 0x1009f112)(player, POWER_PLANT, side, X, Y, 1);
+    if (tick == 500)
+        for (int i = 0; i < I(int, ISO_UNIT_COUNT); i++) {
+            int32_t id = I(int32_t *, ISO_UNIT_LIST)[i];
+            uint8_t *u = id > 0 && id < 2000 ? iso_unit(id) : NULL;
+            if (u && P(int32_t, u, 0x0c) == POWER_PLANT * 4 + side && P(uint8_t, u, 0x14) == player &&
+                P(int16_t, u, 0x52) == X && P(int16_t, u, 0x54) == Y) {
+                ORIG(uint32_t(__stdcall *)(uint8_t *, uint32_t), 0x10043010)(g_iso, (uint32_t)id);
+                break;
+            }
+        }
+}
+
 static void give_orders(void)
 {
+    if (g_orders == 2) {
+        give_base_orders();
+        return;
+    }
     static const struct { uint32_t tick; int x, y; } orders[] = {{40, -200, -250}, {500, -192, 0}};
     /* stances for the selected units: kneel, crawl, stand, given with the interface's
      * buttons (actions 9, 8, 10; through the original's address, so original runs use
@@ -132,7 +161,7 @@ void statelog_install(void)
     }
     units[0] = 0;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_ORDERS", units, sizeof units);
-    g_orders = units[0] == '1';
+    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : 0;
     statelog_tick = tick_stub;
     uint8_t *p = ORIG(uint8_t *, TICK_CALL);
     if (p[0] != 0xE8)
