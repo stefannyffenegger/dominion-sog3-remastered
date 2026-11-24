@@ -18,3 +18,20 @@ build() {
     ck "$1" "$2" 384; sleep 1; ck "$1" "$3" 422; sleep "$6"
     ck "$1" "$3" 422; sleep 1; ck "$1" "$4" "$5"; sleep 3; park "$1"
 }
+# spot DISPLAY TYPE: the screen position of the local player's first unit of TYPE (from the
+# state log, DOMINION_ISO_STATELOG_UNITS=1), while the view follows the player's first unit of
+# type below 16 (DOMINION_ISO_STATELOG_ORDERS=6). Host is p0, joiner p1.
+spot() {
+    local log=$O/${C}_h.log me=p0; [ "$1" = :98 ] && log=$O/${C}_j.log me=p1
+    python3 - "$log" "$me" "$2" <<'P'
+import sys
+cur, last = [], []
+for l in open(sys.argv[1], errors='replace'):
+    if l.startswith('  '): cur.append(l.split())
+    elif l[0].isdigit(): last, cur = cur, []
+me = [u for u in last if u[2] == sys.argv[2]]
+pos = lambda u: tuple(map(int, u[3].strip('()').split(',')))
+(fx, fy), (tx, ty) = pos([u for u in me if int(u[1][1:]) < 16][0]), pos([u for u in me if u[1] == 't' + sys.argv[3]][0])
+print(320 + tx - fx, 187 + ty - fy)
+P
+}
