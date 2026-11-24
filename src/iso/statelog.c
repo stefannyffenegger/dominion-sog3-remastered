@@ -13,7 +13,7 @@
  * DOMINION_ISO_STATELOG_SAVE=<file> also saves the game at tick 600. For two-player
  * scenarios: with =5 both games give every player full tech, resources and build prerequisites
  * from tick 60; with =6 the map's walkable cells go into the log at tick 100 ("#" lines) and
- * from tick 600 the view follows one of the local player's units, display only.
+ * from tick 600 the view follows one of the local player's units, display only; =7 does both.
  * DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
@@ -214,11 +214,9 @@ static void give_full_tech(void)
 
 static void give_orders(void)
 {
-    if (g_orders == 5) {
+    if (g_orders == 5 || g_orders == 7)
         give_full_tech();
-        return;
-    }
-    if (g_orders == 6) { /* two-player fight: the view follows one of the local player's units
+    if (g_orders == 6 || g_orders == 7) { /* two-player fight: the view follows one of the local player's units
                           * (the game's own follow mode), so mp_fight.sh can click seen ground
                           * ahead of them. Display only. */
         if (I(uint32_t, 0x17dd) == 100) { /* the map's walkable cells, as "#" lines */
@@ -237,6 +235,12 @@ static void give_orders(void)
                 row[n] = 0;
                 out(row);
             }
+        }
+        if (I(uint32_t, 0x17dd) % 8 == 0) { /* the view's corners in map coordinates */
+            char row[80];
+            wsprintfA(row, "# view %d %d %d %d\r\n", I(int32_t, 0xd6b7), I(int32_t, 0xd6bb), I(int32_t, 0xd6bf),
+                      I(int32_t, 0xd6c3));
+            out(row);
         }
         if (I(uint32_t, 0x17dd) < 600)
             return;
@@ -308,7 +312,7 @@ void statelog_install(void)
     }
     units[0] = 0;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_ORDERS", units, sizeof units);
-    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : units[0] == '5' ? 5 : units[0] == '6' ? 6 : 0;
+    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : units[0] == '5' ? 5 : units[0] == '6' ? 6 : units[0] == '7' ? 7 : 0;
     statelog_tick = tick_stub;
     uint8_t *p = ORIG(uint8_t *, TICK_CALL);
     if (p[0] != 0xE8)
