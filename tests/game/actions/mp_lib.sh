@@ -4,7 +4,7 @@
 # without it the first capture is kept.
 clean() { # display file
     for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
-        DISPLAY=$1 magick import -window root "$2"
+        DISPLAY=$1 timeout 10 magick import -window root "$2"  # a hung capture stalls the game
         [ -f work/tmp/bar_ref.png ] || return 0
         v=$(magick "$2" -crop 40x40+600+440 +repage miff:- | compare -metric AE - work/tmp/bar_ref.png null: 2>&1 | head -1 | awk '{print int($1)}')
         [ "${v:-9999}" -lt 200 ] && return 0
@@ -39,14 +39,17 @@ print(x - view[0] - 128, y - view[1] - 128)
 P
 }
 # place DISPLAY TAG: with a structure ready to place, hover a grid of spots and click the first
-# whose placement outline is green (bright green pixels in the playfield; red means refused)
+# whose placement outline is green (bright green pixels in the playfield, beyond those already
+# there, such as selection rings; red means refused)
+greens() { magick "$1" -crop 640x370+0+0 +repage -fx 'g>0.6&&r<0.3&&b<0.3' -format '%[fx:int(mean*w*h)]' info:; }
 place() {
-    local x y g
+    local x y g g0
+    park "$1"; clean "$1" "$O/${C}_$2_try.png"; g0=$(greens "$O/${C}_$2_try.png")
     for y in 300 240 180 120 60; do
         for x in 160 260 380 480 560 100; do
             DISPLAY=$1 xdotool mousemove $x $y; sleep 0.8; clean "$1" "$O/${C}_$2_try.png"
-            g=$(magick "$O/${C}_$2_try.png" -crop 640x370+0+0 +repage -fx 'g>0.6&&r<0.3&&b<0.3' -format '%[fx:mean*w*h]' info:)
-            if [ "${g%.*}" -gt 150 ]; then ck "$1" $x $y; sleep 2; park "$1"; echo "$2 placed at $x,$y"; return 0; fi
+            g=$(greens "$O/${C}_$2_try.png")
+            if [ $((g - g0)) -gt 150 ]; then ck "$1" $x $y; sleep 2; park "$1"; echo "$2 placed at $x,$y"; return 0; fi
         done
     done
     echo "$2: no free spot"; return 1
