@@ -71,9 +71,16 @@ start)
     join click 328 321; sleep 3           # Search: "Enter host address" (blank = search the LAN)
     clear_field :98; type_on :98 127.0.0.1
     join key Return; sleep 10             # finds the game and joins it
+    [ -n "${MP_MAP_ROW:-}" ] && { host click 420 $((281 + 12 * MP_MAP_ROW)); sleep 6; }  # map list entry
+    [ -n "${MP_LOBBY_SHOT:-}" ] && host shot "$MP_LOBBY_SHOT"
     join click 86 108; sleep 2            # Go (ready)
     host click 86 93; sleep 4
-    host click 330 381                    # Start game
+    for _ in 1 2 3; do                    # Start game; again if MP_STARTED_LOG gets no tick
+        host click 330 381
+        [ -z "${MP_STARTED_LOG:-}" ] && break
+        for _ in $(seq 20); do grep -qa '^[0-9]' "$MP_STARTED_LOG" 2>/dev/null && break 2; sleep 1; done
+        echo "no tick logged, clicking Start again"
+    done
     echo "match starting"
     ;;
 shot)

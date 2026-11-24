@@ -10,8 +10,11 @@
  * crawl at 120, stand at 200), input that does not depend on timing. With =2 the base test
  * on Darken mission 12 runs instead: start a Power Plant at tick 100, place one at tick 300,
  * then damage, engineer repair, repair button, upgrade and a sale by tick 560;
- * DOMINION_ISO_STATELOG_SAVE=<file> also saves the game at tick 600. With =5, for two-player
- * scenarios, both games give every player full tech and resources at tick 60. DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
+ * DOMINION_ISO_STATELOG_SAVE=<file> also saves the game at tick 600. For two-player
+ * scenarios: with =5 both games give every player full tech, resources and build prerequisites
+ * from tick 60; with =6 the map's walkable cells go into the log at tick 100 ("#" lines) and
+ * from tick 600 the view follows one of the local player's units, display only.
+ * DOMINION_ISO_STATELOG_CLOCK=<ms> gives the game logic (the original
  * ISO and ours) a virtual timeGetTime that advances <ms> per displayed frame, so that the
  * game does not depend on how fast the computer is either. */
 #include "iso_core.h"
@@ -215,6 +218,40 @@ static void give_orders(void)
         give_full_tech();
         return;
     }
+    if (g_orders == 6) { /* two-player fight: the view follows one of the local player's units
+                          * (the game's own follow mode), so mp_fight.sh can click seen ground
+                          * ahead of them. Display only. */
+        if (I(uint32_t, 0x17dd) == 100) { /* the map's walkable cells, as "#" lines */
+            int w = I(int32_t, ISO_MAP_W), h = I(int32_t, ISO_MAP_H);
+            static char row[300];
+            wsprintfA(row, "# map %d x %d\r\n", w, h);
+            out(row);
+            for (int y = 0; y < h; y++) {
+                int n = wsprintfA(row, "# row ");
+                for (int x = 0; x < w && x < 256; x++) {
+                    uint32_t m = I(uint32_t *, 0x1934)[((uint32_t)y << (I(uint8_t, ISO_MAP_SHIFT) & 0x1f)) + (uint32_t)x];
+                    row[n++] = (m & 1) || (m >> 14 & 1) ? 'x' : '.';
+                }
+                row[n++] = '\r';
+                row[n++] = '\n';
+                row[n] = 0;
+                out(row);
+            }
+        }
+        if (I(uint32_t, 0x17dd) < 600)
+            return;
+        int local = I(int, ISO_LOCAL_PLAYER);
+        for (int i = 0; i < I(int, ISO_UNIT_COUNT); i++) {
+            int32_t id = I(int32_t *, ISO_UNIT_LIST)[i];
+            uint8_t *u = id > 0 && id < 2000 ? iso_unit(id) : NULL;
+            if (u && P(uint8_t, u, 0x14) == local && P(int32_t, u, 0x0c) < 0x10) {
+                I(uint16_t, 0x17bb) = (uint16_t)id;
+                I(int32_t, 0x144) = 1;
+                break;
+            }
+        }
+        return;
+    }
     if (g_orders == 2) {
         give_base_orders();
         return;
@@ -271,7 +308,7 @@ void statelog_install(void)
     }
     units[0] = 0;
     GetEnvironmentVariableA("DOMINION_ISO_STATELOG_ORDERS", units, sizeof units);
-    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : units[0] == '5' ? 5 : 0;
+    g_orders = units[0] == '1' ? 1 : units[0] == '2' ? 2 : units[0] == '5' ? 5 : units[0] == '6' ? 6 : 0;
     statelog_tick = tick_stub;
     uint8_t *p = ORIG(uint8_t *, TICK_CALL);
     if (p[0] != 0xE8)

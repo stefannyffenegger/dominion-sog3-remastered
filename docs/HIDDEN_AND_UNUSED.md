@@ -180,6 +180,6 @@ These are kept in our rewrites for now (marked `original:` in the source) and ar
 * **code.** The original IMA sound functions and the sprite run-length expander are hand-written assembly that doesn't keep a register (EBX) that compiled code relies on.
 * More per module: `PHASE1B_MODULES.md` (fonts, cutscenes, sound, multiplayer, engine).
 
-## Selling a structure in a two-player match
+## Two-player matches are not exactly in step
 
-The original's two players do not stay bit-identical after a sale. The men who leave the building differ between host and joiner in one unit flag (bit `0x20` of unit `+0x3e`), and their positions briefly differ by up to about 39 pixels before settling within 2. Which units exist, their types, owners and health stay the same, so the match carries on normally.
+The original's two players do not keep bit-identical game states once units move. Moving units differ between host and joiner in one unit flag (bit `0x20` of unit `+0x3e`), and their positions briefly differ by up to about 80 pixels before settling within a few. This shows after any move order, including the men who leave a sold building. In a fight, the health of the units differs between the two sides from the first hits on, for thousands of ticks, apparently because shots are stepped per displayed frame. Which units exist, and so which survive a fight, stays the same on both sides, and the match carries on normally.
