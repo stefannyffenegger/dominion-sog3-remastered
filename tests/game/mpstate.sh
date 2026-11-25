@@ -10,6 +10,7 @@ export DOMINION_HOME=$R/work/dh2 DOMINION_HOME2=$R/work/dh3
 unset MP_HOST_ORIGINAL MP_JOIN_ORIGINAL
 [ "${C:0:1}" = o ] && export MP_HOST_ORIGINAL=all
 [ "${C:1:1}" = o ] && export MP_JOIN_ORIGINAL=all
+[ -n "${MP_JOIN_KEEP:-}" ] && export MP_JOIN_ORIGINAL=$MP_JOIN_KEEP  # functions the joiner keeps original (bisecting)
 rm -f "$O/${C}_h.log" "$O/${C}_j.log"
 export MP_HOST_LOG="Z:${R//\//\\}\\${O//\//\\}\\${C}_h.log" MP_JOIN_LOG="Z:${R//\//\\}\\${O//\//\\}\\${C}_j.log"
 for attempt in 1 2; do # the menus sometimes miss a click before the lobby: start over once

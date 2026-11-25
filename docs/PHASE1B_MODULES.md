@@ -1061,7 +1061,7 @@ Getters and setters for the AI's target records (0x120 bytes each, G(0x1018b610)
   * **Original quirk kept:** the debug line prints the point count where the point's number was meant.
 * **Build-up (0x10076af2, 0x10076ca3, 0x10076d00):** a unit's counter +0x88 under the state +0x84 (0 none, 1 done, 2 counting down, 3 counting up). It counts every other tick, up to 5 for the local player's allies and 9 for others; at the top the unit counts as built (0x1005c899).
 * **Structure animation (0x10076de9, 0x10076e53):** the state +0x3a of types 0x40-0x87, moved on every other tick through a table (0x10146ac8) when the sprite has nothing queued.
-  * The original returned an uninitialised value when there was nothing to do; ours returns 0.
+  * With nothing to do it returns -1, and the drawing loop then draws the structure plainly; 0 and up select a shaded blit. The decompile hid the -1, and ours returned 0 until a two-player test showed the joiner's idle structures drawn tinted red (fixed after part 224, found by bisecting with `DOMINION_ISO_ORIGINAL=@lo-hi`). The state logs could not show it, as it changes only the picture.
 * Checked: the trace shows all eight run. Unit state log (980-999, twice), Human mission 1, the orders, popup and groups tests (within their known noise), Alt+F4.
 
 ### Part 79: clear lines of fire (`lineofsight.c`, 8 functions, 0x100772d9-0x10078453)

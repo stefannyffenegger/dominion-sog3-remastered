@@ -146,13 +146,14 @@ int32_t __cdecl structure_set_anim(uint32_t unit, int32_t state)
 }
 
 /* 0x10076e53: a structure's animation step when its sprite has nothing queued: states 1 and
- * 3 give 0, 2 gives 1; every other tick the state moves on (table 0x10146ac8). The original
- * returned an uninitialised value when there was nothing to do; ours returns 0 */
+ * 3 give 0, 2 gives 1; every other tick the state moves on (table 0x10146ac8). -1 when there
+ * is nothing to do (no unit, state 0, or something queued): the drawing loop then draws the
+ * structure plainly, while 0 and up select a shaded blit */
 int32_t __cdecl structure_anim_step(uint32_t unit)
 {
     uint8_t *u = unit_ptr(unit & 0xffff);
     if (!u || P(int32_t, u, 0x3a) < 1 || P(int32_t, P(uint8_t *, P(uint8_t *, u, 4), 0x34), 0x28))
-        return 0;
+        return -1;
     int32_t r = P(int32_t, u, 0x3a) == 2;
     if (P(uint8_t, u, 0x2d) == 1)
         P(uint8_t, u, 0x2d) = 2;

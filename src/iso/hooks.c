@@ -5,8 +5,8 @@
  * ours. So both outside callers and the engine's own internal calls run our code, and
  * the original's data stays the single copy everyone uses.
  *
- * DOMINION_ISO_ORIGINAL=ResOpenFile,ResCloseFile (or "all") leaves those functions original,
- * for comparing behavior. */
+ * DOMINION_ISO_ORIGINAL=ResOpenFile,ResCloseFile (or "all", or "@lo-hi" for an address range)
+ * leaves those functions original, for comparing behavior. */
 #include "orig.h"
 #include "iso.h" /* prototypes of everything in ported.h */
 #include "statelog.h"
@@ -86,9 +86,39 @@ static const Hook hooks[] = {
     {0, NULL, NULL},
 };
 
-/* Is name in the comma-separated list? "all" lists every name; "all,-a,-b" all but a, b. */
-static int listed(const char *list, const char *name)
+static uint32_t hex(const char **p)
 {
+    uint32_t v = 0;
+    for (;; (*p)++) {
+        char c = **p;
+        if (c >= '0' && c <= '9')
+            v = v * 16 + (uint32_t)(c - '0');
+        else if (c >= 'a' && c <= 'f')
+            v = v * 16 + (uint32_t)(c - 'a' + 10);
+        else
+            return v;
+    }
+}
+
+/* Is name in the comma-separated list? "all" lists every name; "all,-a,-b" all but a, b;
+ * "@lo-hi" (hex) every function whose original address is in [lo, hi). */
+static int listed(const char *list, const char *name, uint32_t addr)
+{
+    for (const char *p = list; *p;) {
+        if (*p == '@') {
+            p++;
+            uint32_t lo = hex(&p);
+            if (*p == '-')
+                p++;
+            uint32_t hi = hex(&p);
+            if (addr >= lo && addr < hi)
+                return 1;
+        }
+        while (*p && *p != ',')
+            p++;
+        if (*p)
+            p++;
+    }
     size_t n = (size_t)lstrlenA(name);
     if (!lstrcmpA(list, "all"))
         return 1;
@@ -123,7 +153,7 @@ static void install_hooks(void)
         uint8_t *p = ORIG(uint8_t *, h->addr);
         DWORD old;
         int32_t rel;
-        if (keep[0] && listed(keep, h->name)) {
+        if (keep[0] && listed(keep, h->name, h->addr)) {
             skipped++;
             continue;
         }
